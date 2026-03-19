@@ -1,68 +1,68 @@
-import { useState } from 'react';
-import { Globe } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Search, Upload } from 'lucide-react';
 
 const deliveries = [
-  { id: 'DEL-0091', order: 'ORD-2024-042', supplier: 'LinenPro',  eta: '2026-03-20', carrier: 'FedEx',  tracking: '7742-0019', status: 'In Transit' },
-  { id: 'DEL-0090', order: 'ORD-2024-040', supplier: 'CleanTex',  eta: '2026-03-13', carrier: 'UPS',    tracking: '1Z99X00', status: 'Delivered' },
-  { id: 'DEL-0089', order: 'ORD-2024-039', supplier: 'MatSource', eta: '2026-03-11', carrier: 'FedEx',  tracking: '7701-8854', status: 'Delivered' },
-  { id: 'DEL-0092', order: 'ORD-2024-043', supplier: 'MatSource', eta: '2026-03-22', carrier: 'USPS',   tracking: '9400-1112', status: 'Pending' },
-  { id: 'DEL-0093', order: 'ORD-2024-044', supplier: 'ChemSupply',eta: '2026-03-21', carrier: 'UPS',    tracking: '1Z00WXYZ', status: 'Pending' },
+  { id: 'DEL-001', order: 'PO-2024-001', driver: 'ABC Logistics', scheduled: '2024-03-18 10:00', status: 'Scheduled' },
+  { id: 'DEL-002', order: 'PO-2024-002', driver: 'FastFreight Inc', scheduled: '2024-03-19 14:00', status: 'Scheduled' },
+  { id: 'DEL-003', order: 'PO-2024-003', driver: 'ABC Logistics', scheduled: '2024-03-15 09:30', status: 'Completed' },
+  { id: 'DEL-004', order: 'PO-2024-004', driver: 'QuickShip Co', scheduled: '2024-03-12 11:00', status: 'Completed' },
 ];
 
-const statusColor = {
-  Delivered:   'bg-green-50 text-green-700',
-  'In Transit': 'bg-blue-50 text-blue-700',
-  Pending:     'bg-amber-50 text-amber-700',
-};
-
 export default function DeliveryPortal() {
-  const [filter, setFilter] = useState('All');
-  const filtered = filter === 'All' ? deliveries : deliveries.filter(d => d.status === filter);
-
   return (
-    <div className="px-8 py-6">
-      <h1 className="text-xl font-semibold text-foreground mb-5">Delivery Portal</h1>
-
-      <div className="flex items-center gap-3 mb-5">
-        {['All', 'Pending', 'In Transit', 'Delivered'].map(s => (
-          <button
-            key={s}
-            onClick={() => setFilter(s)}
-            className={`text-sm px-3 py-1.5 rounded border transition-colors ${filter === s ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-foreground hover:bg-accent'}`}
-          >
-            {s}
-          </button>
-        ))}
-        <button className="ml-auto flex items-center gap-1.5 text-sm border border-border bg-card px-3 py-1.5 rounded hover:bg-accent transition-colors">
-          <Globe size={14} /> Refresh Tracking
-        </button>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">Delivery Portal</h1>
+        <Button size="sm" variant="outline">
+          <Upload className="w-4 h-4 mr-2" />
+          Upload POD
+        </Button>
       </div>
 
-      <div className="border border-border rounded overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
-            <tr>
-              {['Delivery ID','Order','Supplier','ETA','Carrier','Tracking #','Status'].map(h => (
-                <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r, i) => (
-              <tr key={r.id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'} hover:bg-accent/40`}>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{r.id}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{r.order}</td>
-                <td className="px-4 py-2.5 font-medium">{r.supplier}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{r.eta}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{r.carrier}</td>
-                <td className="px-4 py-2.5 font-mono text-xs">{r.tracking}</td>
-                <td className="px-4 py-2.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[r.status]}`}>{r.status}</span>
-                </td>
-              </tr>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search deliveries..." className="pl-9" />
+        </div>
+      </div>
+
+      <div className="bg-card rounded-lg border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Delivery ID</TableHead>
+              <TableHead>Order</TableHead>
+              <TableHead>Driver/Carrier</TableHead>
+              <TableHead>Scheduled</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {deliveries.map((delivery) => (
+              <TableRow key={delivery.id}>
+                <TableCell className="font-mono text-sm">{delivery.id}</TableCell>
+                <TableCell className="font-mono text-sm">{delivery.order}</TableCell>
+                <TableCell>{delivery.driver}</TableCell>
+                <TableCell>{delivery.scheduled}</TableCell>
+                <TableCell>
+                  <span className={`text-xs px-2 py-1 rounded ${
+                    delivery.status === 'Completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {delivery.status}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {delivery.status === 'Scheduled' && (
+                    <Button size="sm" variant="ghost">Check In</Button>
+                  )}
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

@@ -1,61 +1,59 @@
-import { Link, useLocation, Outlet } from 'react-router-dom';
-import {
-  Archive,
-  ScanLine,
-  Truck,
-  RefreshCcw,
-  ShoppingCart,
-  PackageCheck,
-  Globe,
+import { Outlet, Link, useLocation } from 'react-router-dom';
+import { 
+  Package, 
+  ScanSearch, 
+  Factory, 
+  ClipboardList, 
+  ShoppingCart, 
+  PackageCheck, 
+  Truck 
 } from 'lucide-react';
 
-const nav = [
-  { label: 'Inventory',       path: '/Inventory',      icon: Archive },
-  { label: 'Gap Scan',        path: '/GapScan',         icon: ScanLine },
-  { label: 'Suppliers',       path: '/Suppliers',       icon: Truck },
-  { label: 'Reorder Review',  path: '/ReorderReview',   icon: RefreshCcw },
-  { label: 'Orders',          path: '/Orders',          icon: ShoppingCart },
-  { label: 'Receiving',       path: '/Receiving',       icon: PackageCheck },
-  { label: 'Delivery Portal', path: '/DeliveryPortal',  icon: Globe },
+const navItems = [
+  { path: '/Inventory', label: 'Inventory', icon: Package },
+  { path: '/GapScan', label: 'Gap Scan', icon: ScanSearch },
+  { path: '/Suppliers', label: 'Suppliers', icon: Factory },
+  { path: '/ReorderReview', label: 'Reorder Review', icon: ClipboardList },
+  { path: '/Orders', label: 'Orders', icon: ShoppingCart },
+  { path: '/Receiving', label: 'Receiving', icon: PackageCheck },
+  { path: '/DeliveryPortal', label: 'Delivery Portal', icon: Truck },
 ];
 
 export default function Layout() {
-  const { pathname } = useLocation();
+  const location = useLocation();
 
   return (
-    <div className="flex h-screen w-full overflow-hidden font-inter">
+    <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <aside className="w-56 flex-shrink-0 bg-sidebar-bg flex flex-col">
-        <div className="px-5 py-5 border-b border-white/10">
-          <span className="text-white font-semibold text-base tracking-tight">Invyra</span>
-          <span className="text-sidebar-fg text-xs ml-1">Laundry</span>
+      <aside className="w-56 bg-card border-r border-border flex flex-col">
+        <div className="p-4 border-b border-border">
+          <h1 className="text-lg font-semibold text-foreground">Invyra</h1>
+          <p className="text-xs text-muted-foreground">Laundry Inventory</p>
         </div>
-        <nav className="flex-1 py-3 overflow-y-auto">
-          {nav.map(({ label, path, icon: Icon }) => {
-            const active = pathname === path || pathname.startsWith(path + '/');
+        <nav className="flex-1 p-2">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            const Icon = item.icon;
             return (
               <Link
-                key={path}
-                to={path}
-                className={`flex items-center gap-3 px-5 py-2.5 text-sm transition-colors ${
-                  active
-                    ? 'bg-sidebar-activeBg text-sidebar-activeFg font-medium'
-                    : 'text-sidebar-fg hover:bg-sidebar-hoverBg hover:text-white'
+                key={item.path}
+                to={item.path}
+                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm mb-1 transition-colors ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-foreground hover:bg-muted'
                 }`}
               >
-                <Icon size={15} />
-                {label}
+                <Icon className="w-4 h-4" />
+                {item.label}
               </Link>
             );
           })}
         </nav>
-        <div className="px-5 py-4 border-t border-white/10 text-xs text-sidebar-fg/60">
-          v0.1 prototype
-        </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto bg-background">
+      <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
     </div>

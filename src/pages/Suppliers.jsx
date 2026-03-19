@@ -1,66 +1,65 @@
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Plus, Search } from 'lucide-react';
 
-const sample = [
-  { id: 'SUP-01', name: 'CleanTex',    contact: 'Jane Morris',    email: 'jane@cleantex.com',    phone: '555-0101', category: 'Linens',    leadDays: 3,  status: 'Active' },
-  { id: 'SUP-02', name: 'LinenPro',    contact: 'Mark Alvarez',   email: 'mark@linenpro.com',    phone: '555-0202', category: 'Bedding',   leadDays: 5,  status: 'Active' },
-  { id: 'SUP-03', name: 'MatSource',   contact: 'Priya Nair',     email: 'priya@matsource.com',  phone: '555-0303', category: 'Mats',      leadDays: 7,  status: 'Active' },
-  { id: 'SUP-04', name: 'ChemSupply',  contact: 'Tom Reeves',     email: 'tom@chemsupply.com',   phone: '555-0404', category: 'Chemicals', leadDays: 2,  status: 'Active' },
-  { id: 'SUP-05', name: 'UniTex',      contact: 'Sarah Bloom',    email: 'sarah@unitex.com',     phone: '555-0505', category: 'Uniforms',  leadDays: 10, status: 'Inactive' },
+const sampleSuppliers = [
+  { id: 'SUP-001', name: 'LinenPro Wholesale', contact: 'John Smith', phone: '(555) 123-4567', items: 24, status: 'Active' },
+  { id: 'SUP-002', name: 'CleanTex Distributors', contact: 'Maria Garcia', phone: '(555) 234-5678', items: 18, status: 'Active' },
+  { id: 'SUP-003', name: 'Hotel Supply Co', contact: 'David Lee', phone: '(555) 345-6789', items: 32, status: 'Active' },
+  { id: 'SUP-004', name: 'Fabric Solutions Inc', contact: 'Sarah Wilson', phone: '(555) 456-7890', items: 15, status: 'Inactive' },
+  { id: 'SUP-005', name: 'Premium Linens Ltd', contact: 'Mike Brown', phone: '(555) 567-8901', items: 21, status: 'Active' },
 ];
 
 export default function Suppliers() {
-  const [search, setSearch] = useState('');
-  const filtered = sample.filter(s =>
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.category.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <div className="px-8 py-6">
-      <h1 className="text-xl font-semibold text-foreground mb-5">Suppliers</h1>
-
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Search suppliers…"
-            className="pl-8 pr-3 py-1.5 text-sm border border-border rounded bg-card w-52 focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-        </div>
-        <button className="flex items-center gap-1.5 text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded hover:opacity-90 transition-opacity">
-          <Plus size={14} /> Add Supplier
-        </button>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">Suppliers</h1>
+        <Button size="sm">
+          <Plus className="w-4 h-4 mr-2" />
+          Add Supplier
+        </Button>
       </div>
 
-      <div className="border border-border rounded overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
-            <tr>
-              {['ID','Name','Contact','Email','Phone','Category','Lead Days','Status'].map(h => (
-                <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((r, i) => (
-              <tr key={r.id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'} hover:bg-accent/40 cursor-pointer`}>
-                <td className="px-4 py-2.5 text-muted-foreground font-mono text-xs">{r.id}</td>
-                <td className="px-4 py-2.5 font-medium">{r.name}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{r.contact}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{r.email}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{r.phone}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{r.category}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{r.leadDays}d</td>
-                <td className="px-4 py-2.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.status === 'Active' ? 'bg-green-50 text-green-700' : 'bg-muted text-muted-foreground'}`}>{r.status}</span>
-                </td>
-              </tr>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search suppliers..." className="pl-9" />
+        </div>
+      </div>
+
+      <div className="bg-card rounded-lg border border-border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Phone</TableHead>
+              <TableHead className="text-right">Items</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sampleSuppliers.map((supplier) => (
+              <TableRow key={supplier.id}>
+                <TableCell className="font-mono text-sm">{supplier.id}</TableCell>
+                <TableCell className="font-medium">{supplier.name}</TableCell>
+                <TableCell>{supplier.contact}</TableCell>
+                <TableCell>{supplier.phone}</TableCell>
+                <TableCell className="text-right">{supplier.items}</TableCell>
+                <TableCell>
+                  <span className={`text-xs px-2 py-1 rounded ${
+                    supplier.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {supplier.status}
+                  </span>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

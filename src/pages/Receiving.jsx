@@ -1,80 +1,103 @@
-import { useState } from 'react';
-import { PackageCheck } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScanLine, Search } from 'lucide-react';
 
-const pending = [
-  { id: 'ORD-2024-042', supplier: 'LinenPro',   item: 'Bed Sheet Queen',  ordered: 200, received: null },
-  { id: 'ORD-2024-042', supplier: 'LinenPro',   item: 'Pillow Case Std',  ordered: 160, received: null },
-  { id: 'ORD-2024-043', supplier: 'MatSource',  item: 'Bath Mat 20×30',   ordered: 120, received: null },
-  { id: 'ORD-2024-044', supplier: 'ChemSupply', item: 'Detergent 5-Gal',  ordered: 10,  received: null },
+const pendingReceipts = [
+  { id: 'PO-2024-001', supplier: 'LinenPro Wholesale', expected: '2024-03-18', items: 3, status: 'In Transit' },
+  { id: 'PO-2024-002', supplier: 'CleanTex Distributors', expected: '2024-03-19', items: 2, status: 'In Transit' },
+];
+
+const recentReceipts = [
+  { id: 'RCV-001', order: 'PO-2024-003', supplier: 'Hotel Supply Co', received: '2024-03-15', items: 5, status: 'Complete' },
+  { id: 'RCV-002', order: 'PO-2024-004', supplier: 'Premium Linens Ltd', received: '2024-03-12', items: 4, status: 'Complete' },
+  { id: 'RCV-003', order: 'PO-2024-006', supplier: 'LinenPro Wholesale', received: '2024-03-10', items: 2, status: 'Partial' },
 ];
 
 export default function Receiving() {
-  const [rows, setRows] = useState(pending.map(r => ({...r, received: '', condition: 'Good', notes: ''})));
-
-  const update = (i, field, val) => setRows(prev => prev.map((r, idx) => idx === i ? {...r, [field]: val} : r));
-
   return (
-    <div className="px-8 py-6">
-      <h1 className="text-xl font-semibold text-foreground mb-5">Receiving</h1>
-
-      <div className="flex items-center gap-3 mb-5">
-        <span className="text-sm text-muted-foreground">{rows.length} line items pending receipt</span>
-        <button className="ml-auto flex items-center gap-1.5 text-sm bg-primary text-primary-foreground px-3 py-1.5 rounded hover:opacity-90 transition-opacity">
-          <PackageCheck size={14} /> Confirm All Received
-        </button>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold text-foreground">Receiving</h1>
+        <Button size="sm">
+          <ScanLine className="w-4 h-4 mr-2" />
+          Scan Receipt
+        </Button>
       </div>
 
-      <div className="border border-border rounded overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
-            <tr>
-              {['Order ID','Supplier','Item','Ordered','Qty Received','Condition','Notes',''].map(h => (
-                <th key={h} className="text-left px-4 py-2.5 font-medium">{h}</th>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search by order or supplier..." className="pl-9" />
+        </div>
+      </div>
+
+      <div className="mb-8">
+        <h2 className="text-lg font-medium mb-3">Pending Arrivals</h2>
+        <div className="bg-card rounded-lg border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Order ID</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead>Expected</TableHead>
+                <TableHead className="text-right">Items</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pendingReceipts.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-mono text-sm">{item.id}</TableCell>
+                  <TableCell>{item.supplier}</TableCell>
+                  <TableCell>{item.expected}</TableCell>
+                  <TableCell className="text-right">{item.items}</TableCell>
+                  <TableCell>
+                    <span className="text-xs px-2 py-1 rounded bg-blue-100 text-blue-700">
+                      {item.status}
+                    </span>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{r.id}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{r.supplier}</td>
-                <td className="px-4 py-2.5 font-medium">{r.item}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{r.ordered}</td>
-                <td className="px-4 py-2.5">
-                  <input
-                    type="number"
-                    value={r.received}
-                    onChange={e => update(i, 'received', e.target.value)}
-                    placeholder={String(r.ordered)}
-                    className="w-20 border border-border rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </td>
-                <td className="px-4 py-2.5">
-                  <select
-                    value={r.condition}
-                    onChange={e => update(i, 'condition', e.target.value)}
-                    className="text-sm border border-border rounded px-2 py-1 bg-card focus:outline-none"
-                  >
-                    <option>Good</option>
-                    <option>Damaged</option>
-                    <option>Partial</option>
-                  </select>
-                </td>
-                <td className="px-4 py-2.5">
-                  <input
-                    value={r.notes}
-                    onChange={e => update(i, 'notes', e.target.value)}
-                    placeholder="Optional note…"
-                    className="border border-border rounded px-2 py-1 text-sm w-40 focus:outline-none focus:ring-1 focus:ring-ring"
-                  />
-                </td>
-                <td className="px-4 py-2.5">
-                  <button className="text-xs text-primary hover:underline">Confirm</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-medium mb-3">Recent Receipts</h2>
+        <div className="bg-card rounded-lg border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Receipt ID</TableHead>
+                <TableHead>Order</TableHead>
+                <TableHead>Supplier</TableHead>
+                <TableHead>Received</TableHead>
+                <TableHead className="text-right">Items</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentReceipts.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-mono text-sm">{item.id}</TableCell>
+                  <TableCell className="font-mono text-sm">{item.order}</TableCell>
+                  <TableCell>{item.supplier}</TableCell>
+                  <TableCell>{item.received}</TableCell>
+                  <TableCell className="text-right">{item.items}</TableCell>
+                  <TableCell>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      item.status === 'Complete' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {item.status}
+                    </span>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
