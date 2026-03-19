@@ -150,7 +150,15 @@ export default function GapScan() {
                   />
                 </td>
                 <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
-                <td className="px-4 py-2.5 font-medium">{row.name}</td>
+                <td 
+                  onClick={() => {
+                    setHighlightedRow(row.sku);
+                    setTimeout(() => navigate('/Inventory'), 200);
+                  }}
+                  className="px-4 py-2.5 font-medium text-primary hover:underline cursor-pointer transition-colors"
+                >
+                  {row.name}
+                </td>
                 <td className="px-4 py-2.5">{row.onHand.toLocaleString()}</td>
                 <td className="px-4 py-2.5 text-muted-foreground">{row.avgUse}</td>
                 <td className={`px-4 py-2.5 ${daysLeftStyle(row.daysLeft)}`}>{row.daysLeft}</td>
