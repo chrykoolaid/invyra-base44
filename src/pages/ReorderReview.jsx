@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Play, Pencil, Send } from 'lucide-react';
 
 const generateData = (windowDays, coverDays) => [
