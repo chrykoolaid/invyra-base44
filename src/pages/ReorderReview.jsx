@@ -135,20 +135,20 @@ export default function ReorderReview() {
                     className="cursor-pointer"
                   />
                 </td>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
-                <td className="px-4 py-2.5 font-medium">{row.name}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{row.supplier}</td>
-                <td className="px-4 py-2.5">{row.onHand.toLocaleString()}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{row.demand30.toLocaleString()}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{row.daily}</td>
-                <td className={`px-4 py-2.5 ${coverageStyle(row.coverage, coverDays)}`}>{row.coverage}</td>
-                <td className="px-4 py-2.5">{row.suggested > 0 ? row.suggested : '—'}</td>
-                <td className="px-4 py-2.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${actionStyle[row.action]}`}>
+                <td className="px-5 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
+                <td className="px-5 py-2.5 font-medium">{row.name}</td>
+                <td className="px-5 py-2.5 text-muted-foreground">{row.supplier}</td>
+                <td className="px-5 py-2.5 text-right font-mono text-sm">{row.onHand.toLocaleString()}</td>
+                <td className="px-5 py-2.5 text-right font-mono text-sm text-muted-foreground">{row.demand30.toLocaleString()}</td>
+                <td className="px-5 py-2.5 text-right font-mono text-sm text-muted-foreground">{row.daily}</td>
+                <td className={`px-5 py-2.5 text-right font-mono text-sm font-semibold ${coverageStyle(row.coverage, coverDays)}`}>{row.coverage}</td>
+                <td className="px-5 py-2.5 text-right font-mono text-sm">{row.suggested > 0 ? row.suggested : '—'}</td>
+                <td className="px-5 py-2.5">
+                  <span className={`text-xs px-3 py-1 rounded font-semibold ${actionStyle[row.action]}`}>
                     {row.action}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-muted-foreground text-xs max-w-xs">{row.reasons}</td>
+                <td className="px-5 py-2.5 text-muted-foreground text-xs max-w-xs">{row.reasons}</td>
               </tr>
             ))}
           </tbody>
