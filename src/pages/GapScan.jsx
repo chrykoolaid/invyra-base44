@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Play, Download, Lightbulb } from 'lucide-react';
 
 const scanData = [
