@@ -149,9 +149,18 @@ export default function ReorderReview() {
                 <td className={`px-5 py-2.5 text-right font-mono text-sm font-semibold ${coverageStyle(row.coverage, coverDays)}`}>{row.coverage}</td>
                 <td className="px-5 py-2.5 text-right font-mono text-sm">{row.suggested > 0 ? row.suggested : '—'}</td>
                 <td className="px-5 py-2.5">
-                  <span className={`text-xs px-3 py-1 rounded font-semibold ${actionStyle[row.action]}`}>
+                  <button
+                    onClick={e => {
+                      e.stopPropagation();
+                      if (row.action === 'Order Now') {
+                        navigate('/Orders?source=reorder_review');
+                      }
+                    }}
+                    disabled={row.action !== 'Order Now'}
+                    className={`text-xs px-3 py-1 rounded font-semibold cursor-pointer transition-opacity disabled:cursor-default ${actionStyle[row.action]} ${row.action === 'Order Now' ? 'hover:opacity-80' : ''}`}
+                  >
                     {row.action}
-                  </span>
+                  </button>
                 </td>
                 <td className="px-5 py-2.5 text-muted-foreground text-xs max-w-xs">{row.reasons}</td>
               </tr>
