@@ -32,6 +32,7 @@ const coverageStyle = (val, target) => {
 };
 
 export default function ReorderReview() {
+  const navigate = useNavigate();
   const [windowDays, setWindowDays] = useState(30);
   const [coverDays, setCoverDays]   = useState(14);
   const [selected, setSelected]     = useState(new Set());
