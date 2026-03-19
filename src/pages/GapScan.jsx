@@ -41,6 +41,23 @@ export default function GapScan() {
     setSelected(prev => prev.size === scanData.length ? new Set() : new Set(scanData.map(r => r.sku)));
   };
 
+  const getExplanation = () => {
+    if (selected.size === 0) return '';
+    
+    const selectedItems = scanData.filter(r => selected.has(r.sku));
+    const avgDaysLeft = selectedItems.reduce((sum, r) => sum + r.daysLeft, 0) / selectedItems.length;
+    const avgUsage = selectedItems.reduce((sum, r) => sum + r.avgUse, 0) / selectedItems.length;
+    
+    if (avgDaysLeft <= 3 && avgUsage > 2) {
+      return 'High usage rate with low remaining stock. Suggested reorder to maintain 14-day coverage.';
+    } else if (avgDaysLeft <= 7) {
+      return 'Stock levels approaching reorder point. Consider ordering to prevent stockouts.';
+    } else if (avgUsage > 0 && avgDaysLeft > 14) {
+      return 'Current stock levels are adequate. Monitor usage trends.';
+    }
+    return 'Review usage patterns and adjust reorder quantities as needed.';
+  };
+
   return (
     <div className="p-6">
       {/* Title */}
