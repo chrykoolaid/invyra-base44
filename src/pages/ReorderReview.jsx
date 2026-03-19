@@ -112,9 +112,12 @@ export default function ReorderReview() {
               <th className="px-4 py-2.5 w-8">
                 <input type="checkbox" checked={selected.size === data.length} onChange={toggleAll} className="cursor-pointer" />
               </th>
-              {['SKU', 'Name', 'Supplier', 'On Hand', `Demand ${windowDays}D`, 'Daily', `Coverage (days)`, 'Suggested', 'Action', 'Reasons'].map(h => (
-                <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
-              ))}
+              {['SKU', 'Name', 'Supplier', 'On Hand', `Demand ${windowDays}D`, 'Daily', `Coverage (days)`, 'Suggested', 'Action', 'Reasons'].map(h => {
+                const isNumeric = ['On Hand', `Demand ${windowDays}D`, 'Daily', 'Coverage (days)', 'Suggested'].includes(h);
+                return (
+                  <th key={h} className={`px-5 py-2.5 font-semibold whitespace-nowrap text-muted-foreground text-xs uppercase tracking-wide ${isNumeric ? 'text-right' : 'text-left'}`}>{h}</th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
