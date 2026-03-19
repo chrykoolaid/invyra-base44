@@ -9,7 +9,7 @@ const receivingRows = [
   { po: 'PO-2026-003', supplier: 'PackPro Solutions',     item: 'Packaging Bag Large',    expected: 500, received: 500, unit: 'pack',   status: 'Completed' },
   { po: 'PO-2026-003', supplier: 'PackPro Solutions',     item: 'Garment Tag Roll',        expected: 10,  received: 4,   unit: 'roll',   status: 'Partial'   },
   { po: 'PO-2026-004', supplier: 'LaundryChem Direct',    item: 'Fabric Softener 20L',    expected: 8,   received: 8,   unit: 'drum',   status: 'Completed' },
-  { po: 'PO-2026-005', supplier: 'SafetyFirst Supplies',  item: 'Gloves Disposable',       expected: 200, received: 0,   unit: 'box',    status: 'Awaiting'  },
+  { po: 'PO-2026-005', supplier: 'SafetyFirst Supplies',  item: 'Gloves Disposable',       expected: 200, received: 0,   unit: 'pcs',    status: 'Awaiting'  },
 ];
 
 const statusStyle = {
