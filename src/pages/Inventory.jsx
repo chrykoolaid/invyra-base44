@@ -138,7 +138,7 @@ export default function Inventory() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">No items found.</td>
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground text-sm">No items found.</td>
               </tr>
             )}
           </tbody>
