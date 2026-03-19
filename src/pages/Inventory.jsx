@@ -113,8 +113,20 @@ export default function Inventory() {
             {filtered.map((item, i) => (
               <tr
                 key={item.sku}
-                className={`border-t border-border hover:bg-accent/40 cursor-pointer ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}
+                onClick={() => toggleRow(item.sku)}
+                className={`border-t border-border cursor-pointer transition-colors ${
+                  selected.has(item.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
+                } hover:bg-accent/40`}
               >
+                <td className="px-4 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(item.sku)}
+                    onChange={() => toggleRow(item.sku)}
+                    onClick={e => e.stopPropagation()}
+                    className="cursor-pointer"
+                  />
+                </td>
                 <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{item.sku}</td>
                 <td className="px-4 py-2.5 font-medium">{item.name}</td>
                 <td className="px-4 py-2.5">{item.onHand.toLocaleString()}</td>
