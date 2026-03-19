@@ -73,7 +73,15 @@ export default function Receiving() {
                 key={`${row.po}-${row.item}`}
                 className={`border-t border-border transition-colors hover:bg-accent/40 ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}
               >
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.po}</td>
+                <td 
+                  onClick={e => {
+                    e.stopPropagation();
+                    navigate(`/Orders?po=${row.po}`);
+                  }}
+                  className="px-4 py-2.5 font-mono text-xs text-primary hover:underline cursor-pointer transition-colors"
+                >
+                  {row.po}
+                </td>
                 <td className="px-4 py-2.5 text-muted-foreground">{row.supplier}</td>
                 <td className="px-4 py-2.5 font-medium">{row.item}</td>
                 <td className="px-4 py-2.5">{row.expected}</td>
