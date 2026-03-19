@@ -1,65 +1,135 @@
-import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { Play, Download, Lightbulb } from 'lucide-react';
 
-const gapItems = [
-  { sku: 'DUV-004', name: 'Duvet Cover - King', onHand: 95, parLevel: 150, gap: -55, priority: 'High' },
-  { sku: 'ROB-006', name: 'Bathrobe - Large', onHand: 60, parLevel: 100, gap: -40, priority: 'High' },
-  { sku: 'TWL-001', name: 'Bath Towel - White', onHand: 450, parLevel: 500, gap: -50, priority: 'Medium' },
-  { sku: 'SHT-002', name: 'Flat Sheet - Queen', onHand: 320, parLevel: 400, gap: -80, priority: 'Medium' },
-  { sku: 'PIL-003', name: 'Pillow Case - Standard', onHand: 280, parLevel: 300, gap: -20, priority: 'Low' },
+const scanData = [
+  { sku: 'CHM-001', name: 'Premium Detergent 20L', onHand: 4,   avgUse: 3.2, daysLeft: 1,  suggested: 20, risk: 'Critical', flag: 'Critical' },
+  { sku: 'MNT-001', name: 'Machine Descaler',      onHand: 3,   avgUse: 1.0, daysLeft: 3,  suggested: 10, risk: 'Critical', flag: 'Critical' },
+  { sku: 'CHM-003', name: 'Bleach 5L',             onHand: 12,  avgUse: 2.8, daysLeft: 4,  suggested: 18, risk: 'High',     flag: 'Watch'    },
+  { sku: 'CHM-004', name: 'Stain Remover 2L',      onHand: 8,   avgUse: 1.5, daysLeft: 5,  suggested: 12, risk: 'High',     flag: 'Watch'    },
+  { sku: 'CHM-002', name: 'Fabric Softener 20L',   onHand: 18,  avgUse: 2.1, daysLeft: 8,  suggested: 8,  risk: 'Medium',   flag: 'Watch'    },
+  { sku: 'PKG-002', name: 'Garment Tag Roll',       onHand: 5,   avgUse: 0.4, daysLeft: 12, suggested: 4,  risk: 'Low',      flag: 'OK'       },
+  { sku: 'OPS-001', name: 'Gloves Disposable',      onHand: 340, avgUse: 18,  daysLeft: 18, suggested: 0,  risk: 'Low',      flag: 'OK'       },
+  { sku: 'PKG-001', name: 'Packaging Bag Large',    onHand: 900, avgUse: 42,  daysLeft: 21, suggested: 0,  risk: 'None',     flag: 'OK'       },
 ];
 
+const flagStyle = {
+  Critical: 'bg-red-50 text-red-700 border border-red-200',
+  Watch:    'bg-amber-50 text-amber-700 border border-amber-200',
+  OK:       'bg-green-50 text-green-700 border border-green-200',
+};
+
+const daysLeftStyle = (days) => {
+  if (days <= 3)  return 'text-red-600 font-semibold';
+  if (days <= 7)  return 'text-amber-600 font-medium';
+  return 'text-foreground';
+};
+
 export default function GapScan() {
+  const [lookback, setLookback] = useState(14);
+  const [selected, setSelected] = useState(new Set());
+
+  const toggleRow = (sku) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(sku) ? next.delete(sku) : next.add(sku);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected(prev => prev.size === scanData.length ? new Set() : new Set(scanData.map(r => r.sku)));
+  };
+
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-foreground">Gap Scan</h1>
-        <Button size="sm" variant="outline">
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
-      </div>
+      {/* Title */}
+      <h1 className="text-xl font-semibold text-foreground mb-4">Gap Scan</h1>
 
-      <div className="flex items-center gap-4 mb-4">
-        <div className="text-sm text-muted-foreground">
-          Showing {gapItems.length} items below par level
-        </div>
-      </div>
-
-      <div className="bg-card rounded-lg border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>SKU</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead className="text-right">On Hand</TableHead>
-              <TableHead className="text-right">Par Level</TableHead>
-              <TableHead className="text-right">Gap</TableHead>
-              <TableHead>Priority</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {gapItems.map((item) => (
-              <TableRow key={item.sku}>
-                <TableCell className="font-mono text-sm">{item.sku}</TableCell>
-                <TableCell>{item.name}</TableCell>
-                <TableCell className="text-right">{item.onHand}</TableCell>
-                <TableCell className="text-right">{item.parLevel}</TableCell>
-                <TableCell className="text-right text-destructive font-medium">{item.gap}</TableCell>
-                <TableCell>
-                  <span className={`text-xs px-2 py-1 rounded ${
-                    item.priority === 'High' ? 'bg-destructive/10 text-destructive' :
-                    item.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-muted text-muted-foreground'
-                  }`}>
-                    {item.priority}
-                  </span>
-                </TableCell>
-              </TableRow>
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        <div className="flex items-center gap-2 border border-border rounded bg-card px-3 h-8">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">Lookback</span>
+          <select
+            value={lookback}
+            onChange={e => setLookback(Number(e.target.value))}
+            className="text-sm bg-transparent focus:outline-none cursor-pointer"
+          >
+            {[7, 14, 21, 30].map(d => (
+              <option key={d} value={d}>{d} days</option>
             ))}
-          </TableBody>
-        </Table>
+          </select>
+        </div>
+
+        <button className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity">
+          <Play size={12} /> Run Scan
+        </button>
+
+        <button className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground">
+          <Download size={13} /> Export
+        </button>
+
+        <button
+          disabled={selected.size === 0}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Lightbulb size={13} /> Explain Selected {selected.size > 0 && `(${selected.size})`}
+        </button>
+
+        <span className="ml-auto text-xs text-muted-foreground">{scanData.length} items scanned</span>
+      </div>
+
+      {/* Table */}
+      <div className="border border-border rounded overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
+            <tr>
+              <th className="px-4 py-2.5 w-8">
+                <input
+                  type="checkbox"
+                  checked={selected.size === scanData.length}
+                  onChange={toggleAll}
+                  className="cursor-pointer"
+                />
+              </th>
+              {['SKU', 'Item', 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag'].map(h => (
+                <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {scanData.map((row, i) => (
+              <tr
+                key={row.sku}
+                onClick={() => toggleRow(row.sku)}
+                className={`border-t border-border cursor-pointer transition-colors ${
+                  selected.has(row.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
+                } hover:bg-accent/40`}
+              >
+                <td className="px-4 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(row.sku)}
+                    onChange={() => toggleRow(row.sku)}
+                    onClick={e => e.stopPropagation()}
+                    className="cursor-pointer"
+                  />
+                </td>
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
+                <td className="px-4 py-2.5 font-medium">{row.name}</td>
+                <td className="px-4 py-2.5">{row.onHand.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{row.avgUse}</td>
+                <td className={`px-4 py-2.5 ${daysLeftStyle(row.daysLeft)}`}>{row.daysLeft}</td>
+                <td className="px-4 py-2.5">{row.suggested > 0 ? row.suggested : '—'}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{row.risk}</td>
+                <td className="px-4 py-2.5">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${flagStyle[row.flag]}`}>
+                    {row.flag}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
