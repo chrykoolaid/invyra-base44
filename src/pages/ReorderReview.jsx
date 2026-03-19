@@ -1,61 +1,158 @@
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Send } from 'lucide-react';
+import { useState } from 'react';
+import { Play, Pencil, Send } from 'lucide-react';
 
-const reorderItems = [
-  { sku: 'DUV-004', name: 'Duvet Cover - King', supplier: 'LinenPro Wholesale', qty: 60, unitCost: 45.00, total: 2700.00, selected: true },
-  { sku: 'ROB-006', name: 'Bathrobe - Large', supplier: 'CleanTex Distributors', qty: 45, unitCost: 32.00, total: 1440.00, selected: true },
-  { sku: 'SHT-002', name: 'Flat Sheet - Queen', supplier: 'Hotel Supply Co', qty: 100, unitCost: 18.50, total: 1850.00, selected: false },
-  { sku: 'TWL-001', name: 'Bath Towel - White', supplier: 'LinenPro Wholesale', qty: 75, unitCost: 8.00, total: 600.00, selected: false },
-];
+const generateData = (windowDays, coverDays) => [
+  { sku: 'CHM-001', name: 'Premium Detergent 20L', supplier: 'ChemSupply Co',        onHand: 4,    demand30: 96,  daily: 3.2, suggested: 20, action: 'Order Now',  reasons: 'Below safety stock, ~1 day left' },
+  { sku: 'MNT-001', name: 'Machine Descaler',       supplier: 'ChemSupply Co',        onHand: 3,    demand30: 30,  daily: 1.0, suggested: 10, action: 'Order Now',  reasons: 'Critical level, 3 days remaining' },
+  { sku: 'CHM-003', name: 'Bleach 5L',              supplier: 'CleanTex Distributors',onHand: 12,   demand30: 84,  daily: 2.8, suggested: 18, action: 'Review',     reasons: 'Coverage below target' },
+  { sku: 'CHM-004', name: 'Stain Remover 2L',       supplier: 'CleanTex Distributors',onHand: 8,    demand30: 45,  daily: 1.5, suggested: 12, action: 'Review',     reasons: 'Trending low, reorder window open' },
+  { sku: 'CHM-002', name: 'Fabric Softener 20L',    supplier: 'LaundryChem Direct',   onHand: 18,   demand30: 63,  daily: 2.1, suggested: 8,  action: 'Monitor',    reasons: 'Approaching reorder point' },
+  { sku: 'PKG-002', name: 'Garment Tag Roll',        supplier: 'PackPro Solutions',    onHand: 5,    demand30: 12,  daily: 0.4, suggested: 4,  action: 'Monitor',    reasons: 'Moderate usage, within cover range' },
+  { sku: 'OPS-001', name: 'Gloves Disposable',       supplier: 'SafetyFirst Supplies', onHand: 340,  demand30: 540, daily: 18,  suggested: 0,  action: 'Hold',       reasons: 'Sufficient stock on hand' },
+  { sku: 'PKG-001', name: 'Packaging Bag Large',     supplier: 'PackPro Solutions',    onHand: 900,  demand30: 1260,daily: 42,  suggested: 0,  action: 'Hold',       reasons: 'Well stocked, no action needed' },
+].map(row => ({
+  ...row,
+  coverage: row.daily > 0 ? (row.onHand / row.daily).toFixed(1) : '—',
+}));
+
+const actionStyle = {
+  'Order Now': 'bg-red-50 text-red-700 border border-red-200',
+  'Review':    'bg-amber-50 text-amber-700 border border-amber-200',
+  'Monitor':   'bg-blue-50 text-blue-700 border border-blue-200',
+  'Hold':      'bg-green-50 text-green-700 border border-green-200',
+};
+
+const coverageStyle = (val, target) => {
+  const n = parseFloat(val);
+  if (isNaN(n)) return '';
+  if (n < 5)       return 'text-red-600 font-semibold';
+  if (n < target)  return 'text-amber-600 font-medium';
+  return 'text-green-700';
+};
 
 export default function ReorderReview() {
+  const [windowDays, setWindowDays] = useState(30);
+  const [coverDays, setCoverDays]   = useState(14);
+  const [selected, setSelected]     = useState(new Set());
+  const [data, setData]             = useState(() => generateData(30, 14));
+
+  const toggleRow = (sku) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(sku) ? next.delete(sku) : next.add(sku);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected(prev => prev.size === data.length ? new Set() : new Set(data.map(r => r.sku)));
+  };
+
+  const handleGenerate = () => {
+    setData(generateData(windowDays, coverDays));
+    setSelected(new Set());
+  };
+
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-semibold text-foreground">Reorder Review</h1>
-        <Button size="sm">
-          <Send className="w-4 h-4 mr-2" />
-          Create Orders
-        </Button>
-      </div>
+      <h1 className="text-xl font-semibold text-foreground mb-4">Reorder Review</h1>
 
-      <div className="flex items-center gap-4 mb-4">
-        <div className="text-sm text-muted-foreground">
-          {reorderItems.length} items suggested for reorder
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        {/* Window days */}
+        <div className="flex items-center gap-2 border border-border rounded bg-card px-3 h-8">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">Window</span>
+          <select
+            value={windowDays}
+            onChange={e => setWindowDays(Number(e.target.value))}
+            className="text-sm bg-transparent focus:outline-none cursor-pointer"
+          >
+            {[7, 14, 21, 30, 60].map(d => <option key={d} value={d}>{d} days</option>)}
+          </select>
         </div>
+
+        {/* Target cover days */}
+        <div className="flex items-center gap-2 border border-border rounded bg-card px-3 h-8">
+          <span className="text-xs text-muted-foreground whitespace-nowrap">Cover target</span>
+          <select
+            value={coverDays}
+            onChange={e => setCoverDays(Number(e.target.value))}
+            className="text-sm bg-transparent focus:outline-none cursor-pointer"
+          >
+            {[7, 10, 14, 21, 30].map(d => <option key={d} value={d}>{d} days</option>)}
+          </select>
+        </div>
+
+        <button
+          onClick={handleGenerate}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+        >
+          <Play size={12} /> Generate Recommendations
+        </button>
+
+        <button
+          disabled={selected.size === 0}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Pencil size={13} /> Override Selected {selected.size > 0 && `(${selected.size})`}
+        </button>
+
+        <button className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground">
+          <Send size={13} /> Create Draft Orders
+        </button>
+
+        <span className="ml-auto text-xs text-muted-foreground">{data.length} items</span>
       </div>
 
-      <div className="bg-card rounded-lg border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12"></TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead className="text-right">Unit Cost</TableHead>
-              <TableHead className="text-right">Total</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {reorderItems.map((item) => (
-              <TableRow key={item.sku}>
-                <TableCell>
-                  <Checkbox defaultChecked={item.selected} />
-                </TableCell>
-                <TableCell className="font-mono text-sm">{item.sku}</TableCell>
-                <TableCell>{item.name}</TableCell>
-                <TableCell>{item.supplier}</TableCell>
-                <TableCell className="text-right">{item.qty}</TableCell>
-                <TableCell className="text-right">${item.unitCost.toFixed(2)}</TableCell>
-                <TableCell className="text-right font-medium">${item.total.toFixed(2)}</TableCell>
-              </TableRow>
+      {/* Table */}
+      <div className="border border-border rounded overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
+            <tr>
+              <th className="px-4 py-2.5 w-8">
+                <input type="checkbox" checked={selected.size === data.length} onChange={toggleAll} className="cursor-pointer" />
+              </th>
+              {['SKU', 'Name', 'Supplier', 'On Hand', `Demand ${windowDays}D`, 'Daily', `Coverage (days)`, 'Suggested', 'Action', 'Reasons'].map(h => (
+                <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((row, i) => (
+              <tr
+                key={row.sku}
+                onClick={() => toggleRow(row.sku)}
+                className={`border-t border-border cursor-pointer transition-colors ${
+                  selected.has(row.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
+                } hover:bg-accent/40`}
+              >
+                <td className="px-4 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(row.sku)}
+                    onChange={() => toggleRow(row.sku)}
+                    onClick={e => e.stopPropagation()}
+                    className="cursor-pointer"
+                  />
+                </td>
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
+                <td className="px-4 py-2.5 font-medium">{row.name}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{row.supplier}</td>
+                <td className="px-4 py-2.5">{row.onHand.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{row.demand30.toLocaleString()}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{row.daily}</td>
+                <td className={`px-4 py-2.5 ${coverageStyle(row.coverage, coverDays)}`}>{row.coverage}</td>
+                <td className="px-4 py-2.5">{row.suggested > 0 ? row.suggested : '—'}</td>
+                <td className="px-4 py-2.5">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${actionStyle[row.action]}`}>
+                    {row.action}
+                  </span>
+                </td>
+                <td className="px-4 py-2.5 text-muted-foreground text-xs max-w-xs">{row.reasons}</td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     </div>
   );
