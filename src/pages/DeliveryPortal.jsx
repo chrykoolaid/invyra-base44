@@ -107,9 +107,11 @@ export default function DeliveryPortal() {
               <tr
                 key={doc.id}
                 onClick={() => toggleRow(doc.id)}
-                className={`border-t border-border cursor-pointer transition-colors ${
-                  selected.has(doc.id) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
-                } hover:bg-accent/40`}
+                className={`border-t border-border cursor-pointer transition-all duration-150 ${
+                  selected.has(doc.id) 
+                    ? 'bg-primary/10 border-l-4 border-l-primary' 
+                    : i % 2 === 0 ? 'bg-card' : 'bg-background'
+                } hover:bg-primary/5`}
               >
                 <td className="px-4 py-2.5">
                   <input
