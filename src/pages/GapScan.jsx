@@ -27,6 +27,7 @@ const daysLeftStyle = (days) => {
 export default function GapScan() {
   const [lookback, setLookback] = useState(14);
   const [selected, setSelected] = useState(new Set());
+  const [showExplanation, setShowExplanation] = useState(false);
 
   const toggleRow = (sku) => {
     setSelected(prev => {
