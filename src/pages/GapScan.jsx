@@ -88,6 +88,7 @@ export default function GapScan() {
 
         <button
           disabled={selected.size === 0}
+          onClick={() => setShowExplanation(!showExplanation)}
           className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Lightbulb size={13} /> Explain Selected {selected.size > 0 && `(${selected.size})`}
