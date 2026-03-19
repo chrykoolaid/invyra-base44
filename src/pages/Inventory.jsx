@@ -96,6 +96,14 @@ export default function Inventory() {
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
+                  <th className="px-4 py-2.5 w-8">
+                <input
+                  type="checkbox"
+                  checked={filtered.length > 0 && selected.size === filtered.length}
+                  onChange={toggleAll}
+                  className="cursor-pointer"
+                />
+              </th>
               {['SKU', 'Name', 'On Hand', 'Unit Cost', 'Price', 'Expiry', 'Supplier'].map(h => (
                 <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
               ))}
