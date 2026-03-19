@@ -29,12 +29,25 @@ const actions = [
 export default function Inventory() {
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(new Set());
 
   const filtered = initialItems.filter(item =>
     item.name.toLowerCase().includes(search.toLowerCase()) ||
     item.sku.toLowerCase().includes(search.toLowerCase()) ||
     item.supplier.toLowerCase().includes(search.toLowerCase())
   );
+
+  const toggleRow = (sku) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(sku) ? next.delete(sku) : next.add(sku);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected(prev => prev.size === filtered.length ? new Set() : new Set(filtered.map(i => i.sku)));
+  };
 
   return (
     <div className="p-6">
