@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Download, Printer, Search, FileText } from 'lucide-react';
 
 const documents = [
