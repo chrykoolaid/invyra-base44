@@ -97,6 +97,19 @@ export default function GapScan() {
         <span className="ml-auto text-xs text-muted-foreground">{scanData.length} items scanned</span>
       </div>
 
+      {/* Explanation panel */}
+      {showExplanation && selected.size > 0 && (
+        <div className="mb-5 p-4 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+          <div className="flex items-start gap-3">
+            <Lightbulb size={16} className="flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium mb-1">Analysis ({selected.size} item{selected.size !== 1 ? 's' : ''} selected)</p>
+              <p className="text-blue-600">{getExplanation()}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="border border-border rounded overflow-hidden">
         <table className="w-full text-sm">
