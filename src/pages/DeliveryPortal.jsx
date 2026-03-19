@@ -25,6 +25,7 @@ const typeStyle = {
 };
 
 export default function DeliveryPortal() {
+  const navigate = useNavigate();
   const [query, setQuery]     = useState('');
   const [selected, setSelected] = useState(new Set());
 
