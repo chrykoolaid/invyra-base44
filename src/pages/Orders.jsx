@@ -88,6 +88,13 @@ export default function Orders() {
     <div className="p-6 flex flex-col gap-5">
       <h1 className="text-xl font-semibold text-foreground">Orders</h1>
 
+      {showSourceMessage && (
+        <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+          <AlertCircle size={16} className="flex-shrink-0" />
+          <span>Draft order created from Reorder Review</span>
+        </div>
+      )}
+
       {/* Search / filter / actions */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
