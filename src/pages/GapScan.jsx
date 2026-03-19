@@ -136,7 +136,8 @@ export default function GapScan() {
               <tr
                 key={row.sku}
                 onClick={() => toggleRow(row.sku)}
-                className={`border-t border-border cursor-pointer transition-colors ${
+                className={`border-t border-border cursor-pointer transition-all duration-150 ${
+                  highlightedRow === row.sku ? 'bg-primary/10 scale-98' :
                   selected.has(row.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
                 } hover:bg-accent/40`}
               >
