@@ -20,6 +20,7 @@ const statusStyle = {
 };
 
 export default function Receiving() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
 
   const filtered = receivingRows.filter(r =>
