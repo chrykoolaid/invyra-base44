@@ -64,6 +64,16 @@ export default function Orders() {
   const [query, setQuery]         = useState('');
   const [statusFilter, setStatus] = useState('All');
   const [selected, setSelected]   = useState(null);
+  const [showSourceMessage, setShowSourceMessage] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('source') === 'reorder_review') {
+      setShowSourceMessage(true);
+      const timer = setTimeout(() => setShowSourceMessage(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const filtered = ordersData.filter(o => {
     const matchQuery = o.id.toLowerCase().includes(query.toLowerCase()) ||
