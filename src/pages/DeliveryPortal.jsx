@@ -129,7 +129,15 @@ export default function DeliveryPortal() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${typeStyle[doc.type]}`}>{doc.type}</span>
                 </td>
                 <td className="px-4 py-2.5 font-medium">{doc.supplier}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{doc.po}</td>
+                <td 
+                  onClick={e => {
+                    e.stopPropagation();
+                    navigate(`/Orders?po=${doc.po}`);
+                  }}
+                  className="px-4 py-2.5 font-mono text-xs text-primary hover:underline cursor-pointer transition-colors"
+                >
+                  {doc.po}
+                </td>
                 <td className="px-4 py-2.5 text-muted-foreground">{doc.uploaded}</td>
                 <td className="px-4 py-2.5">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[doc.status]}`}>{doc.status}</span>
