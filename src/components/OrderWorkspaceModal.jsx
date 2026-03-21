@@ -171,7 +171,7 @@ export default function OrderWorkspaceModal({ order, onClose }) {
         </div>
 
         {/* Sticky footer */}
-        <div className="flex items-center gap-2 px-6 py-3 border-t border-border bg-muted/20 flex-shrink-0">
+        <div className="flex items-center gap-3 px-8 py-4 border-t border-border bg-muted/20 flex-shrink-0">
           <button
             onClick={handleReject}
             disabled={submitted}
