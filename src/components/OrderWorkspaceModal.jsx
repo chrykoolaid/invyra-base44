@@ -59,7 +59,7 @@ export default function OrderWorkspaceModal({ order, onClose }) {
         </div>
 
         {/* Flow strip */}
-        <div className="flex items-center gap-0 px-6 py-3 border-b border-border bg-muted/30 flex-shrink-0">
+        <div className="flex items-center gap-0 px-8 py-3 border-b border-border bg-muted/30 flex-shrink-0">
           {flowSteps.map((step, i) => {
             const isActive = step === currentStep;
             const isDone   = flowSteps.indexOf(currentStep) > i;
