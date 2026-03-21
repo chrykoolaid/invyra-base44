@@ -1,51 +1,126 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, X, ChevronDown, AlertCircle } from 'lucide-react';
+import { Plus, Search, ChevronDown, AlertCircle } from 'lucide-react';
+import OrderWorkspaceModal from '@/components/OrderWorkspaceModal';
 
 const ordersData = [
   {
-    id: 'PO-2026-001', supplier: 'ChemSupply Co',         created: '2026-03-17', expected: '2026-03-24',
-    status: 'Submitted', createdBy: 'Alan M.', items: [
-      { sku: 'CHM-001', name: 'Premium Detergent 20L', qty: 20, unit: 'drum',   unitCost: 32.00 },
-      { sku: 'MNT-001', name: 'Machine Descaler',       qty: 10, unit: 'bottle', unitCost: 19.00 },
-    ]
+    id: 1,
+    orderNumber:      'PO-2026-001',
+    status:           'Submitted',
+    supplier:         'ChemSupply Co',
+    expectedDate:     '2026-03-24',
+    createdBy:        'Alan M.',
+    createdOn:        '2026-03-17',
+    source:           'Manual',
+    notes:            '',
+    sourceModule:     'Manual Entry',
+    triggerReason:    'Manual reorder',
+    urgency:          'low',
+    coverageDays:     14,
+    onHandAtCreation: 12,
+    suggestedQty:     20,
   },
   {
-    id: 'PO-2026-002', supplier: 'CleanTex Distributors', created: '2026-03-15', expected: '2026-03-22',
-    status: 'Awaiting Delivery', createdBy: 'Tracy L.', items: [
-      { sku: 'CHM-003', name: 'Bleach 5L',         qty: 18, unit: 'bottle', unitCost: 8.00 },
-      { sku: 'CHM-004', name: 'Stain Remover 2L',  qty: 12, unit: 'bottle', unitCost: 11.00 },
-    ]
+    id: 2,
+    orderNumber:      'PO-2026-002',
+    status:           'Awaiting Delivery',
+    supplier:         'CleanTex Distributors',
+    expectedDate:     '2026-03-22',
+    createdBy:        'Tracy L.',
+    createdOn:        '2026-03-15',
+    source:           'Manual',
+    notes:            '',
+    sourceModule:     'Manual Entry',
+    triggerReason:    'Scheduled replenishment',
+    urgency:          'low',
+    coverageDays:     10,
+    onHandAtCreation: 30,
+    suggestedQty:     18,
   },
   {
-    id: 'PO-2026-003', supplier: 'PackPro Solutions',     created: '2026-03-12', expected: '2026-03-19',
-    status: 'Partially Received', createdBy: 'Ben O.', items: [
-      { sku: 'PKG-001', name: 'Packaging Bag Large', qty: 500, unit: 'pack',  unitCost: 0.15 },
-      { sku: 'PKG-002', name: 'Garment Tag Roll',    qty: 10,  unit: 'roll',  unitCost: 4.50 },
-    ]
+    id: 3,
+    orderNumber:      'PO-2026-003',
+    status:           'Partially Received',
+    supplier:         'PackPro Solutions',
+    expectedDate:     '2026-03-19',
+    createdBy:        'Ben O.',
+    createdOn:        '2026-03-12',
+    source:           'Manual',
+    notes:            '',
+    sourceModule:     'Manual Entry',
+    triggerReason:    'Packaging restock',
+    urgency:          'medium',
+    coverageDays:     7,
+    onHandAtCreation: 200,
+    suggestedQty:     500,
   },
   {
-    id: 'PO-2026-004', supplier: 'LaundryChem Direct',    created: '2026-03-08', expected: '2026-03-15',
-    status: 'Received', createdBy: 'Tracy L.', items: [
-      { sku: 'CHM-002', name: 'Fabric Softener 20L', qty: 8, unit: 'drum', unitCost: 28.50 },
-    ]
+    id: 4,
+    orderNumber:      'PO-2026-004',
+    status:           'Received',
+    supplier:         'LaundryChem Direct',
+    expectedDate:     '2026-03-15',
+    createdBy:        'Tracy L.',
+    createdOn:        '2026-03-08',
+    source:           'Manual',
+    notes:            '',
+    sourceModule:     'Manual Entry',
+    triggerReason:    'Routine order',
+    urgency:          'low',
+    coverageDays:     14,
+    onHandAtCreation: 5,
+    suggestedQty:     8,
   },
   {
-    id: 'PO-2026-005', supplier: 'SafetyFirst Supplies',  created: '2026-03-05', expected: '2026-03-12',
-    status: 'Received', createdBy: 'Alan M.', items: [
-      { sku: 'OPS-001', name: 'Gloves Disposable', qty: 200, unit: 'box', unitCost: 0.08 },
-    ]
+    id: 5,
+    orderNumber:      'PO-2026-005',
+    status:           'Received',
+    supplier:         'SafetyFirst Supplies',
+    expectedDate:     '2026-03-12',
+    createdBy:        'Alan M.',
+    createdOn:        '2026-03-05',
+    source:           'Manual',
+    notes:            '',
+    sourceModule:     'Manual Entry',
+    triggerReason:    'Safety stock replenishment',
+    urgency:          'low',
+    coverageDays:     21,
+    onHandAtCreation: 100,
+    suggestedQty:     200,
   },
   {
-    id: 'PO-2026-006', supplier: 'HangerCo Wholesale',    created: '2026-03-01', expected: '2026-03-10',
-    status: 'Cancelled', createdBy: 'Sam P.', items: [
-      { sku: 'OPS-002', name: 'Hanger Standard', qty: 200, unit: 'bundle', unitCost: 0.22 },
-    ]
+    id: 6,
+    orderNumber:      'PO-2026-022',
+    status:           'Draft',
+    supplier:         'HangerCo Wholesale',
+    expectedDate:     '2026-03-28',
+    createdBy:        '1234',
+    createdOn:        '2026-03-21',
+    source:           'Reorder Review',
+    notes:            'Created from Reorder Review',
+    sourceModule:     'Reorder Review',
+    triggerReason:    'Low stock / reorder threshold reached',
+    urgency:          'medium',
+    coverageDays:     0.0,
+    onHandAtCreation: '—',
+    suggestedQty:     7,
   },
   {
-    id: 'PO-2026-007', supplier: 'ProWash Ingredients',   created: '2026-03-18', expected: '2026-03-28',
-    status: 'Draft', createdBy: 'Ben O.', items: [
-      { sku: 'CHM-001', name: 'Premium Detergent 20L', qty: 15, unit: 'drum', unitCost: 32.00 },
-    ]
+    id: 7,
+    orderNumber:      'PO-2026-023',
+    status:           'Draft',
+    supplier:         'ProWash Ingredients',
+    expectedDate:     '2026-04-02',
+    createdBy:        'Ben O.',
+    createdOn:        '2026-03-21',
+    source:           'Gap Scan',
+    notes:            'Flagged by Gap Scan — critical level',
+    sourceModule:     'Gap Scan',
+    triggerReason:    'Critical stock level detected',
+    urgency:          'high',
+    coverageDays:     1.2,
+    onHandAtCreation: 4,
+    suggestedQty:     20,
   },
 ];
 
@@ -61,41 +136,42 @@ const statusStyle = {
 const ALL_STATUSES = ['All', 'Draft', 'Submitted', 'Awaiting Delivery', 'Partially Received', 'Received', 'Cancelled'];
 
 export default function Orders() {
-  const [query, setQuery]         = useState('');
-  const [statusFilter, setStatus] = useState('All');
-  const [selected, setSelected]   = useState(null);
-  const [showSourceMessage, setShowSourceMessage] = useState(false);
+  const [query, setQuery]           = useState('');
+  const [statusFilter, setStatus]   = useState('All');
+  const [modalOrder, setModalOrder] = useState(null);
+  const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('source') === 'reorder_review') {
-      setShowSourceMessage(true);
-      const timer = setTimeout(() => setShowSourceMessage(false), 5000);
-      return () => clearTimeout(timer);
+      setShowBanner(true);
+      const t = setTimeout(() => setShowBanner(false), 5000);
+      return () => clearTimeout(t);
     }
   }, []);
 
   const filtered = ordersData.filter(o => {
-    const matchQuery = o.id.toLowerCase().includes(query.toLowerCase()) ||
-      o.supplier.toLowerCase().includes(query.toLowerCase());
+    const matchQuery  = o.orderNumber.toLowerCase().includes(query.toLowerCase()) ||
+                        o.supplier.toLowerCase().includes(query.toLowerCase());
     const matchStatus = statusFilter === 'All' || o.status === statusFilter;
     return matchQuery && matchStatus;
   });
 
-  const orderTotal = (items) => items.reduce((sum, i) => sum + i.qty * i.unitCost, 0);
-
   return (
     <div className="p-6 flex flex-col gap-5">
-      <h1 className="text-xl font-semibold text-foreground">Orders</h1>
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Orders</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Purchase order queue, draft review, receiving, and status tracking.</p>
+      </div>
 
-      {showSourceMessage && (
+      {showBanner && (
         <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
           <AlertCircle size={16} className="flex-shrink-0" />
           <span>Draft order created from Reorder Review</span>
         </div>
       )}
 
-      {/* Search / filter / actions */}
+      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -124,100 +200,59 @@ export default function Orders() {
         </button>
       </div>
 
-      <div className={`flex gap-5 ${selected ? 'items-start' : ''}`}>
-        {/* Order table */}
-        <div className={`border border-border rounded overflow-hidden ${selected ? 'flex-1' : 'w-full'}`}>
-          <table className="w-full text-sm">
-            <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
-              <tr>
-                {['Order #', 'Supplier', 'Created', 'Expected', 'Status', 'Items', 'Created By'].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((order, i) => (
-                <tr
-                  key={order.id}
-                  onClick={() => setSelected(selected?.id === order.id ? null : order)}
-                  className={`border-t border-border cursor-pointer transition-colors ${
-                    selected?.id === order.id ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
-                  } hover:bg-accent/40`}
-                >
-                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{order.id}</td>
-                  <td className="px-4 py-2.5 font-medium">{order.supplier}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{order.created}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{order.expected}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[order.status]}`}>
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{order.items.length}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{order.createdBy}</td>
-                </tr>
+      {/* Orders queue table */}
+      <div className="border border-border rounded overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
+            <tr>
+              {['Order #', 'Supplier', 'Status', 'Source', 'Created On', 'Expected Date'].map(h => (
+                <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
               ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">No orders found.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Detail panel */}
-        {selected && (
-          <div className="w-80 border border-border rounded bg-card text-sm flex-shrink-0">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="font-semibold text-foreground">{selected.id}</span>
-              <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground transition-colors">
-                <X size={15} />
-              </button>
-            </div>
-            <div className="px-4 py-3 space-y-1 border-b border-border text-muted-foreground text-xs">
-              <div className="flex justify-between"><span>Supplier</span><span className="text-foreground font-medium">{selected.supplier}</span></div>
-              <div className="flex justify-between"><span>Created</span><span>{selected.created}</span></div>
-              <div className="flex justify-between"><span>Expected</span><span>{selected.expected}</span></div>
-              <div className="flex justify-between"><span>Created By</span><span>{selected.createdBy}</span></div>
-              <div className="flex justify-between items-center pt-1">
-                <span>Status</span>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[selected.status]}`}>{selected.status}</span>
-              </div>
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Line Items</p>
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-muted-foreground">
-                    <th className="text-left py-1 font-medium">Item</th>
-                    <th className="text-right py-1 font-medium">Qty</th>
-                    <th className="text-right py-1 font-medium">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selected.items.map(item => (
-                    <tr key={item.sku} className="border-t border-border">
-                      <td className="py-1.5">
-                        <div className="text-foreground font-medium">{item.name}</div>
-                        <div className="text-muted-foreground font-mono">{item.sku}</div>
-                      </td>
-                      <td className="py-1.5 text-right text-muted-foreground">{item.qty} {item.unit}</td>
-                      <td className="py-1.5 text-right font-medium">${(item.qty * item.unitCost).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="flex justify-between items-center pt-3 border-t border-border mt-2">
-                <span className="text-xs text-muted-foreground font-medium">Order Total</span>
-                <span className="font-semibold text-foreground">${orderTotal(selected.items).toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-        )}
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((order, i) => (
+              <tr
+                key={order.id}
+                className={`border-t border-border transition-colors ${i % 2 === 0 ? 'bg-card' : 'bg-background'} hover:bg-accent/40`}
+              >
+                <td className="px-4 py-2.5">
+                  <button
+                    onClick={() => setModalOrder(order)}
+                    className="font-mono text-xs text-primary hover:underline cursor-pointer transition-colors"
+                  >
+                    {order.orderNumber}
+                  </button>
+                </td>
+                <td className="px-4 py-2.5 font-medium">{order.supplier}</td>
+                <td className="px-4 py-2.5">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[order.status]}`}>
+                    {order.status}
+                  </span>
+                </td>
+                <td className="px-4 py-2.5 text-muted-foreground">{order.source}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{order.createdOn}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{order.expectedDate}</td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">No orders found.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       <p className="text-xs text-muted-foreground">{filtered.length} order{filtered.length !== 1 ? 's' : ''}</p>
+
+      {/* Workspace modal */}
+      {modalOrder && (
+        <OrderWorkspaceModal
+          order={modalOrder}
+          onClose={() => setModalOrder(null)}
+        />
+      )}
     </div>
   );
 }
