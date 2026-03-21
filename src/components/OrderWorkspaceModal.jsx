@@ -42,7 +42,7 @@ export default function OrderWorkspaceModal({ order, onClose }) {
 
       {/* Modal window */}
       <div className="relative z-10 bg-background border border-border rounded-lg shadow-2xl flex flex-col"
-           style={{ width: 'min(900px, calc(100vw - 48px))', height: 'min(780px, calc(100vh - 64px))' }}>
+           style={{ width: 'min(1100px, calc(100vw - 48px))', height: 'min(880px, calc(100vh - 48px))' }}>
 
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-4 border-b border-border flex-shrink-0">
