@@ -81,7 +81,7 @@ export default function OrderWorkspaceModal({ order, onClose }) {
         </div>
 
         {/* Reason strip */}
-        <div className="px-6 py-2.5 border-b border-border bg-amber-50 flex-shrink-0">
+        <div className="px-8 py-3 border-b border-border bg-amber-50 flex-shrink-0">
           <p className="text-xs text-amber-700">
             <span className="font-medium">Trigger:</span> {order.triggerReason}&nbsp;·&nbsp;
             <span className="font-medium">Urgency:</span>&nbsp;
