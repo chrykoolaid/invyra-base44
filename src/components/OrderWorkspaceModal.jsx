@@ -97,7 +97,7 @@ export default function OrderWorkspaceModal({ order, onClose }) {
           {/* Order Details */}
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Order Details</h3>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+            <div className="grid grid-cols-2 gap-x-12 gap-y-5">
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">Supplier</label>
                 <select
