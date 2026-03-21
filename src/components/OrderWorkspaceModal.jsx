@@ -146,7 +146,7 @@ export default function OrderWorkspaceModal({ order, onClose }) {
           {/* Why This Draft Exists */}
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Why This Draft Exists</h3>
-            <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+            <div className="grid grid-cols-3 gap-x-12 gap-y-6">
               {[
                 { label: 'Source Module',       value: order.sourceModule },
                 { label: 'Coverage Days',        value: order.coverageDays },
