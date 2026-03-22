@@ -16,25 +16,25 @@ import {
 } from 'lucide-react';
 
 const primaryNav = [
-  { path: '/Dashboard',    label: 'Dashboard',       icon: LayoutDashboard },
+  { path: '/Dashboard', label: 'Dashboard', icon: LayoutDashboard },
 ];
 
 const operationsNav = [
-  { path: '/Inventory',       label: 'Inventory',            icon: Package },
-  { path: '/GapScan',         label: 'Gap Scan',             icon: ScanSearch },
-  { path: '/Suppliers',       label: 'Suppliers',            icon: Factory },
-  { path: '/ReorderReview',   label: 'Reorder Review',       icon: ClipboardList },
-  { path: '/Orders',          label: 'Orders',               icon: ShoppingCart },
-  { path: '/Receiving',       label: 'Receiving',            icon: PackageCheck },
-  { path: '/DeliveryPortal',  label: 'Delivery Portal',      icon: Truck },
+  { path: '/Inventory',      label: 'Inventory',       icon: Package },
+  { path: '/GapScan',        label: 'Gap Scan',        icon: ScanSearch },
+  { path: '/Suppliers',      label: 'Suppliers',       icon: Factory },
+  { path: '/ReorderReview',  label: 'Reorder Review',  icon: ClipboardList },
+  { path: '/Orders',         label: 'Orders',          icon: ShoppingCart },
+  { path: '/Receiving',      label: 'Receiving',       icon: PackageCheck },
+  { path: '/DeliveryPortal', label: 'Delivery Portal', icon: Truck },
 ];
 
-const dashboardNav = [
-  { path: '/POSMode',              label: 'POS Mode',                    icon: Monitor },
-  { path: '/Payroll',              label: 'Payroll & Rostering',         icon: Users },
-  { path: '/TimeTracking',         label: 'Time Tracking',               icon: Clock },
-  { path: '/InventoryAdmin',       label: 'Inventory Admin',             icon: BarChart2 },
-  { path: '/ExportsIntegrations',  label: 'Exports & Integrations',      icon: Share2 },
+const workspaceNav = [
+  { path: '/POSMode',             label: 'POS Mode',                   icon: Monitor },
+  { path: '/Payroll',             label: 'Payroll & Rostering',        icon: Users },
+  { path: '/TimeTracking',        label: 'Time Tracking',              icon: Clock },
+  { path: '/InventoryAdmin',      label: 'Inventory Admin & Reporting',icon: BarChart2 },
+  { path: '/ExportsIntegrations', label: 'Exports & Integrations',     icon: Share2 },
 ];
 
 function NavGroup({ label, items, location }) {
