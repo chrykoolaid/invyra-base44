@@ -79,7 +79,7 @@ export default function Layout() {
         <nav className="flex-1 overflow-y-auto p-2 pt-3">
           <NavGroup items={primaryNav} location={location} />
           <NavGroup label="Operations" items={operationsNav} location={location} />
-          <NavGroup label="Workspace" items={dashboardNav} location={location} />
+          <NavGroup label="Workspace" items={workspaceNav} location={location} />
         </nav>
       </aside>
 
