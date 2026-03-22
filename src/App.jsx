@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import GapScan from './pages/GapScan';
 import Suppliers from './pages/Suppliers';
@@ -14,6 +15,11 @@ import ReorderReview from './pages/ReorderReview';
 import Orders from './pages/Orders';
 import Receiving from './pages/Receiving';
 import DeliveryPortal from './pages/DeliveryPortal';
+import POSMode from './pages/POSMode';
+import Payroll from './pages/Payroll';
+import TimeTracking from './pages/TimeTracking';
+import InventoryAdmin from './pages/InventoryAdmin';
+import ExportsIntegrations from './pages/ExportsIntegrations';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
