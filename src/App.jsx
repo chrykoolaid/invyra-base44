@@ -44,7 +44,8 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/Inventory" replace />} />
+        <Route path="/" element={<Navigate to="/Dashboard" replace />} />
+        <Route path="/Dashboard" element={<Dashboard />} />
         <Route path="/Inventory" element={<Inventory />} />
         <Route path="/GapScan" element={<GapScan />} />
         <Route path="/Suppliers" element={<Suppliers />} />
@@ -52,6 +53,11 @@ const AuthenticatedApp = () => {
         <Route path="/Orders" element={<Orders />} />
         <Route path="/Receiving" element={<Receiving />} />
         <Route path="/DeliveryPortal" element={<DeliveryPortal />} />
+        <Route path="/POSMode" element={<POSMode />} />
+        <Route path="/Payroll" element={<Payroll />} />
+        <Route path="/TimeTracking" element={<TimeTracking />} />
+        <Route path="/InventoryAdmin" element={<InventoryAdmin />} />
+        <Route path="/ExportsIntegrations" element={<ExportsIntegrations />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
