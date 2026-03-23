@@ -109,14 +109,17 @@ export default function OrderWorkspaceModal({ order, onClose }) {
     }));
   };
 
+  const [step, setStep] = useState(1);
+  const [sourceFilter, setSourceFilter] = useState('All');
+
   const [approved,  setApproved]  = useState(false);
   const [rejected,  setRejected]  = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  // Always scroll to top on open
+  // Scroll to top whenever step changes
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [order.id]);
+  }, [order.id, step]);
 
   const handleApprove = () => { setApproved(true);  setRejected(false); };
   const handleReject  = () => { setRejected(true);  setApproved(false); };
