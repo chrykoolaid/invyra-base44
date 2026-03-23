@@ -24,11 +24,27 @@ export default function ReceivingWorkspace() {
   const params = new URLSearchParams(window.location.search);
   const po = params.get('po');
 
-  const items = receivingRows.filter(r => r.po === po);
-  const supplier = items[0]?.supplier ?? '—';
+  const baseItems = receivingRows.filter(r => r.po === po);
+  const supplier = baseItems[0]?.supplier ?? '—';
 
+  const [received, setReceived] = useState(
+    Object.fromEntries(baseItems.map(r => [r.item, r.received]))
+  );
+
+  const items = baseItems.map(r => ({ ...r, received: received[r.item] }));
   const totalExpected = items.reduce((s, r) => s + r.expected, 0);
   const totalReceived = items.reduce((s, r) => s + r.received, 0);
+
+  const setQty = (item, val, max) => {
+    const n = Math.max(0, Math.min(max, Number(val)));
+    if (!isNaN(n)) setReceived(prev => ({ ...prev, [item]: n }));
+  };
+
+  const itemStatus = (row) => {
+    if (row.received === 0)              return 'Awaiting';
+    if (row.received < row.expected)     return 'Partial';
+    return 'Completed';
+  };
 
   const overallStatus = items.every(i => i.status === 'Completed') ? 'Completed'
     : items.every(i => i.status === 'Awaiting') ? 'Awaiting'
