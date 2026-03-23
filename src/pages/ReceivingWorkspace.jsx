@@ -182,12 +182,10 @@ export default function ReceivingWorkspace() {
       </div>
 
       <p className="text-xs text-muted-foreground mt-4 px-1">Receiving inputs are in draft state. Confirm to finalise.</p>
-    </div>
+    </div>{/* end scrollable content */}
 
     {/* Sticky action bar */}
     <div className="fixed bottom-0 left-56 right-0 bg-card border-t border-border px-6 py-3 flex items-center gap-3 z-10">
-
-      {/* Feedback message */}
       {actionStatus === 'draft_saved' && (
         <span className="text-xs text-green-700 font-medium flex items-center gap-1.5">
           <Save size={13} /> Draft saved
@@ -198,7 +196,6 @@ export default function ReceivingWorkspace() {
           <CheckCircle2 size={13} /> Receiving confirmed — pending inventory update
         </span>
       )}
-
       <div className="ml-auto flex items-center gap-2">
         <button
           onClick={handleCancel}
@@ -206,14 +203,12 @@ export default function ReceivingWorkspace() {
         >
           <X size={14} /> Cancel
         </button>
-
         <button
           onClick={handleSaveDraft}
           className="flex items-center gap-2 h-10 px-5 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
         >
           <Save size={14} /> Save Draft
         </button>
-
         <button
           onClick={handleConfirm}
           disabled={actionStatus === 'confirmed'}
@@ -223,6 +218,7 @@ export default function ReceivingWorkspace() {
         </button>
       </div>
     </div>
-    </div>
+
+  </div>{/* end flex-col wrapper */}
   );
 }
