@@ -115,22 +115,46 @@ export default function ReceivingWorkspace() {
             </tr>
           </thead>
           <tbody>
-            {items.map((row, i) => (
+            {items.map((row, i) => {
+            const status = itemStatus(row);
+            return (
               <tr key={row.item} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
                 <td className="px-5 py-3 font-medium">{row.item}</td>
-                <td className="px-5 py-3">{row.expected}</td>
-                <td className={`px-5 py-3 font-medium ${
-                  row.received === 0 ? 'text-muted-foreground' :
-                  row.received < row.expected ? 'text-amber-600' : 'text-green-700'
-                }`}>{row.received}</td>
+                <td className="px-5 py-3 text-muted-foreground">{row.expected}</td>
+                <td className="px-5 py-3">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setQty(row.item, row.received - 1, row.expected)}
+                      className="w-7 h-7 flex items-center justify-center rounded border border-border bg-muted hover:bg-accent transition-colors text-foreground"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <input
+                      type="number"
+                      min={0}
+                      max={row.expected}
+                      value={row.received}
+                      onChange={e => setQty(row.item, e.target.value, row.expected)}
+                      className="w-14 h-7 text-center text-sm border border-border rounded bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <button
+                      onClick={() => setQty(row.item, row.received + 1, row.expected)}
+                      className="w-7 h-7 flex items-center justify-center rounded border border-border bg-muted hover:bg-accent transition-colors text-foreground"
+                    >
+                      <Plus size={12} />
+                    </button>
+                    <span className="text-xs text-muted-foreground ml-1">/ {row.expected} {row.unit}</span>
+                  </div>
+                </td>
                 <td className="px-5 py-3 text-muted-foreground">{row.unit}</td>
                 <td className="px-5 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>
-                    {row.status}
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[status]}`}>
+                    {status}
                   </span>
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
       </div>
