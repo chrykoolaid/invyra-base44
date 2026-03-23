@@ -83,7 +83,8 @@ export default function ReceivingWorkspace() {
   }
 
   return (
-    <div className="p-6 max-w-[900px]">
+    <div className="flex flex-col min-h-screen">
+    <div className="flex-1 p-6 max-w-[900px] pb-28">
 
       {/* Back */}
       <button
