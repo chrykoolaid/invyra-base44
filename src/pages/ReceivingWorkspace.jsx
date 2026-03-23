@@ -34,6 +34,20 @@ export default function ReceivingWorkspace() {
   const [savedDraft, setSavedDraft] = useState(null);
   const [actionStatus, setActionStatus] = useState(null); // 'draft_saved' | 'confirmed'
 
+  // discrepancy: { [itemName]: { reason: '', note: '', open: false } }
+  const [discrepancy, setDiscrepancy] = useState({});
+
+  const setDiscrepancyField = (item, field, value) => {
+    setDiscrepancy(prev => ({ ...prev, [item]: { ...prev[item], [field]: value } }));
+  };
+
+  const toggleDiscrepancy = (item) => {
+    setDiscrepancy(prev => ({
+      ...prev,
+      [item]: { reason: '', note: '', ...prev[item], open: !prev[item]?.open },
+    }));
+  };
+
   const items = baseItems.map(r => ({ ...r, received: received[r.item] }));
   const totalExpected = items.reduce((s, r) => s + r.expected, 0);
   const totalReceived = items.reduce((s, r) => s + r.received, 0);
