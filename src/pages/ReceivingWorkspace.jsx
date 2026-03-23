@@ -28,9 +28,11 @@ export default function ReceivingWorkspace() {
   const baseItems = receivingRows.filter(r => r.po === po);
   const supplier = baseItems[0]?.supplier ?? '—';
 
-  const [received, setReceived] = useState(
-    Object.fromEntries(baseItems.map(r => [r.item, r.received]))
-  );
+  const initialReceived = Object.fromEntries(baseItems.map(r => [r.item, r.received]));
+
+  const [received, setReceived] = useState(initialReceived);
+  const [savedDraft, setSavedDraft] = useState(null);
+  const [actionStatus, setActionStatus] = useState(null); // 'draft_saved' | 'confirmed'
 
   const items = baseItems.map(r => ({ ...r, received: received[r.item] }));
   const totalExpected = items.reduce((s, r) => s + r.expected, 0);
