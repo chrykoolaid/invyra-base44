@@ -138,6 +138,17 @@ export default function Orders() {
     return matchQuery && matchStatus;
   });
 
+  // ── Draft order inline workspace ──────────────────────────────────────────
+  if (draftOrder) {
+    return (
+      <DraftOrderWorkspace
+        order={draftOrder}
+        onBack={() => setDraftOrder(null)}
+        onSubmit={handleDraftSubmit}
+      />
+    );
+  }
+
   // ── Active order inline workspace ─────────────────────────────────────────
   if (activeOrder) {
     return (
