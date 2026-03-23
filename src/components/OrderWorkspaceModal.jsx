@@ -492,12 +492,14 @@ export default function OrderWorkspaceModal({ order, onClose }) {
                   </tbody>
                 </table>
               </div>
-              <button
-                onClick={addLine}
-                className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
-              >
-                <Plus size={12} /> Add Line
-              </button>
+              {(!approved || isAmending) && (
+                <button
+                  onClick={addLine}
+                  className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
+                >
+                  <Plus size={12} /> Add Line
+                </button>
+              )}
             </section>
           )}
 
