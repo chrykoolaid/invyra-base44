@@ -76,12 +76,53 @@ export default function OrderWorkspaceModal({ order, onClose }) {
     notes:        order.notes,
   });
 
-  // Draft order state — persists across step navigation within the modal
+  // Snapshot of original lines at open — used to derive statuses
+  const [originalLines] = useState(() => buildInitialLines(order));
+
+  // Draft order — lines include soft-deleted (removed: true) for Step 3 diff display
   const [draftOrder, setDraftOrder] = useState(() => ({
     order_id: order.orderNumber,
     status:   'draft',
-    lines:    buildInitialLines(order),
+    lines:    buildInitialLines(order).map(l => ({ ...l, _removed: false })),
   }));
+
+  // Derive line status by comparing current line against original snapshot
+  const getLineStatus = (line) => {
+    if (line._removed) return 'removed';
+    const orig = originalLines.find(o => o.line_id === line.line_id);
+    if (!orig) return 'added';
+    if (orig.qty !== line.qty) return 'qty_changed';
+    return 'original';
+  };
+
+  // Lines visible in Step 2 (active only)
+  const activeLines = draftOrder.lines.filter(l => !l._removed);
+
+  // Lines for Step 3 full diff (all, including removed)
+  const allLinesForDiff = draftOrder.lines;
+
+  // Change summary counts
+  const changeSummary = useMemo(() => {
+    const added      = draftOrder.lines.filter(l => !l._removed && !originalLines.find(o => o.line_id === l.line_id));
+    const removed    = draftOrder.lines.filter(l => l._removed);
+    const qtyChanged = draftOrder.lines.filter(l => {
+      if (l._removed) return false;
+      const orig = originalLines.find(o => o.line_id === l.line_id);
+      return orig && orig.qty !== l.qty;
+    });
+    return { added, removed, qtyChanged };
+  }, [draftOrder.lines, originalLines]);
+
+  // Final projected order: merge active lines by SKU, sum qty
+  const finalProjection = useMemo(() => {
+    const map = {};
+    activeLines.forEach(l => {
+      const key = l.sku || l.line_id;
+      if (!map[key]) map[key] = { sku: l.sku, name: l.name, supplier: l.supplier, qty: 0 };
+      map[key].qty += l.qty;
+    });
+    return Object.values(map);
+  }, [activeLines]);
 
   const updateQty = (line_id, qty) => {
     const n = Math.max(0, Number(qty));
@@ -92,8 +133,18 @@ export default function OrderWorkspaceModal({ order, onClose }) {
     }));
   };
 
+  // Soft-delete: mark as removed (preserved for diff in Step 3)
   const removeLine = (line_id) => {
-    setDraftOrder(prev => ({ ...prev, lines: prev.lines.filter(l => l.line_id !== line_id) }));
+    const isAdded = !originalLines.find(o => o.line_id === line_id);
+    if (isAdded) {
+      // Added lines can be truly deleted
+      setDraftOrder(prev => ({ ...prev, lines: prev.lines.filter(l => l.line_id !== line_id) }));
+    } else {
+      setDraftOrder(prev => ({
+        ...prev,
+        lines: prev.lines.map(l => l.line_id === line_id ? { ...l, _removed: true } : l),
+      }));
+    }
   };
 
   const addLine = () => {
@@ -105,6 +156,7 @@ export default function OrderWorkspaceModal({ order, onClose }) {
       unit_cost: null,
       supplier:  form.supplier,
       source:    'manual',
+      _removed:  false,
     };
     setDraftOrder(prev => ({ ...prev, lines: [...prev.lines, newLine] }));
   };
