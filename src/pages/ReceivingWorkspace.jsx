@@ -291,9 +291,14 @@ export default function ReceivingWorkspace() {
           <Save size={13} /> Draft saved
         </span>
       )}
+      {actionStatus === 'confirming' && (
+        <span className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 animate-pulse">
+          Saving…
+        </span>
+      )}
       {actionStatus === 'confirmed' && (
-        <span className="text-xs text-primary font-medium flex items-center gap-1.5">
-          <CheckCircle2 size={13} /> Receiving confirmed — pending inventory update
+        <span className="text-xs text-green-700 font-medium flex items-center gap-1.5">
+          <CheckCircle2 size={13} /> Receiving confirmed — inventory updated
         </span>
       )}
       <div className="ml-auto flex items-center gap-2">
