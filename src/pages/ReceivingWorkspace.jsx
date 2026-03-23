@@ -101,7 +101,7 @@ export default function ReceivingWorkspace() {
         </div>
         <div className="border border-border rounded bg-card px-4 py-3">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Received</p>
-          <p className={`text-xl font-bold ${totalReceived === 0 ? 'text-muted-foreground' : totalReceived < totalExpected ? 'text-amber-600' : 'text-green-700'}`}>
+          <p className={`text-xl font-bold ${totalReceived === 0 ? 'text-muted-foreground' : totalReceived > totalExpected ? 'text-purple-700' : totalReceived < totalExpected ? 'text-amber-600' : 'text-green-700'}`}>
             {totalReceived.toLocaleString()}
           </p>
         </div>
