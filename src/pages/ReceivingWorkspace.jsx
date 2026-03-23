@@ -130,7 +130,7 @@ export default function ReceivingWorkspace() {
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-1.5">
                     <button
-                      onClick={() => setQty(row.item, row.received - 1, row.expected)}
+                      onClick={() => setQty(row.item, row.received - 1)}
                       className="w-7 h-7 flex items-center justify-center rounded border border-border bg-muted hover:bg-accent transition-colors text-foreground"
                     >
                       <Minus size={12} />
