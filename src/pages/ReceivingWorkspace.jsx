@@ -46,8 +46,8 @@ export default function ReceivingWorkspace() {
     return 'Completed';
   };
 
-  const overallStatus = items.every(i => i.status === 'Completed') ? 'Completed'
-    : items.every(i => i.status === 'Awaiting') ? 'Awaiting'
+  const overallStatus = items.every(i => itemStatus(i) === 'Completed') ? 'Completed'
+    : items.every(i => itemStatus(i) === 'Awaiting') ? 'Awaiting'
     : 'Partial';
 
   if (!po || items.length === 0) {
