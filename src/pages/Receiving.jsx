@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScanLine, ClipboardList, Search } from 'lucide-react';
+import { ScanLine, ClipboardList, Search, ChevronRight } from 'lucide-react';
 
 const receivingRows = [
   { po: 'PO-2026-001', supplier: 'ChemSupply Co',         item: 'Premium Detergent 20L', expected: 20,  received: 0,   unit: 'drum',   status: 'Awaiting'  },
