@@ -154,7 +154,8 @@ export default function ReceivingWorkspace() {
             {items.map((row, i) => {
             const status = itemStatus(row);
             return (
-              <tr key={row.item} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
+              <React.Fragment key={row.item}>
+              <tr className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
                 <td className="px-5 py-3 font-medium">{row.item}</td>
                 <td className="px-5 py-3 text-muted-foreground">{row.expected}</td>
                 <td className="px-5 py-3">
