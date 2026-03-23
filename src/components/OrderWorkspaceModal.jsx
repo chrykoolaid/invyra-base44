@@ -317,7 +317,8 @@ export default function OrderWorkspaceModal({ order, onClose }) {
                       type="date"
                       value={form.expectedDate}
                       onChange={e => setForm(f => ({ ...f, expectedDate: e.target.value }))}
-                      className="w-full h-8 border border-border rounded px-2 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                      disabled={approved && !isAmending}
+                      className="w-full h-8 border border-border rounded px-2 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                   </div>
                   <ReadField label="Created By" value={order.createdBy} />
