@@ -42,6 +42,24 @@ function ReadField({ label, value }) {
   );
 }
 
+// Build initial lines from order data (each line is independent, no SKU merging)
+function buildInitialLines(order) {
+  if (order.lines && order.lines.length > 0) return order.lines;
+  // Fallback: single line from order metadata
+  return [{
+    line_id:   'line-1',
+    sku:       order.orderNumber,
+    name:      order.supplier,
+    qty:       order.suggestedQty ?? 1,
+    unit_cost: null,
+    supplier:  order.supplier,
+    source:    order.source ?? 'manual',
+  }];
+}
+
+let _lineCounter = 1;
+function nextLineId() { return `line-new-${_lineCounter++}`; }
+
 export default function OrderWorkspaceModal({ order, onClose }) {
   const scrollRef = useRef(null);
 
@@ -50,6 +68,46 @@ export default function OrderWorkspaceModal({ order, onClose }) {
     expectedDate: order.expectedDate,
     notes:        order.notes,
   });
+
+  // Draft order state — persists across step navigation within the modal
+  const [draftOrder, setDraftOrder] = useState(() => ({
+    order_id: order.orderNumber,
+    status:   'draft',
+    lines:    buildInitialLines(order),
+  }));
+
+  const updateQty = (line_id, qty) => {
+    const n = Math.max(0, Number(qty));
+    if (isNaN(n)) return;
+    setDraftOrder(prev => ({
+      ...prev,
+      lines: prev.lines.map(l => l.line_id === line_id ? { ...l, qty: n } : l),
+    }));
+  };
+
+  const removeLine = (line_id) => {
+    setDraftOrder(prev => ({ ...prev, lines: prev.lines.filter(l => l.line_id !== line_id) }));
+  };
+
+  const addLine = () => {
+    const newLine = {
+      line_id:   nextLineId(),
+      sku:       '',
+      name:      '',
+      qty:       1,
+      unit_cost: null,
+      supplier:  form.supplier,
+      source:    'manual',
+    };
+    setDraftOrder(prev => ({ ...prev, lines: [...prev.lines, newLine] }));
+  };
+
+  const updateLineField = (line_id, field, value) => {
+    setDraftOrder(prev => ({
+      ...prev,
+      lines: prev.lines.map(l => l.line_id === line_id ? { ...l, [field]: value } : l),
+    }));
+  };
 
   const [approved,  setApproved]  = useState(false);
   const [rejected,  setRejected]  = useState(false);
