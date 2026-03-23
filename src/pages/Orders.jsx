@@ -239,15 +239,6 @@ export default function Orders() {
       </div>
 
       <p className="text-xs text-muted-foreground">{filtered.length} order{filtered.length !== 1 ? 's' : ''}</p>
-
-      {/* Draft workspace modal */}
-      {draftOrder && (
-        <DraftOrderWorkspace
-          order={draftOrder}
-          onClose={() => setDraftOrder(null)}
-          onSubmit={handleDraftSubmit}
-        />
-      )}
     </div>
   );
 }
