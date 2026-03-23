@@ -36,20 +36,25 @@ export default function ReceivingWorkspace() {
   const totalExpected = items.reduce((s, r) => s + r.expected, 0);
   const totalReceived = items.reduce((s, r) => s + r.received, 0);
 
-  const setQty = (item, val, max) => {
-    const n = Math.max(0, Math.min(max, Number(val)));
+  const setQty = (item, val) => {
+    const n = Math.max(0, Number(val));
     if (!isNaN(n)) setReceived(prev => ({ ...prev, [item]: n }));
   };
 
   const itemStatus = (row) => {
     if (row.received === 0)              return 'Awaiting';
     if (row.received < row.expected)     return 'Partial';
-    return 'Completed';
+    if (row.received === row.expected)   return 'Completed';
+    return 'Over-received';
   };
 
-  const overallStatus = items.every(i => itemStatus(i) === 'Completed') ? 'Completed'
-    : items.every(i => itemStatus(i) === 'Awaiting') ? 'Awaiting'
-    : 'Partial';
+  const overallStatus = () => {
+    const statuses = items.map(i => itemStatus(i));
+    if (statuses.some(s => s === 'Over-received'))          return 'Over-received';
+    if (statuses.every(s => s === 'Completed'))             return 'Completed';
+    if (statuses.every(s => s === 'Awaiting'))              return 'Awaiting';
+    return 'Partial';
+  };
 
   if (!po || items.length === 0) {
     return (
