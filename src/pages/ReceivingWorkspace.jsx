@@ -181,7 +181,48 @@ export default function ReceivingWorkspace() {
         </table>
       </div>
 
-      <p className="text-xs text-muted-foreground mt-4 px-1">Editable receiving inputs will be connected in a future phase.</p>
+      <p className="text-xs text-muted-foreground mt-4 px-1">Receiving inputs are in draft state. Confirm to finalise.</p>
+    </div>
+
+    {/* Sticky action bar */}
+    <div className="fixed bottom-0 left-56 right-0 bg-card border-t border-border px-6 py-3 flex items-center gap-3 z-10">
+
+      {/* Feedback message */}
+      {actionStatus === 'draft_saved' && (
+        <span className="text-xs text-green-700 font-medium flex items-center gap-1.5">
+          <Save size={13} /> Draft saved
+        </span>
+      )}
+      {actionStatus === 'confirmed' && (
+        <span className="text-xs text-primary font-medium flex items-center gap-1.5">
+          <CheckCircle2 size={13} /> Receiving confirmed — pending inventory update
+        </span>
+      )}
+
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={handleCancel}
+          className="flex items-center gap-2 h-10 px-5 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
+        >
+          <X size={14} /> Cancel
+        </button>
+
+        <button
+          onClick={handleSaveDraft}
+          className="flex items-center gap-2 h-10 px-5 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
+        >
+          <Save size={14} /> Save Draft
+        </button>
+
+        <button
+          onClick={handleConfirm}
+          disabled={actionStatus === 'confirmed'}
+          className="flex items-center gap-2 h-10 px-6 text-sm rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+        >
+          <CheckCircle2 size={14} /> Confirm Receiving
+        </button>
+      </div>
+    </div>
     </div>
   );
 }
