@@ -232,6 +232,7 @@ export default function ReceivingWorkspace() {
                   </td>
                 </tr>
               )}
+              </React.Fragment>
             );
             })}
           </tbody>
