@@ -19,6 +19,7 @@ import POSMode from './pages/POSMode';
 import Payroll from './pages/Payroll';
 import TimeTracking from './pages/TimeTracking';
 import InventoryAdmin from './pages/InventoryAdmin';
+import ReceivingWorkspace from './pages/ReceivingWorkspace';
 import ExportsIntegrations from './pages/ExportsIntegrations';
 
 const AuthenticatedApp = () => {
