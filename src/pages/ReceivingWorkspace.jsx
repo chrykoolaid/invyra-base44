@@ -50,6 +50,19 @@ export default function ReceivingWorkspace() {
     return 'Over-received';
   };
 
+  const handleCancel = () => navigate('/Receiving');
+
+  const handleSaveDraft = () => {
+    setSavedDraft({ ...received });
+    setActionStatus('draft_saved');
+    setTimeout(() => setActionStatus(null), 2500);
+  };
+
+  const handleConfirm = () => {
+    // Placeholder: inventory update logic to be added later
+    setActionStatus('confirmed');
+  };
+
   const overallStatus = () => {
     const statuses = items.map(i => itemStatus(i));
     if (statuses.some(s => s === 'Over-received'))          return 'Over-received';
