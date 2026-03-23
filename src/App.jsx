@@ -20,6 +20,7 @@ import Payroll from './pages/Payroll';
 import TimeTracking from './pages/TimeTracking';
 import InventoryAdmin from './pages/InventoryAdmin';
 import ReceivingWorkspace from './pages/ReceivingWorkspace';
+import ReceivingLog from './pages/ReceivingLog';
 import ExportsIntegrations from './pages/ExportsIntegrations';
 
 const AuthenticatedApp = () => {
