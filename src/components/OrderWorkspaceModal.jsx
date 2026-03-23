@@ -330,7 +330,8 @@ export default function OrderWorkspaceModal({ order, onClose }) {
                       onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                       rows={2}
                       placeholder="Add order notes…"
-                      className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring resize-none placeholder:text-muted-foreground/40"
+                      disabled={approved && !isAmending}
+                      className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring resize-none placeholder:text-muted-foreground/40 disabled:opacity-60 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
