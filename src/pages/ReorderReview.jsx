@@ -55,6 +55,38 @@ export default function ReorderReview() {
     setSelected(new Set());
   };
 
+  const handleCreateDraftOrders = () => {
+    // Collect all "Order Now" items regardless of selection
+    const orderNowItems = data.filter(r => r.action === 'Order Now');
+
+    const lines = orderNowItems.map((row, idx) => ({
+      line_id: `line-${idx + 1}`,
+      sku: row.sku,
+      name: row.name,
+      qty: row.suggested,
+      supplier: row.supplier,
+      source: 'recommendation',
+    }));
+
+    const draftOrder = {
+      order_id: `DRAFT-${Date.now()}`,
+      source: 'reorder_review',
+      lines,
+    };
+
+    // Debug validation
+    if (lines.length !== orderNowItems.length) {
+      console.error(
+        `[ReorderReview] Line count mismatch: expected ${orderNowItems.length}, got ${lines.length}`,
+        { draftOrder }
+      );
+    } else {
+      console.log(`[ReorderReview] Draft order created with ${lines.length} lines:`, draftOrder);
+    }
+
+    navigate('/Orders?source=reorder_review');
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-xl font-semibold text-foreground mb-4">Reorder Review</h1>
