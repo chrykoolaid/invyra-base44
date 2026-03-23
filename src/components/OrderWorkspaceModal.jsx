@@ -473,33 +473,160 @@ export default function OrderWorkspaceModal({ order, onClose }) {
             </section>
           )}
 
-          {/* ── Step 3: Submit ── */}
+          {/* ── Step 3: Final Review ── */}
           {step === 3 && (
             <>
-              <section>
-                <SectionHeading>Order Summary</SectionHeading>
-                <div className="grid grid-cols-2 gap-x-10 gap-y-5 mb-5">
-                  <ReadField label="Order ID"      value={draftOrder.order_id} />
-                  <ReadField label="Supplier"      value={form.supplier} />
-                  <ReadField label="Expected Date" value={form.expectedDate} />
-                  <ReadField label="Total Lines"   value={draftOrder.lines.length} />
+              {/* Two-column layout: main table + right summary panel */}
+              <div className="flex gap-6 items-start">
+
+                {/* Left: full diff table */}
+                <div className="flex-1 min-w-0">
+                  <SectionHeading>All Lines — Change Review</SectionHeading>
+                  <div className="border border-border rounded overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide">
+                        <tr>
+                          {['SKU', 'Item Name', 'Qty', 'Status'].map(h => (
+                            <th key={h} className="text-left px-4 py-2 font-medium whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allLinesForDiff.map((line, i) => {
+                          const status = getLineStatus(line);
+                          const orig = originalLines.find(o => o.line_id === line.line_id);
+                          return (
+                            <tr
+                              key={line.line_id}
+                              className={`border-t border-border text-sm ${
+                                status === 'removed' ? 'opacity-50' : i % 2 === 0 ? 'bg-card' : 'bg-background'
+                              }`}
+                            >
+                              <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{line.sku || '—'}</td>
+                              <td className={`px-4 py-2 font-medium ${status === 'removed' ? 'line-through text-muted-foreground' : ''}`}>
+                                {line.name || '—'}
+                              </td>
+                              <td className="px-4 py-2">
+                                {status === 'qty_changed' ? (
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="line-through text-muted-foreground text-xs">{orig.qty}</span>
+                                    <span className="text-amber-700 font-semibold">{line.qty}</span>
+                                  </span>
+                                ) : (
+                                  <span>{line.qty}</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-2">
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${lineStatusStyle[status]}`}>
+                                  {status.replace('_', ' ')}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+
+                {/* Right: change summary panel */}
+                <div className="w-64 flex-shrink-0 space-y-4">
+                  <div>
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest mb-3">Change Summary</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Added</span>
+                        <span className={`px-2 py-0.5 rounded-full font-semibold ${changeSummary.added.length > 0 ? lineStatusStyle.added : 'text-muted-foreground'}`}>
+                          {changeSummary.added.length}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Removed</span>
+                        <span className={`px-2 py-0.5 rounded-full font-semibold ${changeSummary.removed.length > 0 ? lineStatusStyle.removed : 'text-muted-foreground'}`}>
+                          {changeSummary.removed.length}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Qty changed</span>
+                        <span className={`px-2 py-0.5 rounded-full font-semibold ${changeSummary.qtyChanged.length > 0 ? lineStatusStyle.qty_changed : 'text-muted-foreground'}`}>
+                          {changeSummary.qtyChanged.length}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {changeSummary.added.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-blue-600 uppercase tracking-widest mb-1.5">Added Items</p>
+                      <ul className="space-y-1">
+                        {changeSummary.added.map(l => (
+                          <li key={l.line_id} className="text-xs text-foreground flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                            <span className="truncate">{l.name || l.sku || '—'}</span>
+                            <span className="ml-auto text-muted-foreground font-mono">{l.qty}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {changeSummary.removed.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-red-500 uppercase tracking-widest mb-1.5">Removed Items</p>
+                      <ul className="space-y-1">
+                        {changeSummary.removed.map(l => (
+                          <li key={l.line_id} className="text-xs text-muted-foreground flex items-center gap-1.5 line-through">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                            <span className="truncate">{l.name || l.sku || '—'}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {changeSummary.qtyChanged.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold text-amber-600 uppercase tracking-widest mb-1.5">Qty Updates</p>
+                      <ul className="space-y-1">
+                        {changeSummary.qtyChanged.map(l => {
+                          const orig = originalLines.find(o => o.line_id === l.line_id);
+                          return (
+                            <li key={l.line_id} className="text-xs text-foreground flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                              <span className="truncate flex-1">{l.name || l.sku || '—'}</span>
+                              <span className="text-muted-foreground line-through font-mono text-[10px]">{orig?.qty}</span>
+                              <span className="text-amber-700 font-mono font-semibold text-[10px]">→{l.qty}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Final Projected Order */}
+              <section>
+                <SectionHeading>Final Projected Order</SectionHeading>
                 <div className="border border-border rounded overflow-hidden">
                   <table className="w-full text-sm">
                     <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide">
                       <tr>
-                        {['SKU', 'Item Name', 'Supplier', 'Qty'].map(h => (
+                        {['SKU', 'Item Name', 'Supplier', 'Final Qty'].map(h => (
                           <th key={h} className="text-left px-4 py-2 font-medium whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {draftOrder.lines.map((line, i) => (
-                        <tr key={line.line_id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
-                          <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{line.sku || '—'}</td>
-                          <td className="px-4 py-2 font-medium">{line.name || '—'}</td>
-                          <td className="px-4 py-2 text-muted-foreground">{line.supplier}</td>
-                          <td className="px-4 py-2">{line.qty}</td>
+                      {finalProjection.length === 0 && (
+                        <tr><td colSpan={4} className="px-4 py-5 text-center text-muted-foreground text-xs">No active lines.</td></tr>
+                      )}
+                      {finalProjection.map((row, i) => (
+                        <tr key={row.sku || i} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
+                          <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{row.sku || '—'}</td>
+                          <td className="px-4 py-2 font-medium">{row.name || '—'}</td>
+                          <td className="px-4 py-2 text-muted-foreground">{row.supplier}</td>
+                          <td className="px-4 py-2 font-semibold">{row.qty}</td>
                         </tr>
                       ))}
                     </tbody>
