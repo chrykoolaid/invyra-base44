@@ -73,9 +73,50 @@ export default function ReceivingWorkspace() {
     setTimeout(() => setActionStatus(null), 2500);
   };
 
-  const handleConfirm = () => {
-    // Placeholder: inventory update logic to be added later
-    setActionStatus('confirmed');
+  const handleConfirm = async () => {
+    setActionStatus('confirming');
+    try {
+      // 1. For each item with received > 0, find and update inventory stock
+      for (const row of items) {
+        if (row.received <= 0) continue;
+        const existing = await base44.entities.InventoryItem.filter({ name: row.item });
+        if (existing && existing.length > 0) {
+          await base44.entities.InventoryItem.update(existing[0].id, {
+            stock: (existing[0].stock || 0) + row.received,
+          });
+        }
+      }
+
+      // 2. Determine overall status
+      const statuses = items.map(i => itemStatus(i));
+      let recordStatus = 'Complete';
+      if (statuses.some(s => s === 'Partial' || s === 'Over-received')) recordStatus = 'Partial';
+      if (statuses.some(s => s === 'Awaiting')) recordStatus = 'Partial';
+      if (statuses.every(s => s === 'Completed')) recordStatus = 'Complete';
+
+      // 3. Create receiving log record
+      const user = await base44.auth.me();
+      await base44.entities.ReceivingRecord.create({
+        po_number: po,
+        supplier,
+        confirmed_at: new Date().toISOString(),
+        confirmed_by: user?.email || 'unknown',
+        status: recordStatus,
+        items: items.map(row => ({
+          item: row.item,
+          expected: row.expected,
+          received: row.received,
+          unit: row.unit,
+          discrepancy_reason: discrepancy[row.item]?.reason || '',
+          discrepancy_note: discrepancy[row.item]?.note || '',
+        })),
+      });
+
+      setActionStatus('confirmed');
+    } catch (err) {
+      console.error('Confirm failed', err);
+      setActionStatus(null);
+    }
   };
 
   const overallStatus = () => {
