@@ -384,6 +384,30 @@ export default function OrderWorkspaceModal({ order, onClose }) {
           {/* ── Step 2: Review Order — editable line items ── */}
           {step === 2 && (
             <section>
+              {/* Approved read-only banner + Amend button */}
+              {approved && !isAmending && (
+                <div className="flex items-center justify-between mb-4 px-4 py-2.5 bg-green-50 border border-green-200 rounded">
+                  <span className="text-xs text-green-700 font-medium">Order approved — lines are read-only. Use Amend Order to make changes.</span>
+                  <button
+                    onClick={() => setIsAmending(true)}
+                    className="h-7 px-3 text-xs border border-green-300 rounded bg-white hover:bg-green-50 text-green-700 font-medium transition-colors"
+                  >
+                    Amend Order
+                  </button>
+                </div>
+              )}
+              {approved && isAmending && (
+                <div className="flex items-center justify-between mb-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded">
+                  <span className="text-xs text-amber-700 font-medium">Amending approved order — changes will be tracked.</span>
+                  <button
+                    onClick={() => setIsAmending(false)}
+                    className="h-7 px-3 text-xs border border-amber-300 rounded bg-white hover:bg-amber-50 text-amber-700 font-medium transition-colors"
+                  >
+                    Done Amending
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest whitespace-nowrap">
                   Line Items — Review &amp; Edit
