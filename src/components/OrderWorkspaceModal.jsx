@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Clock } from 'lucide-react';
+import { X, Clock, Plus, Trash2 } from 'lucide-react';
 
 const SUPPLIERS = [
   'ChemSupply Co', 'CleanTex Distributors', 'PackPro Solutions',
