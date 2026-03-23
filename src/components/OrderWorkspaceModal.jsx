@@ -397,8 +397,8 @@ export default function OrderWorkspaceModal({ order, onClose }) {
                   <tbody>
                     {(() => {
                       const visible = sourceFilter === 'All'
-                        ? draftOrder.lines
-                        : draftOrder.lines.filter(l => l.source === sourceFilter);
+                        ? activeLines
+                        : activeLines.filter(l => l.source === sourceFilter);
                       if (visible.length === 0) return (
                         <tr><td colSpan={7} className="px-4 py-5 text-center text-muted-foreground text-xs">No lines match this filter.</td></tr>
                       );
