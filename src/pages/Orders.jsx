@@ -103,8 +103,8 @@ export default function Orders() {
   const [orders, setOrders]           = useState(initialOrders);
   const [query, setQuery]             = useState('');
   const [statusFilter, setStatus]     = useState('All');
-  const [draftOrder, setDraftOrder]   = useState(null);   // open in DraftOrderWorkspace modal
-  const [activeOrder, setActiveOrder] = useState(null);   // open in ActiveOrderWorkspace inline
+  const [draftOrder, setDraftOrder]   = useState(null);   // open in DraftOrderWorkspace inline sub-page
+  const [activeOrder, setActiveOrder] = useState(null);   // open in ActiveOrderWorkspace inline sub-page
   const [showBanner, setShowBanner]   = useState(false);
 
   useEffect(() => {
