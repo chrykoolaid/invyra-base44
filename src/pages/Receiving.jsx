@@ -71,7 +71,7 @@ export default function Receiving() {
           <ScanLine size={13} /> Start Receiving
         </button>
 
-        <button className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground">
+        <button onClick={() => navigate('/Receiving/log')} className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground">
           <ClipboardList size={13} /> Receiving Log
         </button>
 
