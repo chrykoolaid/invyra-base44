@@ -219,6 +219,6 @@ export default function ReceivingWorkspace() {
       </div>
     </div>
 
-  </div>{/* end flex-col wrapper */}
+  </div>
   );
 }
