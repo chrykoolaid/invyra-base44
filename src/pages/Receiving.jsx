@@ -103,7 +103,7 @@ export default function Receiving() {
                     <td colSpan={5} className="px-4 py-2">
                       <div className="flex items-center gap-3">
                         <button
-                          onClick={() => navigate(`/Orders?po=${group.po}`)}
+                          onClick={() => navigate(`/Receiving/workspace?po=${group.po}`)}
                           className="font-mono text-xs font-semibold text-primary hover:underline"
                         >
                           {group.po}
