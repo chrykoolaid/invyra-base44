@@ -19,6 +19,25 @@ const statusStyle = {
   Completed: 'bg-green-50 text-green-700 border border-green-200',
 };
 
+// Group rows by PO
+function groupByPO(rows) {
+  const map = {};
+  for (const row of rows) {
+    if (!map[row.po]) {
+      map[row.po] = { po: row.po, supplier: row.supplier, items: [] };
+    }
+    map[row.po].items.push(row);
+  }
+  return Object.values(map);
+}
+
+// Derive overall PO status from its items
+function poStatus(items) {
+  if (items.every(i => i.status === 'Completed')) return 'Completed';
+  if (items.every(i => i.status === 'Awaiting'))  return 'Awaiting';
+  return 'Partial';
+}
+
 export default function Receiving() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
@@ -28,6 +47,8 @@ export default function Receiving() {
     r.item.toLowerCase().includes(query.toLowerCase()) ||
     r.supplier.toLowerCase().includes(query.toLowerCase())
   );
+
+  const groups = groupByPO(filtered);
 
   return (
     <div className="p-6">
@@ -57,51 +78,67 @@ export default function Receiving() {
         <span className="ml-auto text-xs text-muted-foreground">{filtered.length} line{filtered.length !== 1 ? 's' : ''}</span>
       </div>
 
-      {/* Table */}
+      {/* Grouped table */}
       <div className="border border-border rounded overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
-              {['PO', 'Supplier', 'Item', 'Expected', 'Received', 'Unit', 'Status'].map(h => (
+              {['Item', 'Expected', 'Received', 'Unit', 'Status'].map(h => (
                 <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((row, i) => (
-              <tr
-                key={`${row.po}-${row.item}`}
-                className={`border-t border-border transition-colors hover:bg-accent/40 ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}
-              >
-                <td 
-                  onClick={e => {
-                    e.stopPropagation();
-                    navigate(`/Orders?po=${row.po}`);
-                  }}
-                  className="px-4 py-2.5 font-mono text-xs text-primary hover:underline cursor-pointer transition-colors"
-                >
-                  {row.po}
-                </td>
-                <td className="px-4 py-2.5 text-muted-foreground">{row.supplier}</td>
-                <td className="px-4 py-2.5 font-medium">{row.item}</td>
-                <td className="px-4 py-2.5">{row.expected}</td>
-                <td className={`px-4 py-2.5 font-medium ${
-                  row.received === 0 ? 'text-muted-foreground' :
-                  row.received < row.expected ? 'text-amber-600' : 'text-green-700'
-                }`}>{row.received}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{row.unit}</td>
-                <td className="px-4 py-2.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>
-                    {row.status}
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
+            {groups.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">No results found.</td>
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">No results found.</td>
               </tr>
             )}
+            {groups.map((group) => {
+              const overallStatus = poStatus(group.items);
+              return (
+                <>
+                  {/* PO group header */}
+                  <tr key={`header-${group.po}`} className="bg-muted/40 border-t border-border">
+                    <td colSpan={5} className="px-4 py-2">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => navigate(`/Orders?po=${group.po}`)}
+                          className="font-mono text-xs font-semibold text-primary hover:underline"
+                        >
+                          {group.po}
+                        </button>
+                        <span className="text-xs text-muted-foreground">{group.supplier}</span>
+                        <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold ${statusStyle[overallStatus]}`}>
+                          {overallStatus}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Child rows */}
+                  {group.items.map((row, i) => (
+                    <tr
+                      key={`${row.po}-${row.item}`}
+                      className={`border-t border-border/60 ${i % 2 === 0 ? 'bg-card' : 'bg-background'} hover:bg-accent/30 transition-colors`}
+                    >
+                      <td className="px-4 py-2.5 pl-8 font-medium">{row.item}</td>
+                      <td className="px-4 py-2.5">{row.expected}</td>
+                      <td className={`px-4 py-2.5 font-medium ${
+                        row.received === 0 ? 'text-muted-foreground' :
+                        row.received < row.expected ? 'text-amber-600' : 'text-green-700'
+                      }`}>{row.received}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">{row.unit}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              );
+            })}
           </tbody>
         </table>
       </div>
