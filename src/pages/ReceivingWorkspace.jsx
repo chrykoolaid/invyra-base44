@@ -82,8 +82,8 @@ export default function ReceivingWorkspace() {
       <div className="mb-5">
         <div className="flex items-baseline gap-3 mb-1">
           <h1 className="text-lg font-semibold text-foreground">{po}</h1>
-          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[overallStatus]}`}>
-            {overallStatus}
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[overallStatus()]}`}>
+            {overallStatus()}
           </span>
         </div>
         <p className="text-sm text-muted-foreground">{supplier}</p>
