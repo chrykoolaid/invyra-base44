@@ -1,5 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { X, Clock, Plus, Trash2 } from 'lucide-react';
+
+const lineStatusStyle = {
+  original:    'bg-muted text-muted-foreground border border-border',
+  added:       'bg-blue-50 text-blue-700 border border-blue-200',
+  removed:     'bg-red-50 text-red-500 border border-red-200',
+  qty_changed: 'bg-amber-50 text-amber-700 border border-amber-200',
+};
 
 const SUPPLIERS = [
   'ChemSupply Co', 'CleanTex Distributors', 'PackPro Solutions',
