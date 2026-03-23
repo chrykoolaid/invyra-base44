@@ -305,7 +305,8 @@ export default function OrderWorkspaceModal({ order, onClose }) {
                     <select
                       value={form.supplier}
                       onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))}
-                      className="w-full h-8 border border-border rounded px-2 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                      disabled={approved && !isAmending}
+                      className="w-full h-8 border border-border rounded px-2 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {SUPPLIERS.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
