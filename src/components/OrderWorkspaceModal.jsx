@@ -171,17 +171,33 @@ export default function OrderWorkspaceModal({ order, onClose }) {
   const [step, setStep] = useState(1);
   const [sourceFilter, setSourceFilter] = useState('All');
 
-  const [approved,  setApproved]  = useState(false);
-  const [rejected,  setRejected]  = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [approved,   setApproved]   = useState(false);
+  const [rejected,   setRejected]   = useState(false);
+  const [submitted,  setSubmitted]  = useState(false);
+  const [isAmending, setIsAmending] = useState(false);
+
+  // Immutable base snapshot — created once on approval, never mutated
+  const [baseOrder, setBaseOrder] = useState(null);
 
   // Scroll to top whenever step changes
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
   }, [order.id, step]);
 
-  const handleApprove = () => { setApproved(true);  setRejected(false); };
-  const handleReject  = () => { setRejected(true);  setApproved(false); };
+  const handleApprove = () => {
+    if (!approved) {
+      // Freeze a deep-copy snapshot of current draftOrder as the approved base
+      setBaseOrder({
+        order_id: draftOrder.order_id,
+        lines:    draftOrder.lines.map(l => ({ ...l })),
+        status:   'approved',
+      });
+    }
+    setApproved(true);
+    setRejected(false);
+    setIsAmending(false);
+  };
+  const handleReject  = () => { setRejected(true); setApproved(false); setBaseOrder(null); setIsAmending(false); };
   const handleSubmit  = () => { if (approved && !submitted) setSubmitted(true); };
 
   const currentStep = submitted ? 'Submitted' : approved ? 'Approved' : 'Draft';
