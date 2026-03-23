@@ -343,10 +343,10 @@ export default function OrderWorkspaceModal({ order, onClose }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {draftOrder.lines.length === 0 && (
+                      {activeLines.length === 0 && (
                         <tr><td colSpan={5} className="px-4 py-5 text-center text-muted-foreground text-xs">No lines. Go to Step 2 to add items.</td></tr>
                       )}
-                      {draftOrder.lines.map((line, i) => (
+                      {activeLines.map((line, i) => (
                         <tr key={line.line_id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
                           <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{line.sku || '—'}</td>
                           <td className="px-4 py-2 font-medium">{line.name || '—'}</td>
