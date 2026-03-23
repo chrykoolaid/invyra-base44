@@ -445,61 +445,46 @@ export default function OrderWorkspaceModal({ order, onClose }) {
                       if (visible.length === 0) return (
                         <tr><td colSpan={7} className="px-4 py-5 text-center text-muted-foreground text-xs">No lines match this filter.</td></tr>
                       );
+                      const locked = approved && !isAmending;
                       return visible.map((line, i) => (
                         <tr key={line.line_id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
                           <td className="px-4 py-2">
-                            <input
-                              value={line.sku}
-                              onChange={e => updateLineField(line.line_id, 'sku', e.target.value)}
-                              placeholder="SKU"
-                              className="w-24 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-                            />
+                            {locked
+                              ? <span className="font-mono text-xs text-muted-foreground">{line.sku || '—'}</span>
+                              : <input value={line.sku} onChange={e => updateLineField(line.line_id, 'sku', e.target.value)} placeholder="SKU" className="w-24 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring font-mono" />
+                            }
                           </td>
                           <td className="px-4 py-2">
-                            <input
-                              value={line.name}
-                              onChange={e => updateLineField(line.line_id, 'name', e.target.value)}
-                              placeholder="Item name"
-                              className="w-44 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                            />
+                            {locked
+                              ? <span className="text-sm font-medium">{line.name || '—'}</span>
+                              : <input value={line.name} onChange={e => updateLineField(line.line_id, 'name', e.target.value)} placeholder="Item name" className="w-44 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring" />
+                            }
                           </td>
                           <td className="px-4 py-2">
-                            <input
-                              value={line.supplier}
-                              onChange={e => updateLineField(line.line_id, 'supplier', e.target.value)}
-                              placeholder="Supplier"
-                              className="w-36 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                            />
+                            {locked
+                              ? <span className="text-xs text-muted-foreground">{line.supplier}</span>
+                              : <input value={line.supplier} onChange={e => updateLineField(line.line_id, 'supplier', e.target.value)} placeholder="Supplier" className="w-36 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring" />
+                            }
                           </td>
                           <td className="px-4 py-2">
-                            <input
-                              type="number"
-                              min={0}
-                              value={line.qty}
-                              onChange={e => updateQty(line.line_id, e.target.value)}
-                              className="w-16 h-7 border border-border rounded px-2 text-xs text-center bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                            />
+                            {locked
+                              ? <span className="text-sm">{line.qty}</span>
+                              : <input type="number" min={0} value={line.qty} onChange={e => updateQty(line.line_id, e.target.value)} className="w-16 h-7 border border-border rounded px-2 text-xs text-center bg-card focus:outline-none focus:ring-1 focus:ring-ring" />
+                            }
                           </td>
                           <td className="px-4 py-2">
-                            <input
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              value={line.unit_cost ?? ''}
-                              onChange={e => updateLineField(line.line_id, 'unit_cost', e.target.value === '' ? null : Number(e.target.value))}
-                              placeholder="—"
-                              className="w-20 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                            />
+                            {locked
+                              ? <span className="text-xs text-muted-foreground">{line.unit_cost ?? '—'}</span>
+                              : <input type="number" min={0} step="0.01" value={line.unit_cost ?? ''} onChange={e => updateLineField(line.line_id, 'unit_cost', e.target.value === '' ? null : Number(e.target.value))} placeholder="—" className="w-20 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring" />
+                            }
                           </td>
                           <td className="px-4 py-2 text-xs text-muted-foreground">{line.source}</td>
                           <td className="px-4 py-2">
-                            <button
-                              onClick={() => removeLine(line.line_id)}
-                              className="text-muted-foreground hover:text-destructive transition-colors"
-                              title="Remove line"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            {!locked && (
+                              <button onClick={() => removeLine(line.line_id)} className="text-muted-foreground hover:text-destructive transition-colors" title="Remove line">
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ));
