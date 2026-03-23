@@ -41,6 +41,9 @@ function poStatus(items) {
 export default function Receiving() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [expandedPO, setExpandedPO] = useState(null);
+
+  const togglePO = (po) => setExpandedPO(prev => prev === po ? null : po);
 
   const filtered = receivingRows.filter(r =>
     r.po.toLowerCase().includes(query.toLowerCase()) ||
