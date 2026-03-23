@@ -131,7 +131,10 @@ export default function ReorderReview() {
           <Pencil size={13} /> Override Selected {selected.size > 0 && `(${selected.size})`}
         </button>
 
-        <button className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground">
+        <button
+          onClick={handleCreateDraftOrders}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
+        >
           <Send size={13} /> Create Draft Orders
         </button>
 
