@@ -246,6 +246,92 @@ export default function OrderWorkspaceModal({ order, onClose }) {
             </div>
           </section>
 
+          {/* Line Items */}
+          <section>
+            <SectionHeading>Line Items</SectionHeading>
+            <div className="border border-border rounded overflow-hidden mb-3">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide">
+                  <tr>
+                    {['SKU', 'Item Name', 'Supplier', 'Qty', 'Unit Cost', ''].map(h => (
+                      <th key={h} className="text-left px-4 py-2 font-medium whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {draftOrder.lines.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-5 text-center text-muted-foreground text-xs">No lines added yet.</td>
+                    </tr>
+                  )}
+                  {draftOrder.lines.map((line, i) => (
+                    <tr key={line.line_id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
+                      <td className="px-4 py-2">
+                        <input
+                          value={line.sku}
+                          onChange={e => updateLineField(line.line_id, 'sku', e.target.value)}
+                          placeholder="SKU"
+                          className="w-24 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          value={line.name}
+                          onChange={e => updateLineField(line.line_id, 'name', e.target.value)}
+                          placeholder="Item name"
+                          className="w-44 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          value={line.supplier}
+                          onChange={e => updateLineField(line.line_id, 'supplier', e.target.value)}
+                          placeholder="Supplier"
+                          className="w-36 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          min={0}
+                          value={line.qty}
+                          onChange={e => updateQty(line.line_id, e.target.value)}
+                          className="w-16 h-7 border border-border rounded px-2 text-xs text-center bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          value={line.unit_cost ?? ''}
+                          onChange={e => updateLineField(line.line_id, 'unit_cost', e.target.value === '' ? null : Number(e.target.value))}
+                          placeholder="—"
+                          className="w-20 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                        />
+                      </td>
+                      <td className="px-4 py-2">
+                        <button
+                          onClick={() => removeLine(line.line_id)}
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                          title="Remove line"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button
+              onClick={addLine}
+              className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
+            >
+              <Plus size={12} /> Add Line
+            </button>
+          </section>
+
           {submitted && (
             <div className="p-3 bg-green-50 border border-green-200 rounded text-sm text-green-700 font-medium">
               Order submitted successfully.
