@@ -98,34 +98,50 @@ export default function Receiving() {
               </tr>
             )}
             {groups.map((group) => {
-              const overallStatus = poStatus(group.items);
+              const overall = poStatus(group.items);
+              const isOpen = expandedPO === group.po;
+              const totalExpected = group.items.reduce((s, r) => s + r.expected, 0);
+              const totalReceived = group.items.reduce((s, r) => s + r.received, 0);
               return (
                 <>
                   {/* PO group header */}
-                  <tr key={`header-${group.po}`} className="bg-muted/40 border-t border-border">
-                    <td colSpan={5} className="px-4 py-2">
+                  <tr
+                    key={`header-${group.po}`}
+                    className="bg-muted/40 border-t border-border cursor-pointer hover:bg-muted/60 transition-colors"
+                    onClick={() => togglePO(group.po)}
+                  >
+                    <td colSpan={5} className="px-4 py-2.5">
                       <div className="flex items-center gap-3">
+                        <ChevronRight
+                          size={14}
+                          className={`text-muted-foreground flex-shrink-0 transition-transform duration-150 ${isOpen ? 'rotate-90' : ''}`}
+                        />
                         <button
-                          onClick={() => navigate(`/Receiving/workspace?po=${group.po}`)}
+                          onClick={e => { e.stopPropagation(); navigate(`/Receiving/workspace?po=${group.po}`); }}
                           className="font-mono text-xs font-semibold text-primary hover:underline"
                         >
                           {group.po}
                         </button>
                         <span className="text-xs text-muted-foreground">{group.supplier}</span>
-                        <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold ${statusStyle[overallStatus]}`}>
-                          {overallStatus}
+                        {!isOpen && (
+                          <span className="text-[10px] text-muted-foreground/70 ml-1">
+                            {group.items.length} lines · {totalExpected} exp · {totalReceived} rcv
+                          </span>
+                        )}
+                        <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold ${statusStyle[overall]}`}>
+                          {overall}
                         </span>
                       </div>
                     </td>
                   </tr>
 
-                  {/* Child rows */}
-                  {group.items.map((row, i) => (
+                  {/* Child rows — only when expanded */}
+                  {isOpen && group.items.map((row, i) => (
                     <tr
                       key={`${row.po}-${row.item}`}
                       className={`border-t border-border/60 ${i % 2 === 0 ? 'bg-card' : 'bg-background'} hover:bg-accent/30 transition-colors`}
                     >
-                      <td className="px-4 py-2.5 pl-8 font-medium">{row.item}</td>
+                      <td className="px-4 py-2.5 pl-10 font-medium">{row.item}</td>
                       <td className="px-4 py-2.5">{row.expected}</td>
                       <td className={`px-4 py-2.5 font-medium ${
                         row.received === 0 ? 'text-muted-foreground' :
