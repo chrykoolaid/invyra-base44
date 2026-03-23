@@ -144,7 +144,7 @@ export default function ReceivingWorkspace() {
                         className="w-14 h-7 text-center text-sm border border-border rounded bg-card focus:outline-none focus:ring-1 focus:ring-ring"
                       />
                     <button
-                      onClick={() => setQty(row.item, row.received + 1, row.expected)}
+                      onClick={() => setQty(row.item, row.received + 1)}
                       className="w-7 h-7 flex items-center justify-center rounded border border-border bg-muted hover:bg-accent transition-colors text-foreground"
                     >
                       <Plus size={12} />
