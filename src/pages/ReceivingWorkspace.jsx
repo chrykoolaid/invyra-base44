@@ -316,7 +316,7 @@ export default function ReceivingWorkspace() {
         </button>
         <button
           onClick={handleConfirm}
-          disabled={actionStatus === 'confirmed'}
+          disabled={actionStatus === 'confirmed' || actionStatus === 'confirming'}
           className="flex items-center gap-2 h-10 px-6 text-sm rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
         >
           <CheckCircle2 size={14} /> Confirm Receiving
