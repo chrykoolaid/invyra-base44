@@ -195,150 +195,265 @@ export default function OrderWorkspaceModal({ order, onClose }) {
           </div>
         </div>
 
+        {/* ── Step tabs ── */}
+        <div className="flex items-center gap-0 px-8 border-b border-border bg-background flex-shrink-0">
+          {[
+            { n: 1, label: 'Order Details' },
+            { n: 2, label: 'Review Order' },
+            { n: 3, label: 'Submit' },
+          ].map(({ n, label }) => (
+            <button
+              key={n}
+              onClick={() => setStep(n)}
+              className={`text-xs px-4 py-2.5 border-b-2 transition-colors font-medium ${
+                step === n
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {n}. {label}
+            </button>
+          ))}
+        </div>
+
         {/* ── Scrollable body ── */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6 space-y-7">
 
-          {/* Order Details */}
-          <section>
-            <SectionHeading>Order Details</SectionHeading>
-            <div className="grid grid-cols-2 gap-x-10 gap-y-5">
-              <div>
-                <label className="block text-[11px] text-muted-foreground mb-1">Supplier</label>
-                <select
-                  value={form.supplier}
-                  onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))}
-                  className="w-full h-8 border border-border rounded px-2 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                >
-                  {SUPPLIERS.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] text-muted-foreground mb-1">Expected Date</label>
-                <input
-                  type="date"
-                  value={form.expectedDate}
-                  onChange={e => setForm(f => ({ ...f, expectedDate: e.target.value }))}
-                  className="w-full h-8 border border-border rounded px-2 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                />
-              </div>
-              <ReadField label="Created By" value={order.createdBy} />
-              <ReadField label="Created On" value={order.createdOn} />
-              <div className="col-span-2">
-                <label className="block text-[11px] text-muted-foreground mb-1">Notes</label>
-                <textarea
-                  value={form.notes}
-                  onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-                  rows={2}
-                  placeholder="Add order notes…"
-                  className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring resize-none placeholder:text-muted-foreground/40"
-                />
-              </div>
-            </div>
-          </section>
+          {/* ── Step 1: Order Details ── */}
+          {step === 1 && (
+            <>
+              <section>
+                <SectionHeading>Order Details</SectionHeading>
+                <div className="grid grid-cols-2 gap-x-10 gap-y-5">
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Supplier</label>
+                    <select
+                      value={form.supplier}
+                      onChange={e => setForm(f => ({ ...f, supplier: e.target.value }))}
+                      className="w-full h-8 border border-border rounded px-2 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                    >
+                      {SUPPLIERS.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Expected Date</label>
+                    <input
+                      type="date"
+                      value={form.expectedDate}
+                      onChange={e => setForm(f => ({ ...f, expectedDate: e.target.value }))}
+                      className="w-full h-8 border border-border rounded px-2 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <ReadField label="Created By" value={order.createdBy} />
+                  <ReadField label="Created On" value={order.createdOn} />
+                  <div className="col-span-2">
+                    <label className="block text-[11px] text-muted-foreground mb-1">Notes</label>
+                    <textarea
+                      value={form.notes}
+                      onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                      rows={2}
+                      placeholder="Add order notes…"
+                      className="w-full border border-border rounded px-2 py-1.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring resize-none placeholder:text-muted-foreground/40"
+                    />
+                  </div>
+                </div>
+              </section>
 
-          {/* Why This Draft Exists */}
-          <section>
-            <SectionHeading>Why This Draft Exists</SectionHeading>
-            <div className="grid grid-cols-3 gap-x-10 gap-y-5">
-              <ReadField label="Source Module"      value={order.sourceModule} />
-              <ReadField label="Coverage Days"       value={order.coverageDays} />
-              <ReadField label="On Hand at Creation" value={order.onHandAtCreation} />
-              <ReadField label="Trigger Reason"      value={order.triggerReason} />
-              <ReadField label="Urgency"             value={order.urgency.charAt(0).toUpperCase() + order.urgency.slice(1)} />
-              <ReadField label="Suggested Qty"       value={order.suggestedQty} />
-            </div>
-          </section>
+              <section>
+                <SectionHeading>Why This Draft Exists</SectionHeading>
+                <div className="grid grid-cols-3 gap-x-10 gap-y-5">
+                  <ReadField label="Source Module"      value={order.sourceModule} />
+                  <ReadField label="Coverage Days"       value={order.coverageDays} />
+                  <ReadField label="On Hand at Creation" value={order.onHandAtCreation} />
+                  <ReadField label="Trigger Reason"      value={order.triggerReason} />
+                  <ReadField label="Urgency"             value={order.urgency.charAt(0).toUpperCase() + order.urgency.slice(1)} />
+                  <ReadField label="Suggested Qty"       value={order.suggestedQty} />
+                </div>
+              </section>
 
-          {/* Line Items */}
-          <section>
-            <SectionHeading>Line Items</SectionHeading>
-            <div className="border border-border rounded overflow-hidden mb-3">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide">
-                  <tr>
-                    {['SKU', 'Item Name', 'Supplier', 'Qty', 'Unit Cost', ''].map(h => (
-                      <th key={h} className="text-left px-4 py-2 font-medium whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {draftOrder.lines.length === 0 && (
+              {/* Read-only line summary */}
+              <section>
+                <SectionHeading>Lines ({draftOrder.lines.length})</SectionHeading>
+                <div className="border border-border rounded overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide">
+                      <tr>
+                        {['SKU', 'Item Name', 'Supplier', 'Qty', 'Source'].map(h => (
+                          <th key={h} className="text-left px-4 py-2 font-medium whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {draftOrder.lines.length === 0 && (
+                        <tr><td colSpan={5} className="px-4 py-5 text-center text-muted-foreground text-xs">No lines. Go to Step 2 to add items.</td></tr>
+                      )}
+                      {draftOrder.lines.map((line, i) => (
+                        <tr key={line.line_id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
+                          <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{line.sku || '—'}</td>
+                          <td className="px-4 py-2 font-medium">{line.name || '—'}</td>
+                          <td className="px-4 py-2 text-muted-foreground">{line.supplier}</td>
+                          <td className="px-4 py-2">{line.qty}</td>
+                          <td className="px-4 py-2 text-muted-foreground text-xs">{line.source}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </>
+          )}
+
+          {/* ── Step 2: Review Order — editable line items ── */}
+          {step === 2 && (
+            <section>
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-widest whitespace-nowrap">
+                  Line Items — Review &amp; Edit
+                </span>
+                <div className="flex-1 border-t border-border" />
+                {/* Source filter */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">Source</span>
+                  <select
+                    value={sourceFilter}
+                    onChange={e => setSourceFilter(e.target.value)}
+                    className="h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="All">All</option>
+                    <option value="recommendation">Recommendations</option>
+                    <option value="inventory">Inventory</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="border border-border rounded overflow-hidden mb-3">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide">
                     <tr>
-                      <td colSpan={6} className="px-4 py-5 text-center text-muted-foreground text-xs">No lines added yet.</td>
+                      {['SKU', 'Item Name', 'Supplier', 'Qty', 'Unit Cost', 'Source', ''].map(h => (
+                        <th key={h} className="text-left px-4 py-2 font-medium whitespace-nowrap">{h}</th>
+                      ))}
                     </tr>
-                  )}
-                  {draftOrder.lines.map((line, i) => (
-                    <tr key={line.line_id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
-                      <td className="px-4 py-2">
-                        <input
-                          value={line.sku}
-                          onChange={e => updateLineField(line.line_id, 'sku', e.target.value)}
-                          placeholder="SKU"
-                          className="w-24 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring font-mono"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          value={line.name}
-                          onChange={e => updateLineField(line.line_id, 'name', e.target.value)}
-                          placeholder="Item name"
-                          className="w-44 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          value={line.supplier}
-                          onChange={e => updateLineField(line.line_id, 'supplier', e.target.value)}
-                          placeholder="Supplier"
-                          className="w-36 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="number"
-                          min={0}
-                          value={line.qty}
-                          onChange={e => updateQty(line.line_id, e.target.value)}
-                          className="w-16 h-7 border border-border rounded px-2 text-xs text-center bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="number"
-                          min={0}
-                          step="0.01"
-                          value={line.unit_cost ?? ''}
-                          onChange={e => updateLineField(line.line_id, 'unit_cost', e.target.value === '' ? null : Number(e.target.value))}
-                          placeholder="—"
-                          className="w-20 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
-                        />
-                      </td>
-                      <td className="px-4 py-2">
-                        <button
-                          onClick={() => removeLine(line.line_id)}
-                          className="text-muted-foreground hover:text-destructive transition-colors"
-                          title="Remove line"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <button
-              onClick={addLine}
-              className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
-            >
-              <Plus size={12} /> Add Line
-            </button>
-          </section>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const visible = sourceFilter === 'All'
+                        ? draftOrder.lines
+                        : draftOrder.lines.filter(l => l.source === sourceFilter);
+                      if (visible.length === 0) return (
+                        <tr><td colSpan={7} className="px-4 py-5 text-center text-muted-foreground text-xs">No lines match this filter.</td></tr>
+                      );
+                      return visible.map((line, i) => (
+                        <tr key={line.line_id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
+                          <td className="px-4 py-2">
+                            <input
+                              value={line.sku}
+                              onChange={e => updateLineField(line.line_id, 'sku', e.target.value)}
+                              placeholder="SKU"
+                              className="w-24 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring font-mono"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              value={line.name}
+                              onChange={e => updateLineField(line.line_id, 'name', e.target.value)}
+                              placeholder="Item name"
+                              className="w-44 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              value={line.supplier}
+                              onChange={e => updateLineField(line.line_id, 'supplier', e.target.value)}
+                              placeholder="Supplier"
+                              className="w-36 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              value={line.qty}
+                              onChange={e => updateQty(line.line_id, e.target.value)}
+                              className="w-16 h-7 border border-border rounded px-2 text-xs text-center bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={line.unit_cost ?? ''}
+                              onChange={e => updateLineField(line.line_id, 'unit_cost', e.target.value === '' ? null : Number(e.target.value))}
+                              placeholder="—"
+                              className="w-20 h-7 border border-border rounded px-2 text-xs bg-card focus:outline-none focus:ring-1 focus:ring-ring"
+                            />
+                          </td>
+                          <td className="px-4 py-2 text-xs text-muted-foreground">{line.source}</td>
+                          <td className="px-4 py-2">
+                            <button
+                              onClick={() => removeLine(line.line_id)}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              title="Remove line"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+              <button
+                onClick={addLine}
+                className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
+              >
+                <Plus size={12} /> Add Line
+              </button>
+            </section>
+          )}
 
-          {submitted && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded text-sm text-green-700 font-medium">
-              Order submitted successfully.
-            </div>
+          {/* ── Step 3: Submit ── */}
+          {step === 3 && (
+            <>
+              <section>
+                <SectionHeading>Order Summary</SectionHeading>
+                <div className="grid grid-cols-2 gap-x-10 gap-y-5 mb-5">
+                  <ReadField label="Order ID"      value={draftOrder.order_id} />
+                  <ReadField label="Supplier"      value={form.supplier} />
+                  <ReadField label="Expected Date" value={form.expectedDate} />
+                  <ReadField label="Total Lines"   value={draftOrder.lines.length} />
+                </div>
+                <div className="border border-border rounded overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/40 text-muted-foreground text-xs uppercase tracking-wide">
+                      <tr>
+                        {['SKU', 'Item Name', 'Supplier', 'Qty'].map(h => (
+                          <th key={h} className="text-left px-4 py-2 font-medium whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {draftOrder.lines.map((line, i) => (
+                        <tr key={line.line_id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
+                          <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{line.sku || '—'}</td>
+                          <td className="px-4 py-2 font-medium">{line.name || '—'}</td>
+                          <td className="px-4 py-2 text-muted-foreground">{line.supplier}</td>
+                          <td className="px-4 py-2">{line.qty}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              {submitted && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded text-sm text-green-700 font-medium">
+                  Order submitted successfully.
+                </div>
+              )}
+            </>
           )}
         </div>
 
