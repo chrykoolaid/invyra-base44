@@ -14,9 +14,10 @@ const receivingRows = [
 ];
 
 const statusStyle = {
-  Awaiting:  'bg-muted text-muted-foreground border border-border',
-  Partial:   'bg-amber-50 text-amber-700 border border-amber-200',
-  Completed: 'bg-green-50 text-green-700 border border-green-200',
+  Awaiting:       'bg-muted text-muted-foreground border border-border',
+  Partial:        'bg-amber-50 text-amber-700 border border-amber-200',
+  Completed:      'bg-green-50 text-green-700 border border-green-200',
+  'Over-received':'bg-purple-50 text-purple-700 border border-purple-200',
 };
 
 export default function ReceivingWorkspace() {
