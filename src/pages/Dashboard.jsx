@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -5,6 +6,7 @@ import {
   Boxes,
   CalendarClock,
   CircleAlert,
+  Clock3,
   DollarSign,
   PackageCheck,
   PackageX,
@@ -16,7 +18,6 @@ import {
 
 const dashboardMeta = {
   title: 'Operations Overview',
-  date: '27 Mar 2026',
   location: 'Invyra Laundry · Main Location',
   sync: 'Updated 8 mins ago',
 };
@@ -61,6 +62,14 @@ const kpiCards = [
     helper: 'thresholds & suppliers missing',
     icon: Settings2,
     iconColor: 'text-violet-400',
+  },
+  {
+    label: 'WASTE FLAGS',
+    value: '3',
+    sub: 'exceptions this week',
+    helper: 'softener & stain remover led',
+    icon: Trash2,
+    iconColor: 'text-rose-400',
   },
 ];
 
@@ -188,8 +197,8 @@ const urgencyDot = {
 
 function Panel({ title, actionLabel, actionTo, children, className = '' }) {
   return (
-    <div className={`bg-slate-900 rounded-xl border border-slate-700/60 overflow-hidden ${className}`}>
-      <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/60">
+    <div className={`bg-slate-900 rounded-2xl border border-slate-700/60 overflow-hidden ${className}`}>
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-700/60">
         <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-[0.22em]">{title}</span>
         {actionLabel && actionTo && (
           <Link
@@ -206,37 +215,57 @@ function Panel({ title, actionLabel, actionTo, children, className = '' }) {
 }
 
 export default function Dashboard() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const headerClock = useMemo(
+    () =>
+      new Intl.DateTimeFormat(undefined, {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(now),
+    [now]
+  );
+
   return (
-    <div className="p-5 lg:p-6 space-y-5 max-w-[1380px]">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+    <div className="p-4 lg:p-5 space-y-4 max-w-[1380px]">
+      <div className="flex flex-col gap-2.5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-foreground">{dashboardMeta.title}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {dashboardMeta.date} · {dashboardMeta.location}
-          </p>
+          <p className="text-sm text-muted-foreground mt-0.5">{dashboardMeta.location}</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1 text-slate-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700">
             <Boxes size={12} /> Main Location
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-white px-3 py-1 text-slate-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700">
+            <Clock3 size={12} /> {headerClock}
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-700">
             <CalendarClock size={12} /> {dashboardMeta.sync}
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {kpiCards.map(({ label, value, sub, helper, icon: Icon, iconColor }) => (
           <div
             key={label}
-            className="bg-slate-900 rounded-xl border border-slate-700/60 px-5 pt-4 pb-4 flex flex-col gap-2 min-h-[148px]"
+            className="bg-slate-900 rounded-2xl border border-slate-700/60 px-4 pt-3.5 pb-3.5 flex flex-col gap-1.5 min-h-[128px]"
           >
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold tracking-[0.22em] text-slate-400">{label}</span>
               <Icon className={`w-4 h-4 ${iconColor}`} strokeWidth={1.8} />
             </div>
-            <p className="text-4xl font-bold text-white leading-none tracking-tight">{value}</p>
+            <p className="text-[2.25rem] font-bold text-white leading-none tracking-tight">{value}</p>
             <p className="text-xs text-slate-400">{sub}</p>
             <p className="text-[11px] text-slate-500 mt-auto">{helper}</p>
           </div>
@@ -250,7 +279,7 @@ export default function Dashboard() {
               <Link
                 key={item.title}
                 to={item.to}
-                className="block px-5 py-3 hover:bg-slate-800/40 transition-colors"
+                className="block px-4 py-2.5 hover:bg-slate-800/40 transition-colors"
               >
                 <div className="flex items-start gap-3">
                   <TriangleAlert className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
@@ -265,11 +294,11 @@ export default function Dashboard() {
         </Panel>
 
         <Panel title="Receiving & Delivery Watch" actionLabel="Open receiving" actionTo="/Receiving">
-          <div className="p-4 space-y-3">
+          <div className="p-3 space-y-2.5">
             {receivingWatch.map((row) => (
               <div
                 key={row.title}
-                className={`rounded-lg border border-slate-800 bg-slate-950/40 p-3 border-l-4 ${row.tone}`}
+                className={`rounded-xl border border-slate-800 bg-slate-950/40 p-3 border-l-4 ${row.tone}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -287,17 +316,17 @@ export default function Dashboard() {
         </Panel>
 
         <Panel title="Setup Health" actionLabel="Open admin" actionTo="/InventoryAdmin">
-          <div className="p-4 space-y-3">
+          <div className="p-3 space-y-2.5">
             {setupHealth.map((row) => (
-              <div key={row.label} className="rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-3">
+              <div key={row.label} className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{row.label}</p>
-                    <p className={`text-sm mt-2 ${row.tone}`}>{row.value}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{row.label}</p>
+                    <p className={`text-sm mt-1.5 ${row.tone}`}>{row.value}</p>
                   </div>
                   <CircleAlert className="w-4 h-4 text-slate-500 mt-0.5 flex-shrink-0" />
                 </div>
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">{row.sub}</p>
+                <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{row.sub}</p>
               </div>
             ))}
           </div>
@@ -312,7 +341,7 @@ export default function Dashboard() {
                 {['SKU', 'Item', 'On Hand', 'Status', 'Notes'].map((heading) => (
                   <th
                     key={heading}
-                    className="text-left px-5 py-2 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.22em]"
+                    className="text-left px-4 py-2 text-[10px] font-semibold text-slate-500 uppercase tracking-[0.22em]"
                   >
                     {heading}
                   </th>
@@ -325,13 +354,13 @@ export default function Dashboard() {
                   key={row.sku}
                   className={`border-b border-slate-800/80 last:border-0 ${index % 2 === 0 ? '' : 'bg-slate-800/20'}`}
                 >
-                  <td className="px-5 py-3 font-mono text-xs text-slate-500">{row.sku}</td>
-                  <td className="px-5 py-3 text-sm text-slate-200">{row.item}</td>
-                  <td className="px-5 py-3 text-sm text-slate-300 font-mono">{row.onHand}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{row.sku}</td>
+                  <td className="px-4 py-2.5 text-sm text-slate-200">{row.item}</td>
+                  <td className="px-4 py-2.5 text-sm text-slate-300 font-mono">{row.onHand}</td>
+                  <td className="px-4 py-2.5">
                     <span className={`text-xs font-semibold ${statusStyle[row.status]}`}>{row.status}</span>
                   </td>
-                  <td className="px-5 py-3 text-xs text-slate-500">{row.note}</td>
+                  <td className="px-4 py-2.5 text-xs text-slate-500">{row.note}</td>
                 </tr>
               ))}
             </tbody>
@@ -343,7 +372,7 @@ export default function Dashboard() {
         <Panel title="Recent Exceptions & Activity">
           <div className="divide-y divide-slate-800/80">
             {recentActivity.map((row, index) => (
-              <div key={`${row.time}-${index}`} className="px-5 py-3 flex gap-3 items-start">
+              <div key={`${row.time}-${index}`} className="px-4 py-2.5 flex gap-3 items-start">
                 <span className="text-[10px] text-slate-600 mt-0.5 whitespace-nowrap w-16 flex-shrink-0">{row.time}</span>
                 <div className="min-w-0">
                   <p className={`text-[11px] uppercase tracking-[0.18em] ${row.tone}`}>{row.type}</p>
@@ -357,7 +386,7 @@ export default function Dashboard() {
         <Panel title="Pending Orders" actionLabel="View orders" actionTo="/Orders">
           <div className="divide-y divide-slate-800/80">
             {draftOrders.map((order) => (
-              <div key={order.po} className="px-5 py-3 flex items-center gap-3">
+              <div key={order.po} className="px-4 py-2.5 flex items-center gap-3">
                 <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${urgencyDot[order.urgency]}`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-mono text-slate-300">{order.po}</p>
@@ -377,7 +406,7 @@ export default function Dashboard() {
               <Link
                 key={label}
                 to={to}
-                className="flex items-center justify-between px-3 py-3 rounded-lg hover:bg-slate-800 transition-colors text-sm text-slate-300 hover:text-white group"
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-800 transition-colors text-sm text-slate-300 hover:text-white group"
               >
                 <span>{label}</span>
                 <ArrowRight size={12} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
@@ -388,26 +417,26 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-slate-700">
             <PackageCheck size={16} className="text-emerald-500" />
             <span className="font-medium">Receiving health</span>
           </div>
-          <p className="text-xs text-slate-500 mt-2">1 delivery overdue · 1 due today · 1 partially received order needs review.</p>
+          <p className="text-xs text-slate-500 mt-1.5">1 delivery overdue · 1 due today · 1 partially received order needs review.</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-slate-700">
             <Trash2 size={16} className="text-red-500" />
             <span className="font-medium">Waste watch</span>
           </div>
-          <p className="text-xs text-slate-500 mt-2">Three waste exceptions this week, led by softener and stain remover lines.</p>
+          <p className="text-xs text-slate-500 mt-1.5">Three waste exceptions this week, led by softener and stain remover lines.</p>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-slate-700">
             <DollarSign size={16} className="text-sky-500" />
             <span className="font-medium">Value at risk</span>
           </div>
-          <p className="text-xs text-slate-500 mt-2">₱12.4k of stock exposure is tied to items already below preferred cover.</p>
+          <p className="text-xs text-slate-500 mt-1.5">₱12.4k of stock exposure is tied to items already below preferred cover.</p>
         </div>
       </div>
     </div>
