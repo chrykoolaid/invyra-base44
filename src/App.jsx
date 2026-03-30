@@ -9,6 +9,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
+import Wastage from './pages/Wastage';
 import GapScan from './pages/GapScan';
 import Suppliers from './pages/Suppliers';
 import ReorderReview from './pages/ReorderReview';
@@ -20,6 +21,7 @@ import Payroll from './pages/Payroll';
 import TimeTracking from './pages/TimeTracking';
 import InventoryAdmin from './pages/InventoryAdmin';
 import ReceivingWorkspace from './pages/ReceivingWorkspace';
+import WastageWorkspace from './pages/WastageWorkspace';
 import ReceivingLog from './pages/ReceivingLog';
 import ExportsIntegrations from './pages/ExportsIntegrations';
 
@@ -49,11 +51,13 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<Navigate to="/Dashboard" replace />} />
         <Route path="/Dashboard" element={<Dashboard />} />
         <Route path="/Inventory" element={<Inventory />} />
+        <Route path="/Wastage" element={<Wastage />} />
         <Route path="/GapScan" element={<GapScan />} />
         <Route path="/Suppliers" element={<Suppliers />} />
         <Route path="/ReorderReview" element={<ReorderReview />} />
         <Route path="/Orders" element={<Orders />} />
         <Route path="/Receiving" element={<Receiving />} />
+        <Route path="/Wastage/workspace" element={<WastageWorkspace />} />
         <Route path="/Receiving/workspace" element={<ReceivingWorkspace />} />
         <Route path="/Receiving/log" element={<ReceivingLog />} />
         <Route path="/DeliveryPortal" element={<DeliveryPortal />} />

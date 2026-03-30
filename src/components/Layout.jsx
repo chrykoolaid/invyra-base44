@@ -7,6 +7,7 @@ import {
   ClipboardList,
   ShoppingCart,
   PackageCheck,
+  Trash2,
   Truck,
   Monitor,
   Users,
@@ -21,6 +22,7 @@ const primaryNav = [
 
 const operationsNav = [
   { path: '/Inventory',      label: 'Inventory',       icon: Package },
+  { path: '/Wastage',       label: 'Wastage',        icon: Trash2 },
   { path: '/GapScan',        label: 'Gap Scan',        icon: ScanSearch },
   { path: '/Suppliers',      label: 'Suppliers',       icon: Factory },
   { path: '/ReorderReview',  label: 'Reorder Review',  icon: ClipboardList },
@@ -44,7 +46,7 @@ function NavGroup({ label, items, location }) {
         <p className="px-3 mb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">{label}</p>
       )}
       {items.map((item) => {
-        const isActive = location.pathname === item.path;
+        const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
         const Icon = item.icon;
         return (
           <Link
