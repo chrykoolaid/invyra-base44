@@ -22,7 +22,7 @@ const primaryNav = [
 
 const operationsNav = [
   { path: '/Inventory',      label: 'Inventory',       icon: Package },
-  { path: '/Wastage',       label: 'Wastage',        icon: Trash2 },
+  { path: '/Wastage',        label: 'Wastage',         icon: Trash2 },
   { path: '/GapScan',        label: 'Gap Scan',        icon: ScanSearch },
   { path: '/Suppliers',      label: 'Suppliers',       icon: Factory },
   { path: '/ReorderReview',  label: 'Reorder Review',  icon: ClipboardList },
@@ -32,11 +32,11 @@ const operationsNav = [
 ];
 
 const workspaceNav = [
-  { path: '/POSMode',             label: 'POS Mode',                   icon: Monitor },
-  { path: '/Payroll',             label: 'Payroll & Rostering',        icon: Users },
-  { path: '/TimeTracking',        label: 'Time Tracking',              icon: Clock },
-  { path: '/InventoryAdmin',      label: 'Inventory Admin & Reporting',icon: BarChart2 },
-  { path: '/ExportsIntegrations', label: 'Exports & Integrations',     icon: Share2 },
+  { path: '/POSMode',             label: 'POS Mode',                    icon: Monitor },
+  { path: '/Payroll',             label: 'Payroll & Rostering',         icon: Users },
+  { path: '/TimeTracking',        label: 'Time Tracking',               icon: Clock },
+  { path: '/InventoryAdmin',      label: 'Inventory Admin & Reporting', icon: BarChart2 },
+  { path: '/ExportsIntegrations', label: 'Exports & Integrations',      icon: Share2 },
 ];
 
 function NavGroup({ label, items, location }) {
@@ -72,7 +72,6 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Sidebar */}
       <aside className="w-56 bg-card border-r border-border flex flex-col flex-shrink-0">
         <div className="px-4 py-3.5 border-b border-border">
           <h1 className="text-base font-semibold text-foreground">Invyra</h1>
@@ -81,11 +80,10 @@ export default function Layout() {
         <nav className="flex-1 overflow-y-auto p-2 pt-3">
           <NavGroup items={primaryNav} location={location} />
           <NavGroup label="Operations" items={operationsNav} location={location} />
-          <NavGroup label="Workspace" items={workspaceNav} location={location} />
+          <NavGroup label="Admin & Optional" items={workspaceNav} location={location} />
         </nav>
       </aside>
 
-      {/* Main content */}
       <main className="flex-1 overflow-auto">
         <Outlet />
       </main>
