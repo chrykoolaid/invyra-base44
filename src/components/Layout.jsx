@@ -18,6 +18,7 @@ import {
 
 const primaryNav = [
   { path: '/Dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/POSMode', label: 'Point of Sale', icon: Monitor },
 ];
 
 const operationsNav = [
@@ -31,19 +32,21 @@ const operationsNav = [
   { path: '/DeliveryPortal', label: 'Delivery Portal', icon: Truck },
 ];
 
-const workspaceNav = [
-  { path: '/POSMode',             label: 'POS Mode',                    icon: Monitor },
-  { path: '/Payroll',             label: 'Payroll & Rostering',         icon: Users },
-  { path: '/TimeTracking',        label: 'Time Tracking',               icon: Clock },
+const adminNav = [
   { path: '/InventoryAdmin',      label: 'Inventory Admin & Reporting', icon: BarChart2 },
   { path: '/ExportsIntegrations', label: 'Exports & Integrations',      icon: Share2 },
+];
+
+const optionalNav = [
+  { path: '/Payroll',      label: 'Payroll & Rostering', icon: Users },
+  { path: '/TimeTracking', label: 'Time Tracking',       icon: Clock },
 ];
 
 function NavGroup({ label, items, location }) {
   return (
     <div className="mb-4">
       {label && (
-        <p className="px-3 mb-1 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">{label}</p>
+        <p className="px-3 mb-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">{label}</p>
       )}
       {items.map((item) => {
         const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
@@ -78,9 +81,10 @@ export default function Layout() {
           <p className="text-[11px] text-muted-foreground">Laundry Operations</p>
         </div>
         <nav className="flex-1 overflow-y-auto p-2 pt-3">
-          <NavGroup items={primaryNav} location={location} />
+          <NavGroup label="Main" items={primaryNav} location={location} />
           <NavGroup label="Operations" items={operationsNav} location={location} />
-          <NavGroup label="Admin & Optional" items={workspaceNav} location={location} />
+          <NavGroup label="Admin" items={adminNav} location={location} />
+          <NavGroup label="Optional Modules" items={optionalNav} location={location} />
         </nav>
       </aside>
 

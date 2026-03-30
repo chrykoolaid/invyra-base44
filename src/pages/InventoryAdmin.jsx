@@ -159,7 +159,7 @@ export default function InventoryAdmin() {
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Inventory Admin &amp; Reporting</h1>
-        <p className="text-sm text-muted-foreground">Planned admin oversight and reporting workspace for later-stage inventory rollout.</p>
+        <p className="text-sm text-muted-foreground">Reserved admin/reporting workspace with a cleaner rollout-hub presentation for this prototype.</p>
       </div>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">

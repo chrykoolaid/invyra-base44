@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, ChevronRight } from 'lucide-react';
+import { Search, Plus, AlertTriangle, Filter } from 'lucide-react';
 
 const wastageRows = [
   {
     id: 'WE-2026-001',
-    occurredAt: '29 Mar 09:20',
-    recordedAt: '29 Mar 09:22',
+    occurredAt: '29 Mar 2026, 09:20',
+    recordedAt: '29 Mar 2026, 09:22',
     location: 'Main Store',
     sku: 'CHM-001',
     itemName: 'Premium Detergent 20L',
@@ -21,8 +21,8 @@ const wastageRows = [
   },
   {
     id: 'WE-2026-002',
-    occurredAt: '29 Mar 08:05',
-    recordedAt: '29 Mar 08:09',
+    occurredAt: '29 Mar 2026, 08:05',
+    recordedAt: '29 Mar 2026, 08:09',
     location: 'Main Store',
     sku: 'PKG-003',
     itemName: 'Garment Tag Roll',
@@ -37,8 +37,8 @@ const wastageRows = [
   },
   {
     id: 'WE-2026-003',
-    occurredAt: '28 Mar 17:45',
-    recordedAt: '28 Mar 17:52',
+    occurredAt: '28 Mar 2026, 17:45',
+    recordedAt: '28 Mar 2026, 17:52',
     location: 'Branch A',
     sku: 'CHM-005',
     itemName: 'Bleach 5L',
@@ -53,8 +53,8 @@ const wastageRows = [
   },
   {
     id: 'WE-2026-004',
-    occurredAt: '28 Mar 15:10',
-    recordedAt: '28 Mar 15:16',
+    occurredAt: '28 Mar 2026, 15:10',
+    recordedAt: '28 Mar 2026, 15:16',
     location: 'Main Store',
     sku: 'SAFE-021',
     itemName: 'Disposable Gloves',
@@ -69,8 +69,8 @@ const wastageRows = [
   },
   {
     id: 'WE-2026-005',
-    occurredAt: '28 Mar 11:28',
-    recordedAt: '28 Mar 11:30',
+    occurredAt: '28 Mar 2026, 11:28',
+    recordedAt: '28 Mar 2026, 11:30',
     location: 'Branch A',
     sku: 'CHEM-009',
     itemName: 'Stain Remover 2L',
@@ -85,8 +85,8 @@ const wastageRows = [
   },
   {
     id: 'WE-2026-006',
-    occurredAt: '27 Mar 18:40',
-    recordedAt: '27 Mar 18:46',
+    occurredAt: '27 Mar 2026, 18:40',
+    recordedAt: '27 Mar 2026, 18:46',
     location: 'Main Store',
     sku: 'PKG-011',
     itemName: 'Laundry Bag Large',
@@ -101,233 +101,172 @@ const wastageRows = [
   },
 ];
 
-// Status chip — intent-first, calm palette
-const statusChip = {
-  DRAFT:     { label: 'Draft',     cls: 'bg-slate-100 text-slate-500 border border-slate-200' },
-  SUBMITTED: { label: 'Submitted', cls: 'bg-amber-50 text-amber-700 border border-amber-200' },
-  APPROVED:  { label: 'Approved',  cls: 'bg-green-50 text-green-700 border border-green-200' },
-  REJECTED:  { label: 'Rejected',  cls: 'bg-red-50 text-red-500 border border-red-200' },
-  REVERSED:  { label: 'Reversed',  cls: 'bg-slate-100 text-slate-500 border border-slate-200 line-through' },
+const statusStyle = {
+  DRAFT: 'bg-muted text-muted-foreground border border-border',
+  SUBMITTED: 'bg-amber-50 text-amber-700 border border-amber-200',
+  APPROVED: 'bg-green-50 text-green-700 border border-green-200',
+  REJECTED: 'bg-red-50 text-red-700 border border-red-200',
+  REVERSED: 'bg-slate-100 text-slate-700 border border-slate-200',
 };
 
-// Which statuses affect stock (for row-level visual cue)
-const stockImpactStatus = new Set(['APPROVED', 'REVERSED']);
-const pendingStatus     = new Set(['SUBMITTED']);
-const inactiveStatus    = new Set(['REJECTED', 'REVERSED', 'DRAFT']);
-
-const ALL_FILTERS = [
-  { key: 'All',       label: 'All' },
-  { key: 'SUBMITTED', label: 'Pending review' },
-  { key: 'DRAFT',     label: 'Drafts' },
-  { key: 'APPROVED',  label: 'Approved' },
-  { key: 'REJECTED',  label: 'Rejected' },
-  { key: 'REVERSED',  label: 'Reversed' },
-];
+function KpiCard({ label, value, helper }) {
+  return (
+    <div className="border border-border rounded-xl bg-card px-4 py-3 min-h-[96px]">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1">{label}</p>
+      <p className="text-[1.9rem] leading-none font-bold text-foreground">{value}</p>
+      <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{helper}</p>
+    </div>
+  );
+}
 
 export default function Wastage() {
   const navigate = useNavigate();
-  const [query, setQuery]         = useState('');
-  const [activeFilter, setFilter] = useState('All');
-
-  const kpis = useMemo(() => {
-    const submitted = wastageRows.filter(r => r.status === 'SUBMITTED');
-    const approved  = wastageRows.filter(r => r.status === 'APPROVED');
-    const alerts    = wastageRows.filter(r => r.activeAlert);
-    return {
-      pending:      submitted.length,
-      approvedQty:  approved.reduce((s, r) => s + r.qty, 0),
-      approvedCount: approved.length,
-      alerts:       alerts.length,
-    };
-  }, []);
+  const [query, setQuery] = useState('');
+  const [submittedOnly, setSubmittedOnly] = useState(false);
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return wastageRows.filter(row => {
-      const matchQ = !q ||
+    return wastageRows.filter((row) => {
+      const matchesQuery =
+        !q ||
         row.id.toLowerCase().includes(q) ||
         row.sku.toLowerCase().includes(q) ||
         row.itemName.toLowerCase().includes(q) ||
         row.location.toLowerCase().includes(q) ||
-        row.reason.toLowerCase().includes(q) ||
-        row.recordedBy.toLowerCase().includes(q);
-      const matchF = activeFilter === 'All' || row.status === activeFilter;
-      return matchQ && matchF;
+        row.reason.toLowerCase().includes(q);
+
+      const matchesSubmitted = !submittedOnly || row.status === 'SUBMITTED';
+      return matchesQuery && matchesSubmitted;
     });
-  }, [query, activeFilter]);
+  }, [query, submittedOnly]);
+
+  const kpis = useMemo(() => {
+    const pendingApproval = wastageRows.filter((row) => row.status === 'SUBMITTED').length;
+    const approvedRows = wastageRows.filter((row) => row.status === 'APPROVED');
+    const approvedQty = approvedRows.reduce((sum, row) => sum + row.qty, 0);
+    const activeAlerts = wastageRows.filter((row) => row.activeAlert).length;
+
+    return {
+      pendingApproval,
+      approvedQty,
+      approvedEvents: approvedRows.length,
+      activeAlerts,
+    };
+  }, []);
 
   return (
-    <div className="p-5 max-w-[1260px]">
-
-      {/* ── Page header ── */}
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h1 className="text-sm font-semibold text-foreground">Wastage</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Append-only stock loss ledger · review, approve, and audit</p>
-        </div>
-        <button
-          onClick={() => navigate('/Wastage/workspace?mode=create')}
-          className="flex items-center gap-1.5 h-7 px-3 text-xs bg-primary text-primary-foreground rounded font-medium hover:opacity-90 transition-opacity"
-        >
-          <Plus size={12} /> Record Wastage
-        </button>
+    <div className="p-5 lg:p-6 max-w-[1320px] space-y-4">
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold text-foreground">Wastage</h1>
+        <p className="text-sm text-muted-foreground">Track, review, and approve stock losses across locations.</p>
       </div>
 
-      {/* ── KPI strip ── */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
-        {[
-          { label: 'Pending Approval', value: kpis.pending,       note: 'Submitted, awaiting review',     highlight: kpis.pending > 0 },
-          { label: 'Approved Events',  value: kpis.approvedCount, note: 'Posted to stock movement',       highlight: false },
-          { label: 'Approved Qty',     value: kpis.approvedQty,   note: 'Units deducted from stock',      highlight: false },
-          { label: 'Active Alerts',    value: kpis.alerts,        note: 'Threshold breaches flagged',     highlight: kpis.alerts > 0 },
-        ].map(({ label, value, note, highlight }) => (
-          <div key={label} className={`border rounded px-3 py-2 flex items-center gap-4 ${highlight ? 'border-amber-200 bg-amber-50/50' : 'border-border bg-card'}`}>
-            <div>
-              <p className={`text-xl font-bold leading-none ${highlight ? 'text-amber-700' : 'text-foreground'}`}>{value}</p>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mt-1">{label}</p>
-            </div>
-            <p className="text-[11px] text-muted-foreground leading-tight ml-auto text-right max-w-[90px]">{note}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Toolbar ── */}
-      <div className="flex items-center gap-2 mb-2.5">
-        <div className="relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative flex-1 min-w-[260px] max-w-[420px]">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search ID, SKU, item, location, person…"
-            className="h-7 w-80 border border-border rounded pl-7 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-ring bg-card placeholder:text-muted-foreground/60"
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by event ID, SKU, item, or location"
+            className="h-10 w-full border border-border rounded-xl pl-9 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring bg-card"
           />
         </div>
 
-        {/* Filter tabs */}
-        <div className="flex items-center gap-0.5">
-          {ALL_FILTERS.map(f => (
-            <button
-              key={f.key}
-              onClick={() => setFilter(f.key)}
-              className={`h-7 px-3 text-xs rounded transition-colors font-medium ${
-                activeFilter === f.key
-                  ? 'bg-foreground text-background'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        <button
+          onClick={() => navigate('/Wastage/workspace?mode=create')}
+          className="flex items-center gap-1.5 h-10 px-4 text-sm bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity font-medium"
+        >
+          <Plus size={14} /> Record Wastage
+        </button>
+
+        <button
+          onClick={() => setSubmittedOnly((prev) => !prev)}
+          className={`flex items-center gap-1.5 h-10 px-4 text-sm rounded-xl border transition-colors ${
+            submittedOnly
+              ? 'border-amber-300 bg-amber-50 text-amber-800'
+              : 'border-border bg-card text-foreground hover:bg-muted'
+          }`}
+        >
+          <Filter size={14} /> Review Submitted
+        </button>
+
+        <button className="flex items-center gap-1.5 h-10 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+          <AlertTriangle size={14} /> Run Alert Check
+        </button>
+
+        <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">{filteredRows.length} events</span>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <KpiCard label="Pending Approval" value={kpis.pendingApproval} helper="Submitted events awaiting review" />
+        <KpiCard label="Approved Waste Qty" value={kpis.approvedQty} helper="Approved quantity across current sample" />
+        <KpiCard label="Approved Events" value={kpis.approvedEvents} helper="Records already posted to stock" />
+        <KpiCard label="Active Alerts" value={kpis.activeAlerts} helper="Threshold breaches requiring attention" />
+      </div>
+
+      {filteredRows.length === 0 ? (
+        <div className="border border-border rounded-xl bg-card px-6 py-10 text-center">
+          <p className="text-base font-medium text-foreground mb-1">No wastage events yet</p>
+          <p className="text-sm text-muted-foreground mb-4">Recorded wastage events will appear here once created.</p>
+          <button
+            onClick={() => navigate('/Wastage/workspace?mode=create')}
+            className="inline-flex items-center gap-1.5 h-9 px-4 text-sm bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity"
+          >
+            <Plus size={14} /> Record Wastage
+          </button>
         </div>
+      ) : (
+        <div className="border border-border rounded-xl overflow-hidden bg-card">
+          <div className="px-4 py-2.5 border-b border-border bg-muted/20 flex items-center justify-between gap-3">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em]">Wastage Events</span>
+            <div className="flex items-center gap-2">
+              {submittedOnly ? <span className="text-[11px] text-amber-700 font-medium">Submitted filter active</span> : null}
+              <span className="text-[11px] text-muted-foreground">Open any row to review details</span>
+            </div>
+          </div>
 
-        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
-          {filteredRows.length} event{filteredRows.length !== 1 ? 's' : ''}
-        </span>
-      </div>
-
-      {/* ── Ledger table ── */}
-      <div className="border border-border rounded overflow-hidden">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/60 text-muted-foreground text-[10px] uppercase tracking-wider border-b border-border">
-            <tr>
-              <th className="text-left px-3.5 py-2 font-semibold w-[130px]">Reference</th>
-              <th className="text-left px-3.5 py-2 font-semibold w-[110px]">SKU</th>
-              <th className="text-left px-3.5 py-2 font-semibold">Item</th>
-              <th className="text-right px-3.5 py-2 font-semibold w-14">Qty</th>
-              <th className="text-left px-3.5 py-2 font-semibold w-[140px]">Reason</th>
-              <th className="text-left px-3.5 py-2 font-semibold w-[110px]">Status</th>
-              <th className="text-left px-3.5 py-2 font-semibold w-[110px]">Location</th>
-              <th className="text-left px-3.5 py-2 font-semibold w-[100px]">By</th>
-              <th className="text-left px-3.5 py-2 font-semibold w-[110px]">Occurred</th>
-              <th className="w-6 px-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.length === 0 && (
-              <tr>
-                <td colSpan={10} className="px-4 py-6 text-center text-muted-foreground text-xs">
-                  No wastage events match this filter.
-                </td>
-              </tr>
-            )}
-            {filteredRows.map((row, i) => {
-              const chip     = statusChip[row.status];
-              const isPending = pendingStatus.has(row.status);
-              const isStock   = stockImpactStatus.has(row.status);
-              const isInactive = inactiveStatus.has(row.status);
-
-              return (
-                <tr
-                  key={row.id}
-                  onClick={() => navigate(`/Wastage/workspace?event=${encodeURIComponent(row.id)}`)}
-                  className={`border-t border-border cursor-pointer transition-colors group
-                    ${i % 2 === 0 ? 'bg-card' : 'bg-background'}
-                    hover:bg-primary/5
-                    ${isPending ? 'border-l-2 border-l-amber-300' : ''}
-                  `}
-                >
-                  {/* Reference */}
-                  <td className="px-3.5 py-2.5 align-middle">
-                    <span className="font-mono text-[11px] font-medium text-foreground">{row.id}</span>
-                  </td>
-
-                  {/* SKU */}
-                  <td className="px-3.5 py-2.5 align-middle">
-                    <span className={`font-mono text-[11px] ${isInactive ? 'text-muted-foreground' : 'text-foreground'}`}>{row.sku}</span>
-                  </td>
-
-                  {/* Item name */}
-                  <td className="px-3.5 py-2.5 align-middle">
-                    <span className={`font-medium ${isInactive ? 'text-muted-foreground' : 'text-foreground'}`}>{row.itemName}</span>
-                  </td>
-
-                  {/* Qty */}
-                  <td className="px-3.5 py-2.5 align-middle text-right">
-                    <span className={`font-semibold tabular-nums ${
-                      row.status === 'APPROVED' ? 'text-red-600' :
-                      row.status === 'REVERSED' ? 'text-slate-400 line-through' :
-                      isInactive ? 'text-muted-foreground' : 'text-foreground'
-                    }`}>
-                      {row.status === 'APPROVED' ? `–${row.qty}` : row.qty}
-                    </span>
-                  </td>
-
-                  {/* Reason */}
-                  <td className="px-3.5 py-2.5 align-middle text-muted-foreground whitespace-nowrap">{row.reason}</td>
-
-                  {/* Status */}
-                  <td className="px-3.5 py-2.5 align-middle">
-                    <span className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${chip.cls}`}>
-                      {chip.label}
-                    </span>
-                  </td>
-
-                  {/* Location */}
-                  <td className="px-3.5 py-2.5 align-middle text-muted-foreground whitespace-nowrap">{row.location}</td>
-
-                  {/* Recorded by */}
-                  <td className="px-3.5 py-2.5 align-middle text-muted-foreground whitespace-nowrap">{row.recordedBy}</td>
-
-                  {/* Occurred timing */}
-                  <td className="px-3.5 py-2.5 align-middle text-muted-foreground whitespace-nowrap">{row.occurredAt}</td>
-
-                  {/* Row chevron */}
-                  <td className="px-2 py-2.5 align-middle text-right">
-                    <ChevronRight size={12} className="text-muted-foreground/30 group-hover:text-muted-foreground transition-colors" />
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                <tr>
+                  {['SKU', 'Item Name', 'Qty', 'Reason', 'Status', 'Recorded By'].map((heading) => (
+                    <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">
+                      {heading}
+                    </th>
+                  ))}
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Footer note */}
-      <p className="text-[11px] text-muted-foreground mt-2.5 px-0.5 leading-relaxed">
-        Drafts and rejected events do not affect stock.
-        Approved events post a stock deduction. Reversed events post an offset movement restoring stock.
-      </p>
+              </thead>
+              <tbody>
+                {filteredRows.map((row, index) => (
+                  <tr
+                    key={row.id}
+                    onClick={() => navigate(`/Wastage/workspace?event=${encodeURIComponent(row.id)}`)}
+                    className={`border-t border-border cursor-pointer hover:bg-muted/25 transition-colors ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}
+                  >
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap align-top">
+                      <div className="font-medium text-foreground">{row.sku}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{row.id}</div>
+                    </td>
+                    <td className="px-4 py-3 min-w-[240px] align-top">
+                      <div className="font-medium text-foreground">{row.itemName}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{row.location} · {row.occurredAt}</div>
+                    </td>
+                    <td className="px-4 py-3 font-medium whitespace-nowrap align-top">{row.qty}</td>
+                    <td className="px-4 py-3 whitespace-nowrap align-top">{row.reason}</td>
+                    <td className="px-4 py-3 whitespace-nowrap align-top">
+                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground align-top">{row.recordedBy}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

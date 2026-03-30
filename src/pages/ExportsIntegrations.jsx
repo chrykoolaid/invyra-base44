@@ -162,7 +162,7 @@ export default function ExportsIntegrations() {
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Exports &amp; Integrations</h1>
-        <p className="text-sm text-muted-foreground">Planned data exchange and connector workspace for later-stage rollout.</p>
+        <p className="text-sm text-muted-foreground">Reserved data exchange and connector workspace with a cleaner roadmap-hub presentation for this prototype.</p>
       </div>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
