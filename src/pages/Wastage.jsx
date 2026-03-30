@@ -509,7 +509,7 @@ export default function Wastage() {
             </div>
           </div>
         </>
-      ) : (
+      ) : activeSurface === 'REPORTING' ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
             <KpiCard label="Approved Events" value={reportingSummary.approvedEvents} helper="Records already in the clean export-ready lane" tone="text-green-700" />
