@@ -128,20 +128,20 @@ const reasonOptions = [
 
 function SummaryCard({ label, value, tone = 'text-foreground' }) {
   return (
-    <div className="border border-border rounded bg-card px-4 py-3">
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
-      <p className={`text-xl font-bold ${tone}`}>{value}</p>
+    <div className="border border-border rounded-xl bg-card px-4 py-3 min-h-[88px]">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1">{label}</p>
+      <p className={`text-lg font-semibold leading-tight ${tone}`}>{value}</p>
     </div>
   );
 }
 
 function SectionCard({ label, children }) {
   return (
-    <div className="border border-border rounded overflow-hidden bg-card">
-      <div className="px-5 py-3 border-b border-border bg-muted/30">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">{label}</span>
+    <div className="border border-border rounded-xl overflow-hidden bg-card">
+      <div className="px-4 py-2.5 border-b border-border bg-muted/20">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em]">{label}</span>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4">{children}</div>
     </div>
   );
 }
@@ -149,8 +149,8 @@ function SectionCard({ label, children }) {
 function DetailRow({ label, value, muted = false }) {
   return (
     <div>
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
-      <p className={`text-sm ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{value}</p>
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1">{label}</p>
+      <p className={`text-sm leading-relaxed ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>{value}</p>
     </div>
   );
 }
@@ -179,11 +179,7 @@ export default function WastageWorkspace() {
     currentOnHand: '—',
   });
 
-  const selectedEvent = useMemo(
-    () => rows.find((row) => row.id === eventId) || null,
-    [eventId, rows]
-  );
-
+  const selectedEvent = useMemo(() => rows.find((row) => row.id === eventId) || null, [eventId, rows]);
   const workspaceStatus = selectedEvent?.status || 'CREATE';
 
   const stockEffectText = useMemo(() => {
@@ -274,35 +270,35 @@ export default function WastageWorkspace() {
   return (
     <>
       <div className="flex flex-col min-h-screen">
-        <div className="flex-1 p-6 max-w-[900px] pb-28">
+        <div className="flex-1 p-5 lg:p-6 max-w-[860px] pb-24 space-y-4">
           <button
             onClick={() => navigate('/Wastage')}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 transition-colors"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft size={14} /> Back to Wastage
           </button>
 
           {mode === 'create' ? (
             <>
-              <div className="mb-5">
-                <h1 className="text-lg font-semibold text-foreground mb-1">Record Wastage</h1>
+              <div className="space-y-1">
+                <h1 className="text-lg font-semibold text-foreground">Record Wastage</h1>
                 <p className="text-sm text-muted-foreground">Create a wastage record for review or submission.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <SummaryCard label="Location" value={formState.location || 'Select location'} />
                 <SummaryCard label="Selected SKU" value={formState.sku || 'Not selected'} tone={formState.sku ? 'text-foreground' : 'text-muted-foreground'} />
                 <SummaryCard label="Current On Hand" value={String(formState.currentOnHand)} tone={formState.currentOnHand === '—' ? 'text-muted-foreground' : 'text-foreground'} />
               </div>
 
               <SectionCard label="Wastage Details">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1.5">Location</label>
                     <select
                       value={formState.location}
                       onChange={(e) => handleFormChange('location', e.target.value)}
-                      className="h-9 w-full border border-border rounded bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="h-10 w-full border border-border rounded-xl bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     >
                       <option>Main Store</option>
                       <option>Branch A</option>
@@ -317,25 +313,33 @@ export default function WastageWorkspace() {
                       placeholder="Enter SKU code"
                     />
                   </div>
-                  <div className="md:col-span-2 border border-border rounded bg-muted/20 px-3 py-3">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">Item Preview</p>
-                    <p className="text-sm text-foreground font-medium">{formState.itemName || 'Select or type a matching SKU to preview the item.'}</p>
+
+                  <div className="md:col-span-2 border border-border rounded-xl bg-muted/10 px-4 py-3 space-y-2">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em]">Item Preview</p>
+                    {formState.itemName ? (
+                      <>
+                        <div className="text-sm font-medium text-foreground">{formState.itemName}</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-muted-foreground">
+                          <span>SKU: <span className="font-medium text-foreground">{formState.sku}</span></span>
+                          <span>Location: <span className="font-medium text-foreground">{formState.location}</span></span>
+                          <span>On Hand: <span className="font-medium text-foreground">{formState.currentOnHand}</span></span>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Select or type a matching SKU to preview the item.</p>
+                    )}
                   </div>
+
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1.5">Qty</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={formState.qty}
-                      onChange={(e) => handleFormChange('qty', e.target.value)}
-                    />
+                    <Input type="number" min={1} value={formState.qty} onChange={(e) => handleFormChange('qty', e.target.value)} />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1.5">Reason Code</label>
                     <select
                       value={formState.reason}
                       onChange={(e) => handleFormChange('reason', e.target.value)}
-                      className="h-9 w-full border border-border rounded bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="h-10 w-full border border-border rounded-xl bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     >
                       {reasonOptions.map((reason) => (
                         <option key={reason}>{reason}</option>
@@ -344,17 +348,14 @@ export default function WastageWorkspace() {
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1.5">Occurred At</label>
-                    <Input
-                      value={formState.occurredAt}
-                      onChange={(e) => handleFormChange('occurredAt', e.target.value)}
-                    />
+                    <Input value={formState.occurredAt} onChange={(e) => handleFormChange('occurredAt', e.target.value)} />
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1.5">Source</label>
                     <select
                       value={formState.source}
                       onChange={(e) => handleFormChange('source', e.target.value)}
-                      className="h-9 w-full border border-border rounded bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                      className="h-10 w-full border border-border rounded-xl bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
                     >
                       {sourceOptions.map((source) => (
                         <option key={source}>{source}</option>
@@ -364,7 +365,7 @@ export default function WastageWorkspace() {
                   <div className="md:col-span-2">
                     <label className="text-xs font-medium text-muted-foreground block mb-1.5">Notes</label>
                     <Textarea
-                      rows={4}
+                      rows={3}
                       value={formState.notes}
                       onChange={(e) => handleFormChange('notes', e.target.value)}
                       placeholder="Optional operational notes..."
@@ -373,21 +374,21 @@ export default function WastageWorkspace() {
                 </div>
               </SectionCard>
 
-              <p className="text-xs text-muted-foreground mt-4 px-1">Draft records do not adjust stock until approved.</p>
+              <p className="text-xs text-muted-foreground px-1">Draft records do not adjust stock until approved.</p>
             </>
           ) : (
             <>
-              <div className="mb-5">
-                <div className="flex items-baseline gap-3 mb-1 flex-wrap">
+              <div className="space-y-1">
+                <div className="flex items-baseline gap-3 flex-wrap">
                   <h1 className="text-lg font-semibold text-foreground">Event {selectedEvent.id}</h1>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[selectedEvent.status]}`}>
+                  <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[selectedEvent.status]}`}>
                     {selectedEvent.status}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">{selectedEvent.location}</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <SummaryCard label="Qty" value={selectedEvent.qty} />
                 <SummaryCard label="Location" value={selectedEvent.location} />
                 <SummaryCard
@@ -397,9 +398,9 @@ export default function WastageWorkspace() {
                 />
               </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <SectionCard label="Event Details">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <DetailRow label="Event ID" value={selectedEvent.id} />
                     <DetailRow label="Status" value={selectedEvent.status} />
                     <DetailRow label="Occurred At" value={selectedEvent.occurredAt} muted />
@@ -418,7 +419,7 @@ export default function WastageWorkspace() {
                 </SectionCard>
 
                 <SectionCard label="Workflow Timeline">
-                  <div className="space-y-3 text-sm">
+                  <div className="space-y-2.5 text-sm">
                     <div className="flex items-center justify-between gap-3">
                       <span className="font-medium text-foreground">Created</span>
                       <span className="text-muted-foreground">{selectedEvent.recordedAt}</span>
@@ -443,7 +444,7 @@ export default function WastageWorkspace() {
                 </SectionCard>
 
                 <SectionCard label="Stock Impact">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <DetailRow label="Current On Hand" value={String(selectedEvent.currentOnHand)} />
                     {selectedEvent.status === 'SUBMITTED' ? (
                       <>
@@ -472,7 +473,7 @@ export default function WastageWorkspace() {
           )}
         </div>
 
-        <div className="fixed bottom-0 left-56 right-0 bg-card border-t border-border px-6 py-3 flex items-center gap-3 z-10">
+        <div className="fixed bottom-0 left-56 right-0 bg-card/95 backdrop-blur border-t border-border px-4 py-2.5 flex items-center gap-3 z-10 shadow-[0_-6px_18px_rgba(15,23,42,0.04)]">
           {actionStatus === 'draft_saved' && (
             <span className="text-xs text-green-700 font-medium flex items-center gap-1.5">
               <Save size={13} /> Draft saved
@@ -504,19 +505,19 @@ export default function WastageWorkspace() {
               <>
                 <button
                   onClick={() => navigate('/Wastage')}
-                  className="flex items-center gap-2 h-10 px-5 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                  className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
                 >
                   <X size={14} /> Cancel
                 </button>
                 <button
                   onClick={() => handleCreateAction('DRAFT')}
-                  className="flex items-center gap-2 h-10 px-5 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                  className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
                 >
                   <Save size={14} /> Save Draft
                 </button>
                 <button
                   onClick={() => handleCreateAction('SUBMITTED')}
-                  className="flex items-center gap-2 h-10 px-6 text-sm rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
+                  className="flex items-center gap-2 h-9 px-5 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
                 >
                   <CheckCircle2 size={14} /> Save &amp; Submit
                 </button>
@@ -525,19 +526,19 @@ export default function WastageWorkspace() {
               <>
                 <button
                   onClick={() => navigate('/Wastage')}
-                  className="flex items-center gap-2 h-10 px-5 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                  className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
                 >
                   <X size={14} /> Cancel
                 </button>
                 <button
                   onClick={() => handleDraftUpdate('DRAFT')}
-                  className="flex items-center gap-2 h-10 px-5 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                  className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
                 >
                   <Save size={14} /> Save Draft
                 </button>
                 <button
                   onClick={() => handleDraftUpdate('SUBMITTED')}
-                  className="flex items-center gap-2 h-10 px-6 text-sm rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
+                  className="flex items-center gap-2 h-9 px-5 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
                 >
                   <CheckCircle2 size={14} /> Submit
                 </button>
@@ -546,13 +547,13 @@ export default function WastageWorkspace() {
               <>
                 <button
                   onClick={() => setRejectOpen(true)}
-                  className="flex items-center gap-2 h-10 px-5 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                  className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
                 >
                   <X size={14} /> Reject
                 </button>
                 <button
                   onClick={handleApprove}
-                  className="flex items-center gap-2 h-10 px-6 text-sm rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
+                  className="flex items-center gap-2 h-9 px-5 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
                 >
                   <CheckCircle2 size={14} /> Approve
                 </button>
@@ -560,14 +561,14 @@ export default function WastageWorkspace() {
             ) : workspaceStatus === 'APPROVED' ? (
               <button
                 onClick={() => setReverseOpen(true)}
-                className="flex items-center gap-2 h-10 px-6 text-sm rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
+                className="flex items-center gap-2 h-9 px-5 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
               >
                 <Undo2 size={14} /> Reverse
               </button>
             ) : (
               <button
                 onClick={() => navigate('/Wastage')}
-                className="flex items-center gap-2 h-10 px-5 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
               >
                 <ArrowLeft size={14} /> Back to Wastage
               </button>
@@ -588,7 +589,7 @@ export default function WastageWorkspace() {
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
             placeholder="Rejection reason"
-            rows={4}
+            rows={3}
           />
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setRejectReason('')}>Cancel</AlertDialogCancel>
@@ -616,7 +617,7 @@ export default function WastageWorkspace() {
             value={reverseReason}
             onChange={(e) => setReverseReason(e.target.value)}
             placeholder="Reversal reason"
-            rows={4}
+            rows={3}
           />
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setReverseReason('')}>Cancel</AlertDialogCancel>

@@ -111,10 +111,10 @@ const statusStyle = {
 
 function KpiCard({ label, value, helper }) {
   return (
-    <div className="border border-border rounded bg-card px-4 py-3">
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1">{label}</p>
-      <p className="text-xl font-bold text-foreground">{value}</p>
-      {helper ? <p className="text-xs text-muted-foreground mt-1">{helper}</p> : null}
+    <div className="border border-border rounded-xl bg-card px-4 py-3 min-h-[96px]">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1">{label}</p>
+      <p className="text-[1.9rem] leading-none font-bold text-foreground">{value}</p>
+      <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{helper}</p>
     </div>
   );
 }
@@ -132,7 +132,8 @@ export default function Wastage() {
         row.id.toLowerCase().includes(q) ||
         row.sku.toLowerCase().includes(q) ||
         row.itemName.toLowerCase().includes(q) ||
-        row.location.toLowerCase().includes(q);
+        row.location.toLowerCase().includes(q) ||
+        row.reason.toLowerCase().includes(q);
 
       const matchesSubmitted = !submittedOnly || row.status === 'SUBMITTED';
       return matchesQuery && matchesSubmitted;
@@ -154,52 +155,50 @@ export default function Wastage() {
   }, []);
 
   return (
-    <div className="p-6">
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold text-foreground mb-1">Wastage</h1>
+    <div className="p-5 lg:p-6 max-w-[1320px] space-y-4">
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold text-foreground">Wastage</h1>
         <p className="text-sm text-muted-foreground">Track, review, and approve stock losses across locations.</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-5">
-        <div className="relative">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative flex-1 min-w-[260px] max-w-[420px]">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by event ID, SKU, item, or location…"
-            className="h-8 w-80 border border-border rounded pl-8 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring bg-card"
+            placeholder="Search by event ID, SKU, item, or location"
+            className="h-10 w-full border border-border rounded-xl pl-9 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring bg-card"
           />
         </div>
 
         <button
           onClick={() => navigate('/Wastage/workspace?mode=create')}
-          className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+          className="flex items-center gap-1.5 h-10 px-4 text-sm bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity font-medium"
         >
-          <Plus size={13} /> Record Wastage
+          <Plus size={14} /> Record Wastage
         </button>
 
         <button
           onClick={() => setSubmittedOnly((prev) => !prev)}
-          className={`flex items-center gap-1.5 h-8 px-3 text-sm rounded border transition-colors ${
+          className={`flex items-center gap-1.5 h-10 px-4 text-sm rounded-xl border transition-colors ${
             submittedOnly
               ? 'border-amber-300 bg-amber-50 text-amber-800'
               : 'border-border bg-card text-foreground hover:bg-muted'
           }`}
         >
-          <Filter size={13} /> Review Submitted
+          <Filter size={14} /> Review Submitted
         </button>
 
-        <button
-          className="flex items-center gap-1.5 h-8 px-3 text-sm rounded border border-border bg-card hover:bg-muted transition-colors text-foreground"
-        >
-          <AlertTriangle size={13} /> Run Alert Check
+        <button className="flex items-center gap-1.5 h-10 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+          <AlertTriangle size={14} /> Run Alert Check
         </button>
 
-        <span className="ml-auto text-xs text-muted-foreground">{filteredRows.length} events</span>
+        <span className="ml-auto text-xs text-muted-foreground whitespace-nowrap">{filteredRows.length} events</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
         <KpiCard label="Pending Approval" value={kpis.pendingApproval} helper="Submitted events awaiting review" />
         <KpiCard label="Approved Waste Qty" value={kpis.approvedQty} helper="Approved quantity across current sample" />
         <KpiCard label="Approved Events" value={kpis.approvedEvents} helper="Records already posted to stock" />
@@ -207,31 +206,32 @@ export default function Wastage() {
       </div>
 
       {filteredRows.length === 0 ? (
-        <div className="border border-border rounded bg-card px-6 py-10 text-center">
+        <div className="border border-border rounded-xl bg-card px-6 py-10 text-center">
           <p className="text-base font-medium text-foreground mb-1">No wastage events yet</p>
           <p className="text-sm text-muted-foreground mb-4">Recorded wastage events will appear here once created.</p>
           <button
             onClick={() => navigate('/Wastage/workspace?mode=create')}
-            className="inline-flex items-center gap-1.5 h-9 px-4 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+            className="inline-flex items-center gap-1.5 h-9 px-4 text-sm bg-primary text-primary-foreground rounded-xl hover:opacity-90 transition-opacity"
           >
             <Plus size={14} /> Record Wastage
           </button>
         </div>
       ) : (
-        <div className="border border-border rounded overflow-hidden bg-card">
-          <div className="px-5 py-3 border-b border-border bg-muted/30 flex items-center justify-between gap-3">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Wastage Events</span>
-            {submittedOnly ? (
-              <span className="text-xs text-amber-700 font-medium">Submitted filter active</span>
-            ) : null}
+        <div className="border border-border rounded-xl overflow-hidden bg-card">
+          <div className="px-4 py-2.5 border-b border-border bg-muted/20 flex items-center justify-between gap-3">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em]">Wastage Events</span>
+            <div className="flex items-center gap-2">
+              {submittedOnly ? <span className="text-[11px] text-amber-700 font-medium">Submitted filter active</span> : null}
+              <span className="text-[11px] text-muted-foreground">Open any row to review details</span>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/20 text-muted-foreground text-xs uppercase tracking-wide">
+              <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
                 <tr>
-                  {['Event ID', 'Occurred At', 'Location', 'SKU', 'Item Name', 'Qty', 'Reason', 'Status', 'Recorded By'].map((heading) => (
-                    <th key={heading} className="text-left px-5 py-2.5 font-medium whitespace-nowrap">
+                  {['SKU', 'Item Name', 'Qty', 'Reason', 'Status', 'Recorded By'].map((heading) => (
+                    <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">
                       {heading}
                     </th>
                   ))}
@@ -242,21 +242,24 @@ export default function Wastage() {
                   <tr
                     key={row.id}
                     onClick={() => navigate(`/Wastage/workspace?event=${encodeURIComponent(row.id)}`)}
-                    className={`border-t border-border cursor-pointer hover:bg-muted/30 transition-colors ${index % 2 === 0 ? 'bg-card' : 'bg-background'}`}
+                    className={`border-t border-border cursor-pointer hover:bg-muted/25 transition-colors ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}
                   >
-                    <td className="px-5 py-3 font-medium text-foreground whitespace-nowrap">{row.id}</td>
-                    <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">{row.occurredAt}</td>
-                    <td className="px-5 py-3 whitespace-nowrap">{row.location}</td>
-                    <td className="px-5 py-3 text-muted-foreground whitespace-nowrap">{row.sku}</td>
-                    <td className="px-5 py-3 min-w-[220px]">{row.itemName}</td>
-                    <td className="px-5 py-3 font-medium whitespace-nowrap">{row.qty}</td>
-                    <td className="px-5 py-3 whitespace-nowrap">{row.reason}</td>
-                    <td className="px-5 py-3 whitespace-nowrap">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap align-top">
+                      <div className="font-medium text-foreground">{row.sku}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{row.id}</div>
+                    </td>
+                    <td className="px-4 py-3 min-w-[240px] align-top">
+                      <div className="font-medium text-foreground">{row.itemName}</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">{row.location} · {row.occurredAt}</div>
+                    </td>
+                    <td className="px-4 py-3 font-medium whitespace-nowrap align-top">{row.qty}</td>
+                    <td className="px-4 py-3 whitespace-nowrap align-top">{row.reason}</td>
+                    <td className="px-4 py-3 whitespace-nowrap align-top">
+                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>
                         {row.status}
                       </span>
                     </td>
-                    <td className="px-5 py-3 whitespace-nowrap text-muted-foreground">{row.recordedBy}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-muted-foreground align-top">{row.recordedBy}</td>
                   </tr>
                 ))}
               </tbody>
