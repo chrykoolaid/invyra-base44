@@ -59,7 +59,7 @@ function DetailRow({ label, value, muted = false, emphasis = false }) {
 
 function PolicyChip({ reason }) {
   const policy = getReasonPolicy(reason);
-  return <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${policy.chipClass}`}>{policy.effect}</span>;
+  return <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${policy.chipClass}`}>{policy.bucket}</span>;
 }
 
 function ModeTab({ active, onClick, icon: Icon, label, helper }) {
@@ -146,9 +146,8 @@ export default function WastageWorkspace() {
   const [scanState, setScanState] = useState({ status: 'idle', helper: 'Scanner-ready capture resolves barcode or typed SKU into the engine-required SKU field before submit.' });
 
   const selectedEvent = useMemo(() => rows.find((row) => row.id === eventId) || getEventById(eventId), [eventId, rows]);
-  const isDraftEvent = selectedEvent?.status === 'DRAFT';
-  const isFormMode = mode === 'create' || isDraftEvent;
-  const workspaceStatus = isFormMode ? (mode === 'create' ? 'CREATE' : 'DRAFT') : selectedEvent?.status || 'UNKNOWN';
+  const isFormMode = mode === 'create';
+  const workspaceStatus = isFormMode ? 'CREATE' : selectedEvent?.status || 'UNKNOWN';
   const policy = getReasonPolicy(isFormMode ? formState.reason : selectedEvent?.reason);
 
   useEffect(() => {
@@ -160,14 +159,14 @@ export default function WastageWorkspace() {
       return;
     }
 
-    if (selectedEvent && selectedEvent.status === 'DRAFT') {
+    if (selectedEvent) {
       setFormState(buildFormStateFromEvent(selectedEvent));
       const nextMode = selectedEvent.source === 'SCANNER' ? 'SCANNER' : 'MANUAL';
       setCaptureMode(nextMode);
       setScanInput(selectedEvent.scanValue || '');
       setScanState({
         status: selectedEvent.scanValue ? 'resolved' : 'idle',
-        helper: selectedEvent.scanValue ? `Draft retains ${selectedEvent.scanResolution || 'scanner'} item resolution.` : 'Scanner-ready capture resolves barcode or typed SKU into the engine-required SKU field before submit.',
+        helper: selectedEvent.scanValue ? `${selectedEvent.status === 'DRAFT' ? 'Draft retains' : 'Record retains'} ${selectedEvent.scanResolution || 'scanner'} item resolution.` : 'Scanner-ready capture resolves barcode or typed SKU into the engine-required SKU field before submit.',
       });
     }
   }, [mode, selectedEvent]);
@@ -197,7 +196,7 @@ export default function WastageWorkspace() {
       }
 
       if (field === 'reason') {
-        next.activeAlert = getReasonPolicy(value).effect === 'Reorder affecting';
+        next.activeAlert = getReasonPolicy(value).bucket === 'Reorder affecting';
       }
 
       if (field === 'source' && value !== 'SCANNER' && captureMode === 'SCANNER') {
@@ -266,6 +265,13 @@ export default function WastageWorkspace() {
     setTimeout(() => navigate(`/Wastage/workspace?event=${encodeURIComponent(savedId)}`), 350);
   };
 
+  const handleSubmitDraft = () => {
+    if (!selectedEvent) return;
+    updateEvent(selectedEvent.id, { status: 'SUBMITTED' });
+    setRows(getWastageRows());
+    setActionStatus('submitted');
+  };
+
   const handleApprove = () => {
     if (!selectedEvent) return;
     updateEvent(selectedEvent.id, { status: 'APPROVED' });
@@ -323,10 +329,10 @@ export default function WastageWorkspace() {
             <>
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-lg font-semibold text-foreground">{mode === 'create' ? 'Record Wastage' : `Draft ${selectedEvent.id}`}</h1>
-                  {mode !== 'create' ? <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle.DRAFT}`}>DRAFT</span> : null}
+                  <h1 className="text-lg font-semibold text-foreground">Record Wastage</h1>
+                  
                 </div>
-                <p className="text-sm text-muted-foreground">Capture stock loss details for review. Draft records stay non-posting until submitted and approved.</p>
+                <p className="text-sm text-muted-foreground">Capture stock loss details for review. Create mode is the only editable entry surface in this build; saved drafts return as review records until the backend gains a true draft-update lifecycle.</p>
               </div>
 
               <div className="border border-border rounded-2xl bg-card px-4 py-3 flex items-start gap-3 shadow-sm">
@@ -366,6 +372,14 @@ export default function WastageWorkspace() {
                             {scanState.status === 'resolved' ? 'Scan resolved' : scanState.status === 'unresolved' ? 'Manual review required' : 'Scanner input pending'}
                           </p>
                           <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{scanState.helper}</p>
+                          {scanState.status === 'unresolved' ? (
+                            <button
+                              onClick={() => navigate('/Wastage?surface=BARCODES')}
+                              className="mt-3 inline-flex items-center gap-1.5 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                            >
+                              Open Barcode Admin
+                            </button>
+                          ) : null}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
@@ -501,6 +515,18 @@ export default function WastageWorkspace() {
                 <p className="text-sm text-muted-foreground">{liveEvent.location}</p>
               </div>
 
+              {workspaceStatus === 'DRAFT' ? (
+                <div className="border border-border rounded-2xl bg-card px-4 py-3 flex items-start gap-3 shadow-sm">
+                  <div className="h-9 w-9 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Saved drafts are review-first in this engine build</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">This draft is stored as a backend review record. It can be submitted from here, but it is not reopened as a fully editable server draft because the current waste engine does not yet expose a dedicated draft-update lifecycle.</p>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                 <SummaryCard label="Qty" value={String(liveEvent.qty)} helper="Units affected by this record" />
                 <SummaryCard label="Stock Effect" value={stockEffectText} helper="Posting outcome for the current workflow state" tone={liveEvent.status === 'APPROVED' ? 'text-green-700' : liveEvent.status === 'SUBMITTED' ? 'text-amber-700' : 'text-muted-foreground'} />
@@ -569,7 +595,12 @@ export default function WastageWorkspace() {
                   <SectionCard label="Stock Impact">
                     <div className="grid grid-cols-1 gap-3">
                       <DetailRow label="Current On Hand" value={String(liveEvent.currentOnHand)} />
-                      {liveEvent.status === 'SUBMITTED' ? (
+                      {liveEvent.status === 'DRAFT' ? (
+                        <>
+                          <DetailRow label="Posting State" value="Draft saved — no stock movement yet" muted />
+                          <DetailRow label="Projected On Approval" value={String(liveEvent.currentOnHand - liveEvent.qty)} emphasis />
+                        </>
+                      ) : liveEvent.status === 'SUBMITTED' ? (
                         <>
                           <DetailRow label="Adjustment on Approval" value={`-${liveEvent.qty}`} muted />
                           <DetailRow label="Projected On Hand" value={String(liveEvent.currentOnHand - liveEvent.qty)} emphasis />
@@ -645,6 +676,21 @@ export default function WastageWorkspace() {
                   }`}
                 >
                   <CheckCircle2 size={14} /> {mode === 'create' ? 'Save & Submit' : 'Submit'}
+                </button>
+              </>
+            ) : workspaceStatus === 'DRAFT' ? (
+              <>
+                <button
+                  onClick={() => navigate('/Wastage')}
+                  className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                >
+                  <ArrowLeft size={14} /> Back to Wastage
+                </button>
+                <button
+                  onClick={handleSubmitDraft}
+                  className="flex items-center gap-2 h-9 px-5 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
+                >
+                  <CheckCircle2 size={14} /> Submit Draft
                 </button>
               </>
             ) : workspaceStatus === 'SUBMITTED' ? (

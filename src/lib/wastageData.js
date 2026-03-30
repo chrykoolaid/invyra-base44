@@ -1,71 +1,144 @@
 const reasonPolicyMeta = {
   'Damage in Handling': {
-    effect: 'Reorder affecting',
-    helper: 'Included in inventory intelligence demand and wastage signals.',
+    bucket: 'Reorder affecting',
+    helper: 'Counts toward stock loss and should stay visible to replenishment review.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
-    stockTone: 'text-foreground',
+    reorderBehavior: 'Included in reorder review',
+    approvalPath: 'Manager review',
+    reviewNote: 'Operational loss should remain visible because the stock was genuinely lost.',
+    catalogStatus: 'Active',
+    captureGuidance: 'Use when stock was physically damaged during handling or movement.',
   },
-  'Theft/Shrink': {
-    effect: 'Reorder affecting',
-    helper: 'Included in shrink and replenishment review signals.',
+  Theft: {
+    bucket: 'Reorder affecting',
+    helper: 'Counts toward stock loss and should stay visible to replenishment review.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
-    stockTone: 'text-foreground',
+    reorderBehavior: 'Included in reorder review',
+    approvalPath: 'Manager review',
+    reviewNote: 'Stock is no longer on hand and must remain visible to loss review.',
+    catalogStatus: 'Active',
+    captureGuidance: 'Use for shrinkage or confirmed theft events after manager validation.',
   },
   'Production Use': {
-    effect: 'Reorder affecting',
-    helper: 'Counts toward operational consumption and planning visibility.',
+    bucket: 'Reorder affecting',
+    helper: 'Counts toward drawdown because stock was consumed operationally.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
-    stockTone: 'text-foreground',
+    reorderBehavior: 'Included in reorder review',
+    approvalPath: 'Standard review',
+    reviewNote: 'Operational consumption is still real stock drawdown for replenishment.',
+    catalogStatus: 'Active',
+    captureGuidance: 'Use when stock is consumed for business operations or production.',
   },
   'Sampling/Promos': {
-    effect: 'Reorder affecting',
-    helper: 'Counts toward promotional drawdown review and future planning.',
+    bucket: 'Reorder affecting',
+    helper: 'Counts toward drawdown because stock left inventory through business-directed use.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
-    stockTone: 'text-foreground',
+    reorderBehavior: 'Included in reorder review',
+    approvalPath: 'Standard review',
+    reviewNote: 'Promotional or sampling loss should still stay visible to replenishment review.',
+    catalogStatus: 'Active',
+    captureGuidance: 'Use when stock leaves inventory for samples, promos, or giveaways.',
   },
   Spillage: {
-    effect: 'Reorder affecting',
-    helper: 'Included in stock-loss review and replenishment assessment.',
+    bucket: 'Reorder affecting',
+    helper: 'Counts toward stock loss and should stay visible to replenishment review.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
-    stockTone: 'text-foreground',
+    reorderBehavior: 'Included in reorder review',
+    approvalPath: 'Standard review',
+    reviewNote: 'Still affects replenishment visibility even when operationally routine.',
+    catalogStatus: 'Active',
+    captureGuidance: 'Use when product is lost through spills, leaks, or breakage during use.',
   },
-  Expired: {
-    effect: 'Report only',
+  'Expired/Out of Date': {
+    bucket: 'Report only',
     helper: 'Tracked for reporting, but excluded from reorder demand logic.',
     chipClass: 'bg-slate-100 text-slate-700 border border-slate-200',
     impactTone: 'text-slate-700',
-    stockTone: 'text-muted-foreground',
+    reorderBehavior: 'Excluded from reorder logic',
+    approvalPath: 'Manager review',
+    reviewNote: 'Expiry should stay visible for reporting and operational follow-up.',
+    catalogStatus: 'Active',
+    captureGuidance: 'Use when stock is unsellable due to age, date control, or expiry.',
   },
-  Damaged: {
-    effect: 'Report only',
-    helper: 'Tracked for review, but not counted as a planning signal in this prototype.',
+  'Spoiled/Rotten': {
+    bucket: 'Report only',
+    helper: 'Tracked for reporting, but excluded from reorder demand logic.',
     chipClass: 'bg-slate-100 text-slate-700 border border-slate-200',
     impactTone: 'text-slate-700',
-    stockTone: 'text-muted-foreground',
+    reorderBehavior: 'Excluded from reorder logic',
+    approvalPath: 'Manager review',
+    reviewNote: 'Quality-based loss stays reportable without inflating demand.',
+    catalogStatus: 'Active',
+    captureGuidance: 'Use when stock quality has degraded and it should not count as demand.',
+  },
+  'Over-ordering': {
+    bucket: 'Report only',
+    helper: 'Tracked for review, but excluded from reorder demand logic.',
+    chipClass: 'bg-slate-100 text-slate-700 border border-slate-200',
+    impactTone: 'text-slate-700',
+    reorderBehavior: 'Excluded from reorder logic',
+    approvalPath: 'Manager review',
+    reviewNote: 'Review for planning lessons, not replenishment demand.',
+    catalogStatus: 'Watchlist',
+    captureGuidance: 'Use when excess buying or overstock led to the loss.',
+  },
+  'Supplier Fault (Credited/Returned)': {
+    bucket: 'Report only',
+    helper: 'Tracked for review, but excluded from reorder demand logic.',
+    chipClass: 'bg-slate-100 text-slate-700 border border-slate-200',
+    impactTone: 'text-slate-700',
+    reorderBehavior: 'Excluded from reorder logic',
+    approvalPath: 'Standard review',
+    reviewNote: 'Keep reportable for vendor follow-up without affecting replenishment demand.',
+    catalogStatus: 'Active',
+    captureGuidance: 'Use when the supplier owns the issue and stock is credited or returned.',
   },
 };
 
 const defaultPolicyMeta = {
-  effect: 'Needs review',
-  helper: 'Policy classification has not been assigned for this reason yet.',
+  bucket: 'Needs review',
+  helper: 'This reason has not been classified yet.',
   chipClass: 'bg-muted text-muted-foreground border border-border',
   impactTone: 'text-muted-foreground',
-  stockTone: 'text-muted-foreground',
+  reorderBehavior: 'Needs policy decision',
+  approvalPath: 'Needs review',
+  reviewNote: 'Reason governance has not been assigned yet.',
+  catalogStatus: 'Watchlist',
+  captureGuidance: 'Classify this reason before relying on it operationally.',
 };
 
 const barcodeCatalog = {
-  '9351000001111': { sku: 'CHM-001', itemName: 'Premium Detergent 20L' },
-  '9351000002228': { sku: 'PKG-003', itemName: 'Garment Tag Roll' },
-  '9351000003335': { sku: 'CHM-005', itemName: 'Bleach 5L' },
-  '9351000004442': { sku: 'SAFE-021', itemName: 'Disposable Gloves' },
-  '9351000005559': { sku: 'CHEM-009', itemName: 'Stain Remover 2L' },
-  '9351000006666': { sku: 'PKG-011', itemName: 'Laundry Bag Large' },
+  '9351000001111': { sku: 'CHM-001', itemName: 'Premium Detergent 20L', mappingStatus: 'Active', captureMode: 'Barcode to SKU', updatedAt: '30 Mar 2026, 18:20', locationHint: 'Main Store default mapping', notes: 'Primary scanner mapping for detergent bulk stock.' },
+  '9351000002228': { sku: 'PKG-003', itemName: 'Garment Tag Roll', mappingStatus: 'Active', captureMode: 'Barcode to SKU', updatedAt: '30 Mar 2026, 18:14', locationHint: 'Shared packaging item', notes: 'Used by receiving and wastage capture.' },
+  '9351000003335': { sku: 'CHM-005', itemName: 'Bleach 5L', mappingStatus: 'Needs Review', captureMode: 'Barcode to SKU', updatedAt: '29 Mar 2026, 16:40', locationHint: 'Branch A observed mismatch risk', notes: 'Prototype placeholder for mappings needing manager verification.' },
+  '9351000004442': { sku: 'SAFE-021', itemName: 'Disposable Gloves', mappingStatus: 'Active', captureMode: 'Barcode to SKU', updatedAt: '30 Mar 2026, 17:55', locationHint: 'Main Store default mapping', notes: 'Shared consumable with stable barcode mapping.' },
+  '9351000005559': { sku: 'CHEM-009', itemName: 'Stain Remover 2L', mappingStatus: 'Active', captureMode: 'Barcode to SKU', updatedAt: '30 Mar 2026, 18:02', locationHint: 'Branch A observed mapping', notes: 'Seen in a rejected scanner-originated wastage event.' },
+  '9351000006666': { sku: 'PKG-011', itemName: 'Laundry Bag Large', mappingStatus: 'Active', captureMode: 'Barcode to SKU', updatedAt: '30 Mar 2026, 17:48', locationHint: 'Main Store default mapping', notes: 'Supports high-volume promo and drawdown capture.' },
 };
+
+const unresolvedScanQueue = [
+  {
+    id: 'SCAN-001',
+    rawValue: '9351000099999',
+    location: 'Main Store',
+    recordedAt: '30 Mar 2026, 20:21',
+    operator: 'K. Flores',
+    helper: 'Scanner captured a code that is not yet in the mapping catalog. Manager review should decide whether this is a new barcode or operator error.',
+  },
+  {
+    id: 'SCAN-002',
+    rawValue: 'PKG011-ALT',
+    location: 'Branch A',
+    recordedAt: '30 Mar 2026, 19:46',
+    operator: 'M. Rivera',
+    helper: 'Alternate vendor code was entered through handheld scan. Prototype keeps this in a review queue until a formal mapping exists.',
+  },
+];
 
 const initialRows = [
   {
@@ -92,7 +165,7 @@ const initialRows = [
     sku: 'PKG-003',
     itemName: 'Garment Tag Roll',
     qty: 1,
-    reason: 'Damaged',
+    reason: 'Supplier Fault (Credited/Returned)',
     source: 'ADMIN',
     status: 'APPROVED',
     recordedBy: 'S. Cruz',
@@ -108,13 +181,13 @@ const initialRows = [
     sku: 'CHM-005',
     itemName: 'Bleach 5L',
     qty: 4,
-    reason: 'Expired',
+    reason: 'Expired/Out of Date',
     source: 'IMPORT',
     status: 'DRAFT',
     recordedBy: 'R. Santos',
     notes: 'Pending supervisor review.',
     currentOnHand: 24,
-    activeAlert: true,
+    activeAlert: false,
   },
   {
     id: 'WE-2026-004',
@@ -144,9 +217,11 @@ const initialRows = [
     source: 'SCANNER',
     status: 'REJECTED',
     recordedBy: 'L. David',
-    notes: 'Rejected due to incorrect SKU selection.',
+    notes: 'Rejected due to incorrect item selection.',
     currentOnHand: 41,
     activeAlert: false,
+    scanValue: '9351000005559',
+    scanResolution: 'Resolved from barcode 9351000005559',
   },
   {
     id: 'WE-2026-006',
@@ -163,6 +238,63 @@ const initialRows = [
     notes: 'Promo bundle drawdown awaiting approval.',
     currentOnHand: 260,
     activeAlert: true,
+  },
+];
+
+const exportHistory = [
+  {
+    id: 'EXP-001',
+    format: 'CSV',
+    scope: 'Approved events · Main Store · 7 days',
+    status: 'Verified',
+    generatedAt: '30 Mar 2026, 18:34',
+    generatedBy: 'A. Manager',
+    helper: 'Prototype export log for ops review and external handoff.',
+  },
+  {
+    id: 'EXP-002',
+    format: 'JSON',
+    scope: 'Approved + rejected events · All locations · 30 days',
+    status: 'Pending verification',
+    generatedAt: '29 Mar 2026, 16:08',
+    generatedBy: 'S. Cruz',
+    helper: 'Awaiting audit-safe verification before external distribution.',
+  },
+  {
+    id: 'EXP-003',
+    format: 'CSV',
+    scope: 'Report-only reasons · Branch A · 14 days',
+    status: 'Blocked',
+    generatedAt: '29 Mar 2026, 09:42',
+    generatedBy: 'R. Santos',
+    helper: 'Blocked because unresolved scan corrections still exist in the prototype queue.',
+  },
+];
+
+const alertRules = [
+  {
+    id: 'ALR-01',
+    name: 'High single-event quantity',
+    scope: 'Per event',
+    threshold: '10+ units',
+    window: 'Immediate',
+    severity: 'High',
+  },
+  {
+    id: 'ALR-02',
+    name: 'Repeat loss on same SKU',
+    scope: 'Per SKU',
+    threshold: '2+ reviewed events',
+    window: '7 days',
+    severity: 'Medium',
+  },
+  {
+    id: 'ALR-03',
+    name: 'Reorder-affecting surge',
+    scope: 'Per location',
+    threshold: '20+ units',
+    window: '7 days',
+    severity: 'High',
   },
 ];
 
@@ -188,6 +320,10 @@ export function getReasonPolicy(reason) {
   return reasonPolicyMeta[reason] || defaultPolicyMeta;
 }
 
+export function getReasonGovernanceRows() {
+  return Object.entries(reasonPolicyMeta).map(([reason, meta]) => ({ reason, ...meta }));
+}
+
 export function getEventById(id) {
   return wastageRows.find((row) => row.id === id) || null;
 }
@@ -196,11 +332,17 @@ export function getScannerCatalog() {
   return Object.entries(barcodeCatalog).map(([barcode, value]) => ({ barcode, ...value }));
 }
 
+export function getBarcodeMappings() {
+  return getScannerCatalog();
+}
+
+export function getUnresolvedScans() {
+  return unresolvedScanQueue.map((scan) => ({ ...scan }));
+}
+
 export function resolveScannedItem(scanValue) {
   const raw = String(scanValue || '').trim();
-  if (!raw) {
-    return { status: 'empty' };
-  }
+  if (!raw) return { status: 'empty' };
 
   const normalized = raw.toUpperCase();
   const barcodeMatch = barcodeCatalog[raw] || barcodeCatalog[normalized];
@@ -241,6 +383,181 @@ export function resolveScannedItem(scanValue) {
   };
 }
 
+export function getKpiSummary(rows = wastageRows) {
+  const drafts = rows.filter((row) => row.status === 'DRAFT').length;
+  const submitted = rows.filter((row) => row.status === 'SUBMITTED').length;
+  const approvedQty = rows.filter((row) => row.status === 'APPROVED').reduce((sum, row) => sum + Number(row.qty || 0), 0);
+  const reorderEvents = rows.filter((row) => getReasonPolicy(row.reason).bucket === 'Reorder affecting').length;
+  return { drafts, submitted, approvedQty, reorderEvents };
+}
+
+export function getGovernanceSummary() {
+  const reasonRows = getReasonGovernanceRows();
+  const scannerCatalog = getScannerCatalog();
+  const unresolved = getUnresolvedScans();
+
+  return {
+    totalReasons: reasonRows.length,
+    reorderAffecting: reasonRows.filter((row) => row.bucket === 'Reorder affecting').length,
+    reportOnly: reasonRows.filter((row) => row.bucket === 'Report only').length,
+    managerReview: reasonRows.filter((row) => row.approvalPath === 'Manager review').length,
+    mappedBarcodes: scannerCatalog.length,
+    scannerReadySkus: new Set(scannerCatalog.filter((row) => row.mappingStatus === 'Active').map((row) => row.sku)).size,
+    manualFallbackCount: unresolved.length + 1,
+  };
+}
+
+export function getAlertRules() {
+  return alertRules.map((rule) => ({ ...rule }));
+}
+
+export function getAlertBreaches(rows = wastageRows) {
+  const breaches = [];
+
+  rows
+    .filter((row) => ['SUBMITTED', 'APPROVED'].includes(row.status) && Number(row.qty || 0) >= 10)
+    .forEach((row) => {
+      breaches.push({
+        id: `BR-${row.id}-QTY`,
+        severity: 'High',
+        label: 'High single-event quantity',
+        message: `${row.id} recorded ${row.qty} units for ${row.itemName}.`,
+        scope: `${row.location} · ${row.sku}`,
+      });
+    });
+
+  const reviewedRows = rows.filter((row) => ['SUBMITTED', 'APPROVED'].includes(row.status));
+  const bySku = reviewedRows.reduce((acc, row) => {
+    acc[row.sku] = acc[row.sku] || [];
+    acc[row.sku].push(row);
+    return acc;
+  }, {});
+
+  Object.entries(bySku).forEach(([sku, skuRows]) => {
+    if (skuRows.length >= 2) {
+      breaches.push({
+        id: `BR-${sku}-REPEAT`,
+        severity: 'Medium',
+        label: 'Repeat loss on same SKU',
+        message: `${sku} appears in ${skuRows.length} reviewed wastage events.`,
+        scope: `${skuRows[0].itemName} · ${sku}`,
+      });
+    }
+  });
+
+  const reorderRows = reviewedRows.filter((row) => getReasonPolicy(row.reason).bucket === 'Reorder affecting');
+  const byLocation = reorderRows.reduce((acc, row) => {
+    acc[row.location] = acc[row.location] || 0;
+    acc[row.location] += Number(row.qty || 0);
+    return acc;
+  }, {});
+
+  Object.entries(byLocation).forEach(([location, totalQty]) => {
+    if (totalQty >= 20) {
+      breaches.push({
+        id: `BR-${location}-SURGE`,
+        severity: 'High',
+        label: 'Reorder-affecting surge',
+        message: `${location} has ${totalQty} units of reorder-affecting waste in reviewed events.`,
+        scope: location,
+      });
+    }
+  });
+
+  return breaches;
+}
+
+export function getReportingSummary(rows = wastageRows) {
+  const approvedRows = rows.filter((row) => row.status === 'APPROVED');
+  const reviewedRows = rows.filter((row) => ['APPROVED', 'SUBMITTED', 'REJECTED', 'REVERSED'].includes(row.status));
+  const reportOnlyQty = reviewedRows
+    .filter((row) => getReasonPolicy(row.reason).bucket === 'Report only')
+    .reduce((sum, row) => sum + Number(row.qty || 0), 0);
+  const reorderQty = reviewedRows
+    .filter((row) => getReasonPolicy(row.reason).bucket === 'Reorder affecting')
+    .reduce((sum, row) => sum + Number(row.qty || 0), 0);
+  return {
+    approvedEvents: approvedRows.length,
+    reportOnlyQty,
+    reorderQty,
+    exportReadyRecords: approvedRows.length,
+  };
+}
+
+export function getReportingByReason(rows = wastageRows) {
+  const reviewedRows = rows.filter((row) => ['APPROVED', 'SUBMITTED', 'REJECTED', 'REVERSED'].includes(row.status));
+  const summary = {};
+  reviewedRows.forEach((row) => {
+    const key = row.reason;
+    if (!summary[key]) {
+      summary[key] = {
+        reason: key,
+        bucket: getReasonPolicy(key).bucket,
+        reviewedEvents: 0,
+        qty: 0,
+        lastSeen: row.occurredAt,
+      };
+    }
+    summary[key].reviewedEvents += 1;
+    summary[key].qty += Number(row.qty || 0);
+  });
+  return Object.values(summary).sort((a, b) => b.qty - a.qty);
+}
+
+export function getReportingByLocation(rows = wastageRows) {
+  const reviewedRows = rows.filter((row) => ['APPROVED', 'SUBMITTED', 'REJECTED', 'REVERSED'].includes(row.status));
+  const summary = {};
+  reviewedRows.forEach((row) => {
+    if (!summary[row.location]) {
+      summary[row.location] = {
+        location: row.location,
+        reviewedEvents: 0,
+        pendingReview: 0,
+        reportOnlyQty: 0,
+        reorderQty: 0,
+      };
+    }
+    const item = summary[row.location];
+    item.reviewedEvents += 1;
+    if (row.status === 'SUBMITTED') item.pendingReview += 1;
+    const qty = Number(row.qty || 0);
+    if (getReasonPolicy(row.reason).bucket === 'Report only') item.reportOnlyQty += qty;
+    else item.reorderQty += qty;
+  });
+  return Object.values(summary).sort((a, b) => b.reviewedEvents - a.reviewedEvents);
+}
+
+export function getExportHistory() {
+  return exportHistory.map((row) => ({ ...row }));
+}
+
+export function getExportReadiness(rows = wastageRows) {
+  const approvedRows = rows.filter((row) => row.status === 'APPROVED');
+  const submittedRows = rows.filter((row) => row.status === 'SUBMITTED');
+  const unresolved = getUnresolvedScans();
+  const watchlistReasons = getReasonGovernanceRows().filter((row) => row.catalogStatus === 'Watchlist').length;
+  return {
+    approvedRecords: approvedRows.length,
+    pendingReview: submittedRows.length,
+    unresolvedScans: unresolved.length,
+    watchlistReasons,
+    blockerCount: unresolved.length + submittedRows.length,
+    helper: submittedRows.length > 0 || unresolved.length > 0
+      ? 'Review and scanner cleanup should happen before export is treated as verified.'
+      : 'Prototype export readiness is clear for approved records.',
+  };
+}
+
+export function getWorkflowSteps(status) {
+  return [
+    { key: 'created', label: 'Created', done: true },
+    { key: 'submitted', label: 'Submitted', done: ['SUBMITTED', 'APPROVED', 'REJECTED', 'REVERSED'].includes(status) },
+    { key: 'approved', label: 'Approved', done: status === 'APPROVED' },
+    { key: 'rejected', label: 'Rejected', done: status === 'REJECTED' },
+    { key: 'reversed', label: 'Reversed', done: status === 'REVERSED' },
+  ];
+}
+
 function nextEventId() {
   const maxNumber = wastageRows.reduce((max, row) => {
     const match = row.id.match(/(\d+)$/);
@@ -251,11 +568,6 @@ function nextEventId() {
 }
 
 export function saveDraftEvent(payload) {
-  if (payload.id) {
-    updateEvent(payload.id, { ...payload, status: 'DRAFT' });
-    return payload.id;
-  }
-
   const id = nextEventId();
   const recordedAt = payload.recordedAt || '30 Mar 2026, 21:05';
   wastageRows = [
@@ -273,11 +585,6 @@ export function saveDraftEvent(payload) {
 }
 
 export function createSubmittedEvent(payload) {
-  if (payload.id) {
-    updateEvent(payload.id, { ...payload, status: 'SUBMITTED' });
-    return payload.id;
-  }
-
   const id = nextEventId();
   const recordedAt = payload.recordedAt || '30 Mar 2026, 21:05';
   wastageRows = [
