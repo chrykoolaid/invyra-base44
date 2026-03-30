@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, BellRing, Download, FileJson, FileSpreadsheet, Filter, Plus, ScanLine, Search, Settings2, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BellRing, ClipboardCheck, Download, FileJson, FileSpreadsheet, Filter, History, Plus, ScanLine, Search, Settings2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import {
   getAlertBreaches,
   getAlertRules,
   getBarcodeMappings,
+  getApprovalQueue,
+  getApprovalSummary,
+  getAuditHistory,
+  getExceptionQueue,
   getExportHistory,
   getExportReadiness,
   getGovernanceSummary,
@@ -33,6 +37,7 @@ const surfaceTabs = [
   { key: 'REASONS', label: 'Reason Governance' },
   { key: 'BARCODES', label: 'Barcode Admin' },
   { key: 'REPORTING', label: 'Reporting & Exports' },
+  { key: 'APPROVALS', label: 'Approvals & Audit' },
 ];
 
 function KpiCard({ label, value, helper, tone = 'text-foreground' }) {
@@ -103,6 +108,10 @@ export default function Wastage() {
   const reportingByLocation = useMemo(() => getReportingByLocation(rows), [rows]);
   const exportReadiness = useMemo(() => getExportReadiness(rows), [rows]);
   const exportHistory = useMemo(() => getExportHistory(), []);
+  const approvalSummary = useMemo(() => getApprovalSummary(rows), [rows]);
+  const approvalQueue = useMemo(() => getApprovalQueue(rows), [rows]);
+  const exceptionQueue = useMemo(() => getExceptionQueue(rows), [rows]);
+  const auditHistory = useMemo(() => getAuditHistory(rows), [rows]);
 
   const setSurface = (nextSurface) => {
     setActiveSurface(nextSurface);
@@ -135,7 +144,7 @@ export default function Wastage() {
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Wastage</h1>
         <p className="text-sm text-muted-foreground">
-          Capture wastage, review the workflow queue, and prototype the governance, barcode, reporting, and export surfaces that the current SKU-based waste engine still needs next.
+          Capture wastage, review the workflow queue, and prototype the governance, barcode, reporting, approvals, and audit surfaces that the current SKU-based waste engine still needs next.
         </p>
       </div>
 
@@ -147,7 +156,7 @@ export default function Wastage() {
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">Engine-aligned module shell</p>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Operations already match the current backend flow. This pass keeps those surfaces stable while adding honest admin prototypes for <span className="font-medium text-foreground">reason governance</span>, <span className="font-medium text-foreground">barcode mapping</span>, and <span className="font-medium text-foreground">reporting/export readiness</span> without pretending the backend already has those layers built in.
+              Operations already match the current backend flow. This pass keeps those surfaces stable while adding honest admin prototypes for <span className="font-medium text-foreground">reason governance</span>, <span className="font-medium text-foreground">barcode mapping</span>, <span className="font-medium text-foreground">reporting/export readiness</span>, and <span className="font-medium text-foreground">approval/audit control</span> without pretending the backend already has those layers built in.
             </p>
           </div>
         </div>
@@ -645,6 +654,150 @@ export default function Wastage() {
                   <p>Add filtered report endpoints by location, reason, status, and date range.</p>
                   <p>Create CSV and JSON export endpoints with audit-safe export history.</p>
                   <p>Link export verification to approvals, unresolved scans, and reason policy snapshots.</p>
+                </div>
+              </SectionCard>
+            </div>
+          </div>
+        </>
+
+      ) : activeSurface === 'APPROVALS' ? (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+            <KpiCard label="Pending Review" value={approvalSummary.pendingReview} helper="Submitted records still awaiting a decision" tone="text-amber-700" />
+            <KpiCard label="Manager Review" value={approvalSummary.managerReview} helper="Rows whose reason policy demands manager review" tone="text-red-700" />
+            <KpiCard label="Exception Cases" value={approvalSummary.exceptionCases} helper="Scanner, watchlist, alert, rejected, or reversed records" tone="text-slate-700" />
+            <KpiCard label="Reversible Approved" value={approvalSummary.reversibleApproved} helper="Approved events that would need a controlled reversal if wrong" tone="text-green-700" />
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+            <div className="xl:col-span-8 space-y-4">
+              <SectionCard
+                title="Approval Queue"
+                subtitle="Prototype the manager review lane that sits between submission and final stock posting. This keeps approval posture visible even before the backend has richer role and threshold enforcement."
+                action={<span className="text-xs text-muted-foreground">{approvalQueue.length} tracked rows</span>}
+              >
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[1080px]">
+                    <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                      <tr>
+                        {['Event', 'Status', 'Review Stage', 'Recommended Action', 'Risk', 'Blocker', 'Approval Path', 'Open'].map((heading) => (
+                          <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {approvalQueue.map((row, index) => (
+                        <tr key={row.id} className={`border-t border-border ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
+                          <td className="px-4 py-3 align-top min-w-[220px]">
+                            <div className="font-medium text-foreground">{row.id}</div>
+                            <div className="text-[11px] text-muted-foreground mt-1">{row.itemName} · {row.sku} · {row.qty} units · {row.location}</div>
+                          </td>
+                          <td className="px-4 py-3 align-top whitespace-nowrap">
+                            <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>{row.status}</span>
+                          </td>
+                          <td className="px-4 py-3 align-top min-w-[160px]">
+                            <div className="font-medium text-foreground">{row.reviewStage}</div>
+                            <div className="text-[11px] text-muted-foreground mt-1">{row.occurredAt} · {row.recordedBy}</div>
+                          </td>
+                          <td className="px-4 py-3 align-top min-w-[180px] text-muted-foreground">{row.recommendedAction}</td>
+                          <td className="px-4 py-3 align-top whitespace-nowrap">
+                            <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${row.riskLevel === 'High' ? 'bg-red-50 text-red-700 border border-red-200' : row.riskLevel === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>{row.riskLevel}</span>
+                          </td>
+                          <td className="px-4 py-3 align-top min-w-[220px] text-muted-foreground">{row.blocker}</td>
+                          <td className="px-4 py-3 align-top whitespace-nowrap text-foreground font-medium">{row.approvalPath}</td>
+                          <td className="px-4 py-3 align-top whitespace-nowrap">
+                            <button
+                              onClick={() => navigate(`/Wastage/workspace?id=${row.id}`)}
+                              className="inline-flex items-center gap-1.5 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                            >
+                              Review <ArrowRight size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </SectionCard>
+
+              <SectionCard
+                title="Decision History"
+                subtitle="Prototype the audit-safe activity stream that should eventually come from richer workflow logs, device context, and approval metadata."
+                action={<span className="text-xs text-muted-foreground">{auditHistory.length} log rows</span>}
+              >
+                <div className="space-y-3">
+                  {auditHistory.map((entry) => (
+                    <div key={entry.id} className="border border-border rounded-2xl px-4 py-3 bg-background/40 flex gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-card border border-border text-foreground flex items-center justify-center flex-shrink-0">
+                        <History size={15} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-foreground">{entry.action}</p>
+                          <span className="inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-muted text-muted-foreground border border-border">{entry.eventId}</span>
+                        </div>
+                        <p className={`text-xs mt-1 ${entry.tone}`}>{entry.detail}</p>
+                        <p className="text-[11px] text-muted-foreground mt-2">{entry.when} · {entry.actor}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            </div>
+
+            <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
+              <SectionCard title="Exception Queue" subtitle="Use this to keep the risky or unusual records visible instead of letting them disappear into the normal queue.">
+                {exceptionQueue.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No exceptions are active right now.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {exceptionQueue.map((entry) => (
+                      <div key={entry.id} className="border border-border rounded-2xl px-4 py-3 bg-background/40 flex gap-3">
+                        <div className={`h-9 w-9 rounded-xl border flex items-center justify-center flex-shrink-0 ${entry.severity === 'High' ? 'bg-red-50 border-red-200 text-red-700' : entry.severity === 'Medium' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-slate-100 border-slate-200 text-slate-700'}`}>
+                          <ShieldAlert size={15} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-foreground">{entry.label}</p>
+                            <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${entry.severity === 'High' ? 'bg-red-50 text-red-700 border border-red-200' : entry.severity === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>{entry.severity}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{entry.helper}</p>
+                          <div className="flex items-center gap-2 mt-3">
+                            <span className="inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-card text-foreground border border-border">{entry.type}</span>
+                            <button
+                              onClick={() => navigate(`/Wastage/workspace?id=${entry.eventId}`)}
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              Open event <ArrowRight size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+
+              <SectionCard title="Why this screen exists" subtitle="The current engine has workflow actions, but not a complete approval console or audit subsystem yet.">
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>This surface gives managers a clean place to review queue posture, exceptions, and decision history without pretending that role enforcement, threshold logic, or device-grade audit capture already exist in the backend.</p>
+                  <p>It also creates a clear home for future approval thresholds, dual-review rules, and stronger branch-level controls.</p>
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Recommended backend next step" subtitle="Lowest-risk work after this UI direction is accepted.">
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>Add role-aware approval rules, including manager-only reasons and configurable high-quantity thresholds.</p>
+                  <p>Store richer audit events with before/after changes, device or terminal source, and explicit approval actor/timestamps.</p>
+                  <p>Create a dedicated exception queue endpoint so alerts, watchlist reasons, unresolved scans, and reversals can be reviewed without UI-side scaffolding.</p>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button className="inline-flex items-center gap-1.5 h-10 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                    <ClipboardCheck size={14} /> Approval Policy Prototype
+                  </button>
+                  <button className="inline-flex items-center gap-1.5 h-10 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                    <History size={14} /> Audit Trail Prototype
+                  </button>
                 </div>
               </SectionCard>
             </div>
