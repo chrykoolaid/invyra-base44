@@ -287,61 +287,103 @@ export default function WastageWorkspace() {
         {/* ── CREATE MODE ── */}
         {mode === 'create' ? (
           <>
-            <div className="mb-5">
-              <h1 className="text-base font-semibold text-foreground">Record Wastage</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Saving as draft does not adjust stock. Stock is only deducted on approval.</p>
+            {/* Header */}
+            <div className="flex items-baseline justify-between mb-3">
+              <div>
+                <h1 className="text-sm font-semibold text-foreground">Record Wastage</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">Draft records do not adjust stock until approved.</p>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-muted text-muted-foreground border border-border">DRAFT</span>
             </div>
 
-            {/* Inline item preview strip */}
-            {form.itemName && (
-              <div className="mb-4 flex items-center gap-4 px-4 py-2.5 border border-border rounded bg-muted/20 text-xs">
-                <span className="font-medium text-foreground">{form.itemName}</span>
-                <span className="text-muted-foreground">SKU: <span className="text-foreground font-mono">{form.sku}</span></span>
-                <span className="text-muted-foreground">Location: {form.location}</span>
-                <span className="text-muted-foreground">On Hand: <span className="text-foreground font-semibold">{form.currentOnHand}</span></span>
+            {/* Summary strip — always visible, updates as form fills */}
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[
+                { label: 'Location',     value: form.location || '—' },
+                { label: 'SKU',          value: form.sku      || '—',   mono: true },
+                { label: 'On Hand',      value: String(form.currentOnHand) },
+                { label: 'Stock Effect', value: 'No movement yet', dim: true },
+              ].map(({ label, value, mono, dim }) => (
+                <div key={label} className="border border-border rounded bg-card px-3 py-2">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">{label}</p>
+                  <p className={`text-sm font-semibold leading-snug ${dim ? 'text-muted-foreground' : 'text-foreground'} ${mono ? 'font-mono' : ''}`}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Item preview card — shown once SKU resolves */}
+            {form.itemName ? (
+              <div className="mb-4 border border-border rounded bg-muted/20 px-4 py-3 flex items-center gap-6">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-0.5">Item</p>
+                  <p className="text-sm font-semibold text-foreground truncate">{form.itemName}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">On Hand</p>
+                  <p className="text-lg font-bold text-foreground leading-none mt-0.5">{form.currentOnHand}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest">After Approval</p>
+                  <p className="text-lg font-bold text-red-600 leading-none mt-0.5">
+                    {typeof form.currentOnHand === 'number' ? form.currentOnHand - Number(form.qty) : '—'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="mb-4 border border-dashed border-border rounded px-4 py-2.5 flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">Enter a SKU above to preview the item and on-hand quantity.</p>
               </div>
             )}
 
-            <SectionHeading>Wastage Details</SectionHeading>
-
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4 mb-5">
-              <Field label="Location">
-                <select value={form.location} onChange={e => handleFormChange('location', e.target.value)}
-                  className="h-8 w-full border border-border rounded px-2.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring">
-                  {locationOptions.map(l => <option key={l}>{l}</option>)}
-                </select>
-              </Field>
-              <Field label="SKU">
-                <input value={form.sku} onChange={e => handleFormChange('sku', e.target.value)}
-                  placeholder="Enter SKU"
-                  className="h-8 w-full border border-border rounded px-2.5 text-sm font-mono bg-card focus:outline-none focus:ring-1 focus:ring-ring" />
-              </Field>
-              <Field label="Quantity">
-                <input type="number" min={1} value={form.qty} onChange={e => handleFormChange('qty', e.target.value)}
-                  className="h-8 w-full border border-border rounded px-2.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring" />
-              </Field>
-              <Field label="Reason Code">
-                <select value={form.reason} onChange={e => handleFormChange('reason', e.target.value)}
-                  className="h-8 w-full border border-border rounded px-2.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring">
-                  {reasonOptions.map(r => <option key={r}>{r}</option>)}
-                </select>
-              </Field>
-              <Field label="Occurred At">
-                <input value={form.occurredAt} onChange={e => handleFormChange('occurredAt', e.target.value)}
-                  className="h-8 w-full border border-border rounded px-2.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring" />
-              </Field>
-              <Field label="Source">
-                <select value={form.source} onChange={e => handleFormChange('source', e.target.value)}
-                  className="h-8 w-full border border-border rounded px-2.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring">
-                  {sourceOptions.map(s => <option key={s}>{s}</option>)}
-                </select>
-              </Field>
-              <div className="col-span-2">
-                <Field label="Notes">
-                  <textarea value={form.notes} onChange={e => handleFormChange('notes', e.target.value)}
-                    rows={2} placeholder="Optional operational notes…"
-                    className="w-full border border-border rounded px-2.5 py-1.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring resize-none placeholder:text-muted-foreground/50" />
+            {/* Primary fields — location, SKU, qty, reason */}
+            <div className="mb-4">
+              <SectionHeading>Core Fields</SectionHeading>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                <Field label="Location">
+                  <select value={form.location} onChange={e => handleFormChange('location', e.target.value)}
+                    className="h-8 w-full border border-border rounded px-2.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring">
+                    {locationOptions.map(l => <option key={l}>{l}</option>)}
+                  </select>
                 </Field>
+                <Field label="SKU">
+                  <input value={form.sku} onChange={e => handleFormChange('sku', e.target.value)}
+                    placeholder="e.g. CHM-001"
+                    className="h-8 w-full border border-border rounded px-2.5 text-sm font-mono bg-card focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50" />
+                </Field>
+                <Field label="Quantity">
+                  <input type="number" min={1} value={form.qty} onChange={e => handleFormChange('qty', e.target.value)}
+                    className="h-8 w-full border border-border rounded px-2.5 text-sm font-semibold bg-card focus:outline-none focus:ring-1 focus:ring-ring" />
+                </Field>
+                <Field label="Reason Code">
+                  <select value={form.reason} onChange={e => handleFormChange('reason', e.target.value)}
+                    className="h-8 w-full border border-border rounded px-2.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring">
+                    {reasonOptions.map(r => <option key={r}>{r}</option>)}
+                  </select>
+                </Field>
+              </div>
+            </div>
+
+            {/* Secondary fields — occurred at, source, notes */}
+            <div>
+              <SectionHeading>Additional Details</SectionHeading>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                <Field label="Occurred At">
+                  <input value={form.occurredAt} onChange={e => handleFormChange('occurredAt', e.target.value)}
+                    className="h-8 w-full border border-border rounded px-2.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring" />
+                </Field>
+                <Field label="Source">
+                  <select value={form.source} onChange={e => handleFormChange('source', e.target.value)}
+                    className="h-8 w-full border border-border rounded px-2.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring">
+                    {sourceOptions.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </Field>
+                <div className="col-span-2">
+                  <Field label="Notes">
+                    <textarea value={form.notes} onChange={e => handleFormChange('notes', e.target.value)}
+                      rows={2} placeholder="Optional operational notes…"
+                      className="w-full border border-border rounded px-2.5 py-1.5 text-sm bg-card focus:outline-none focus:ring-1 focus:ring-ring resize-none placeholder:text-muted-foreground/40" />
+                  </Field>
+                </div>
               </div>
             </div>
           </>
