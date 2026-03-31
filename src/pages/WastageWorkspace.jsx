@@ -156,14 +156,18 @@ function AlertInstanceCard({ instance }) {
   return (
     <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${instance.severity === 'HIGH' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${instance.severityClass || (instance.severity === 'HIGH' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200')}`}>
           {instance.severity}
         </span>
-        <span className="text-sm font-medium text-foreground">{instance.ruleId}</span>
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${instance.stateClass || 'bg-slate-100 text-slate-700 border border-slate-200'}`}>
+          {instance.stateLabel || (instance.isAcknowledged ? 'Acknowledged' : 'Action needed')}
+        </span>
+        <span className="text-sm font-medium text-foreground">{instance.ruleName || instance.ruleId}</span>
         <span className="text-[11px] text-muted-foreground">{instance.window}</span>
       </div>
       <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{instance.message}</p>
       <p className="text-[11px] text-muted-foreground mt-2">{instance.scope}</p>
+      <p className="text-[11px] text-muted-foreground mt-1">{instance.acknowledgementLabel || 'Acknowledgement write pending'}</p>
     </div>
   );
 }
@@ -816,9 +820,23 @@ export default function WastageWorkspace() {
                         {liveEvent.linkedAlertInstances.map((instance) => (
                           <AlertInstanceCard key={instance.id} instance={instance} />
                         ))}
+                        <button
+                          onClick={() => navigate('/Wastage?surface=ALERTS')}
+                          className="inline-flex items-center gap-1.5 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                        >
+                          Open Alerts surface <ArrowRight size={14} />
+                        </button>
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground">No active alert instances are linked to this event right now.</p>
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">No active alert instances are linked to this event right now.</p>
+                        <button
+                          onClick={() => navigate('/Wastage?surface=ALERTS')}
+                          className="inline-flex items-center gap-1.5 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
+                        >
+                          Open Alerts surface <ArrowRight size={14} />
+                        </button>
+                      </div>
                     )}
                   </SectionCard>
 

@@ -768,7 +768,7 @@ function rebuildAlertInstances() {
     }
   });
 
-  alertInstances = sortByIsoDesc(created, 'createdAtIso');
+  alertInstances = applyPrototypeAcknowledgementPosture(created);
   wastageRows = wastageRows.map((row) => ({
     ...row,
     activeAlert: alertInstances.some((instance) => instance.status === 'ACTIVE' && instance.eventId === row.id),
@@ -782,7 +782,7 @@ export function getWastageRows() {
   return sortByIsoDesc(wastageRows, 'recordedAtIso').map((row) => ({
     ...row,
     lastAction: row.lastAction || getLastAction(row),
-    linkedAlertInstances: (row.linkedAlertInstances || []).map((instance) => ({ ...instance })),
+    linkedAlertInstances: (row.linkedAlertInstances || []).map((instance) => decorateAlertInstance({ ...instance })),
   }));
 }
 
@@ -796,7 +796,14 @@ export function getReasonGovernanceRows() {
 
 export function getEventById(id) {
   const row = wastageRows.find((event) => event.id === id);
-  return row ? { ...row, movementRows: [...row.movementRows], auditTrail: [...row.auditTrail], linkedAlertInstances: [...(row.linkedAlertInstances || [])] } : null;
+  return row
+    ? {
+        ...row,
+        movementRows: [...row.movementRows],
+        auditTrail: [...row.auditTrail],
+        linkedAlertInstances: [...(row.linkedAlertInstances || [])].map((instance) => decorateAlertInstance({ ...instance })),
+      }
+    : null;
 }
 
 export function getScannerCatalog() {
@@ -1160,11 +1167,22 @@ export function getReportingPrototype(rows = wastageRows, options = {}) {
 }
 
 export function getAlertRules() {
-  return sortByIsoDesc(alertRules, 'createdAtIso').map((rule) => ({ ...rule }));
+  return sortByIsoDesc(alertRules, 'createdAtIso').map((rule) => {
+    const linkedInstances = alertInstances.filter((instance) => instance.ruleId === rule.id);
+
+    return {
+      ...rule,
+      thresholdLabel: rule.thresholdQty ? `${rule.thresholdQty}+ qty` : `${rule.thresholdCount || 0}+ events`,
+      linkedInstances: linkedInstances.length,
+      linkedAcknowledged: linkedInstances.filter((instance) => instance.isAcknowledged).length,
+      linkedActionNeeded: linkedInstances.filter((instance) => !instance.isAcknowledged).length,
+      coverageLabel: rule.scopeLabel || rule.scope,
+    };
+  });
 }
 
 export function getAlertInstances() {
-  return alertInstances.map((row) => ({ ...row }));
+  return sortByIsoDesc(alertInstances, 'createdAtIso').map((row) => decorateAlertInstance({ ...row }));
 }
 
 export function getAlertBreaches() {
@@ -1176,6 +1194,90 @@ export function getLastAlertEvaluation() {
     iso: lastAlertEvaluationIso,
     display: formatDisplayDate(lastAlertEvaluationIso),
   };
+}
+
+function decorateAlertInstance(instance) {
+  const rule = alertRules.find((row) => row.id === instance.ruleId);
+  const event = wastageRows.find((row) => row.id === instance.eventId);
+
+  return {
+    ...instance,
+    ruleName: rule?.name || instance.ruleId,
+    ruleType: rule?.ruleType || '',
+    thresholdLabel: rule?.thresholdQty ? `${rule.thresholdQty}+ qty` : `${rule?.thresholdCount || 0}+ events`,
+    ruleScopeLabel: rule?.scopeLabel || rule?.scope || instance.scope,
+    relatedLocation: event?.location || '',
+    relatedSku: event?.sku || '',
+    relatedItemName: event?.itemName || '',
+    relatedStatus: event?.status || '',
+    relatedSource: event?.source || '',
+    relatedRecordedAt: event?.recordedAt || '',
+    stateLabel: instance.isAcknowledged ? 'Acknowledged' : 'Action needed',
+    stateClass: instance.isAcknowledged
+      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+      : 'bg-amber-50 text-amber-700 border border-amber-200',
+    severityClass: instance.severity === 'HIGH'
+      ? 'bg-red-50 text-red-700 border border-red-200'
+      : 'bg-amber-50 text-amber-700 border border-amber-200',
+    acknowledgementLabel: instance.isAcknowledged
+      ? `Acknowledged by ${instance.acknowledgedBy || '—'}`
+      : 'Acknowledgement write pending',
+    acknowledgementHelper: instance.isAcknowledged
+      ? `Scaffolded acknowledgement fields already show ${instance.acknowledgedAt || 'a timestamp'} for this instance.`
+      : 'The engine has acknowledgement fields, but public write support is still pending.',
+    nextAction: instance.isAcknowledged
+      ? 'Keep this visible until the instance is no longer triggered.'
+      : 'Review the related event and prepare for acknowledgement once the API exists.',
+  };
+}
+
+function applyPrototypeAcknowledgementPosture(instances) {
+  let acknowledgedAssigned = false;
+
+  return sortByIsoDesc(instances, 'createdAtIso').map((instance) => {
+    if (!acknowledgedAssigned && instance.severity !== 'HIGH') {
+      acknowledgedAssigned = true;
+      return {
+        ...instance,
+        isAcknowledged: true,
+        acknowledgedAtIso: '2026-03-31T12:48:00Z',
+        acknowledgedAt: formatDisplayDate('2026-03-31T12:48:00Z'),
+        acknowledgedBy: 'L. Supervisor',
+      };
+    }
+    return {
+      ...instance,
+      acknowledgedAtIso: instance.acknowledgedAtIso || '',
+      acknowledgedAt: instance.acknowledgedAt || '',
+      acknowledgedBy: instance.acknowledgedBy || '',
+    };
+  });
+}
+
+export function getAlertSummary() {
+  const instances = getAlertInstances();
+  return {
+    rulesTotal: alertRules.length,
+    totalInstances: instances.length,
+    actionNeeded: instances.filter((row) => !row.isAcknowledged).length,
+    acknowledged: instances.filter((row) => row.isAcknowledged).length,
+    highSeverity: instances.filter((row) => row.severity === 'HIGH').length,
+  };
+}
+
+export function getAlertRuleReadinessRows() {
+  return [
+    { label: 'Rule create + evaluate', state: 'live', helper: 'Write posture is already available through rule create and evaluate-now flows.' },
+    { label: 'Rule list view', state: 'stored', helper: 'Rules are already structured cleanly enough for a manager-facing list surface.' },
+    { label: 'Instance queue view', state: 'stored', helper: 'Generated instances already carry severity, scope, window, and message posture.' },
+    { label: 'Acknowledgement display', state: 'stored', helper: 'Acknowledgement fields already exist and can be shown read-only today.' },
+    { label: 'Acknowledgement write', state: 'future', helper: 'Keep the button posture disabled until a public write endpoint exists.' },
+  ];
+}
+
+export function getAlertById(id) {
+  const instance = alertInstances.find((row) => row.id === id);
+  return instance ? decorateAlertInstance({ ...instance }) : null;
 }
 
 export function createAlertRule(payload) {

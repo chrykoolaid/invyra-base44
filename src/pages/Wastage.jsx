@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, ArrowRight, BellRing, Download, Filter, History, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -7,7 +7,9 @@ import {
   evaluateAlertRules,
   getAlertApiPosture,
   getAlertInstances,
+  getAlertRuleReadinessRows,
   getAlertRules,
+  getAlertSummary,
   getAuditFeed,
   getBarcodeMappings,
   getGovernanceSummary,
@@ -39,6 +41,13 @@ const surfaceTabs = [
   { key: 'ALERTS', label: 'Alert Rules & Instances' },
   { key: 'REPORTING', label: 'Reporting' },
   { key: 'GUIDES', label: 'Guides' },
+];
+
+const alertTabs = [
+  { key: 'ALL', label: 'All instances' },
+  { key: 'ACTION_NEEDED', label: 'Action needed' },
+  { key: 'ACKNOWLEDGED', label: 'Acknowledged' },
+  { key: 'HIGH', label: 'High severity' },
 ];
 
 const reportWindowTabs = [
@@ -111,15 +120,18 @@ function AlertInstanceCard({ instance }) {
   return (
     <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${instance.severity === 'HIGH' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${instance.severityClass || (instance.severity === 'HIGH' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200')}`}>
           {instance.severity}
         </span>
-        <p className="text-sm font-medium text-foreground">{instance.ruleId}</p>
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${instance.stateClass || 'bg-slate-100 text-slate-700 border border-slate-200'}`}>
+          {instance.stateLabel || (instance.isAcknowledged ? 'Acknowledged' : 'Action needed')}
+        </span>
+        <p className="text-sm font-medium text-foreground">{instance.ruleName || instance.ruleId}</p>
         <span className="text-[11px] text-muted-foreground">{instance.window}</span>
       </div>
       <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{instance.message}</p>
       <p className="text-[11px] text-muted-foreground mt-2">{instance.scope}</p>
-      <p className="text-[11px] text-muted-foreground mt-1">Acknowledgement write flow stays prototype-safe in this build.</p>
+      <p className="text-[11px] text-muted-foreground mt-1">{instance.acknowledgementLabel || 'Acknowledgement write pending'}</p>
     </div>
   );
 }
@@ -144,6 +156,51 @@ function ReadinessLine({ item }) {
   );
 }
 
+
+function AlertQueueRow({ instance, selected, onSelect, onOpenEvent }) {
+  return (
+    <tr
+      className={`border-t border-border cursor-pointer transition-colors ${selected ? 'bg-primary/5' : 'bg-card hover:bg-muted/25'}`}
+      onClick={() => onSelect(instance.id)}
+    >
+      <td className="px-4 py-3 align-top min-w-[260px]">
+        <div className="font-medium text-foreground">{instance.ruleName}</div>
+        <div className="text-[11px] text-muted-foreground mt-0.5">{instance.id} · {instance.window}</div>
+        <div className="text-[11px] text-muted-foreground mt-1">{instance.message}</div>
+      </td>
+      <td className="px-4 py-3 align-top whitespace-nowrap">
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${instance.severityClass}`}>{instance.severity}</span>
+      </td>
+      <td className="px-4 py-3 align-top whitespace-nowrap">
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${instance.stateClass}`}>{instance.stateLabel}</span>
+      </td>
+      <td className="px-4 py-3 align-top min-w-[220px] text-muted-foreground">
+        <div>{instance.scope}</div>
+        <div className="text-[11px] mt-0.5">{instance.thresholdLabel}</div>
+      </td>
+      <td className="px-4 py-3 align-top min-w-[200px] text-muted-foreground">
+        <div>{instance.eventId}</div>
+        <div className="text-[11px] mt-0.5">{instance.relatedLocation} · {instance.relatedSku}</div>
+      </td>
+      <td className="px-4 py-3 align-top min-w-[230px] text-muted-foreground">
+        <div>{instance.acknowledgementLabel}</div>
+        <div className="text-[11px] mt-0.5">{instance.nextAction}</div>
+      </td>
+      <td className="px-4 py-3 align-top whitespace-nowrap">
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenEvent(instance.eventId);
+          }}
+          className="inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:opacity-80"
+        >
+          Open event <ArrowRight size={14} />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
 export default function Wastage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -160,6 +217,9 @@ export default function Wastage() {
   const [reportPrototypeWindow, setReportPrototypeWindow] = useState('30D');
   const [reportScope, setReportScope] = useState('REVIEWED');
   const [reportGroupBy, setReportGroupBy] = useState('REASON');
+  const [alertQuery, setAlertQuery] = useState('');
+  const [alertFilter, setAlertFilter] = useState('ACTION_NEEDED');
+  const [selectedAlertId, setSelectedAlertId] = useState('');
   const [ruleForm, setRuleForm] = useState({
     name: 'Custom wastage threshold',
     location: '',
@@ -177,6 +237,8 @@ export default function Wastage() {
   const governanceSummary = useMemo(() => getGovernanceSummary(), [refreshTick]);
   const alertRules = useMemo(() => getAlertRules(), [refreshTick]);
   const alertInstances = useMemo(() => getAlertInstances(), [refreshTick]);
+  const alertSummary = useMemo(() => getAlertSummary(), [refreshTick]);
+  const alertReadiness = useMemo(() => getAlertRuleReadinessRows(), [refreshTick]);
   const movementLedger = useMemo(() => getMovementLedger(10), [refreshTick]);
   const auditFeed = useMemo(() => getAuditFeed(8), [refreshTick]);
   const readinessBoard = useMemo(() => getReadinessBoard(), [refreshTick]);
@@ -206,6 +268,49 @@ export default function Wastage() {
   }, [activeTab, query, rows]);
 
   const highSeverityAlerts = alertInstances.filter((instance) => instance.severity === 'HIGH');
+  const filteredAlertInstances = useMemo(() => {
+    const q = alertQuery.trim().toLowerCase();
+    return alertInstances.filter((instance) => {
+      const matchesQuery =
+        !q ||
+        instance.id.toLowerCase().includes(q) ||
+        instance.ruleName.toLowerCase().includes(q) ||
+        instance.scope.toLowerCase().includes(q) ||
+        instance.message.toLowerCase().includes(q) ||
+        instance.eventId.toLowerCase().includes(q) ||
+        instance.relatedSku.toLowerCase().includes(q) ||
+        instance.relatedLocation.toLowerCase().includes(q);
+
+      const matchesFilter =
+        alertFilter === 'ALL' ||
+        (alertFilter === 'ACTION_NEEDED' && !instance.isAcknowledged) ||
+        (alertFilter === 'ACKNOWLEDGED' && instance.isAcknowledged) ||
+        (alertFilter === 'HIGH' && instance.severity === 'HIGH');
+
+      return matchesQuery && matchesFilter;
+    });
+  }, [alertFilter, alertInstances, alertQuery]);
+
+  const selectedAlert = useMemo(
+    () => filteredAlertInstances.find((instance) => instance.id === selectedAlertId) || filteredAlertInstances[0] || null,
+    [filteredAlertInstances, selectedAlertId]
+  );
+
+  useEffect(() => {
+    if (!selectedAlert && filteredAlertInstances.length) {
+      setSelectedAlertId(filteredAlertInstances[0].id);
+      return;
+    }
+
+    if (selectedAlert && selectedAlertId !== selectedAlert.id) {
+      setSelectedAlertId(selectedAlert.id);
+      return;
+    }
+
+    if (!filteredAlertInstances.length && selectedAlertId) {
+      setSelectedAlertId('');
+    }
+  }, [filteredAlertInstances, selectedAlert, selectedAlertId]);
 
   const updateSurface = (surfaceKey) => {
     setActiveSurface(surfaceKey);
@@ -417,15 +522,107 @@ export default function Wastage() {
   const renderAlertsSurface = () => (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-        <KpiCard label="Alert Rules" value={alertRules.length} helper="Configured rule scaffolds in this prototype" tone="text-slate-700" />
-        <KpiCard label="Active Instances" value={alertInstances.length} helper="Generated from the latest evaluation pass" tone="text-red-700" />
-        <KpiCard label="High Severity" value={highSeverityAlerts.length} helper="High-severity generated instances" tone="text-red-700" />
-        <KpiCard label="Last Evaluated" value={lastAlertEvaluation.display} helper="Prototype-safe evaluate-now timestamp" tone="text-blue-700" />
+        <KpiCard label="Alert Rules" value={alertSummary.rulesTotal} helper="Configured rule scaffolds in this build" tone="text-slate-700" />
+        <KpiCard label="Action Needed" value={alertSummary.actionNeeded} helper="Instances still waiting on acknowledgement posture" tone="text-amber-700" />
+        <KpiCard label="Acknowledged" value={alertSummary.acknowledged} helper="Read-only acknowledgement fields already visible" tone="text-blue-700" />
+        <KpiCard label="High Severity" value={alertSummary.highSeverity} helper="Keep these at the top of manager review" tone="text-red-700" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
         <div className="xl:col-span-8 space-y-4">
-          <SectionCard title="Create alert rule" subtitle="Prototype-safe writer around the engine's rule structure. Keep scope and threshold simple.">
+          <SectionCard
+            title="Alert instance queue"
+            subtitle="Manager-facing queue for generated alert instances. This pass makes acknowledgement posture visible without pretending the write flow is finished."
+            action={<span className="text-xs text-muted-foreground">{filteredAlertInstances.length} visible</span>}
+          >
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+              <div className="relative w-full md:max-w-sm">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={alertQuery}
+                  onChange={(e) => setAlertQuery(e.target.value)}
+                  placeholder="Search alert ID, rule, scope, event, SKU..."
+                  className="pl-9"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {alertTabs.map((tab) => (
+                  <PillTab key={tab.key} label={tab.label} active={alertFilter === tab.key} onClick={() => setAlertFilter(tab.key)} />
+                ))}
+              </div>
+            </div>
+
+            {filteredAlertInstances.length === 0 ? (
+              <div className="px-2 py-12 text-center">
+                <p className="text-base font-medium text-foreground mb-1">No alert instances in this view</p>
+                <p className="text-sm text-muted-foreground">Change the filter or run Evaluate Now after creating a rule.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[1220px]">
+                  <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    <tr>
+                      {['Alert', 'Severity', 'State', 'Scope', 'Related Event', 'Acknowledgement Posture', 'Open'].map((heading) => (
+                        <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredAlertInstances.map((instance) => (
+                      <AlertQueueRow
+                        key={instance.id}
+                        instance={instance}
+                        selected={selectedAlert?.id === instance.id}
+                        onSelect={setSelectedAlertId}
+                        onOpenEvent={(eventId) => navigate(`/Wastage/workspace?event=${encodeURIComponent(eventId)}`)}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Rule summary" subtitle="Rules stay separate from generated instances so the manager can review setup and outcomes calmly.">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <button onClick={handleEvaluateAlerts} className="inline-flex items-center gap-1.5 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                <ShieldCheck size={14} /> Evaluate Now
+              </button>
+              <span className="text-xs text-muted-foreground">Last evaluated {lastAlertEvaluation.display}</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[980px]">
+                <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                  <tr>
+                    {['Rule', 'Coverage', 'Threshold', 'Severity', 'Triggered', 'Acknowledged', 'Created'].map((heading) => (
+                      <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {alertRules.map((rule) => (
+                    <tr key={rule.id} className="border-t border-border">
+                      <td className="px-4 py-3 align-top min-w-[240px]">
+                        <div className="font-medium text-foreground">{rule.name}</div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">{rule.id} · {rule.ruleType}</div>
+                      </td>
+                      <td className="px-4 py-3 align-top min-w-[230px] text-muted-foreground">{rule.coverageLabel}</td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{rule.thresholdLabel} · {rule.windowHours}h</td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap">
+                        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${rule.severity === 'HIGH' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>{rule.severity}</span>
+                      </td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{rule.linkedInstances}</td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{rule.linkedAcknowledged} ack · {rule.linkedActionNeeded} waiting</td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{rule.createdAt}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Create alert rule" subtitle="Prototype-safe writer around the engine's existing rule structure.">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">Rule name</label>
@@ -473,64 +670,65 @@ export default function Wastage() {
               </button>
             </div>
           </SectionCard>
-
-          <SectionCard title="Rule summary" subtitle="Rules are stored separately from generated alert instances.">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm min-w-[860px]">
-                <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
-                  <tr>
-                    {['Rule', 'Scope', 'Threshold', 'Window', 'Severity', 'Created'].map((heading) => (
-                      <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {alertRules.map((rule) => (
-                    <tr key={rule.id} className="border-t border-border">
-                      <td className="px-4 py-3 align-top min-w-[220px]">
-                        <div className="font-medium text-foreground">{rule.id}</div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5">{rule.name}</div>
-                      </td>
-                      <td className="px-4 py-3 align-top min-w-[220px] text-muted-foreground">{rule.scopeLabel || rule.scope}</td>
-                      <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{rule.thresholdQty ? `${rule.thresholdQty}+ qty` : `${rule.thresholdCount}+ events`}</td>
-                      <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{rule.windowHours}h</td>
-                      <td className="px-4 py-3 align-top whitespace-nowrap">
-                        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${rule.severity === 'HIGH' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>{rule.severity}</span>
-                      </td>
-                      <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{rule.createdAt}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </SectionCard>
         </div>
 
         <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
-          <SectionCard title="Recent alert instances" subtitle="Generated instances sit beside rules, not inside the queue rows.">
-            {alertInstances.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No generated instances yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {alertInstances.slice(0, 6).map((instance) => (
-                  <AlertInstanceCard key={instance.id} instance={instance} />
-                ))}
+          <SectionCard title="Selected alert detail" subtitle="Keep instance review calm, explicit, and grounded in the related event.">
+            {selectedAlert ? (
+              <div className="space-y-4">
+                <AlertInstanceCard instance={selectedAlert} />
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Related event</p>
+                    <p className="text-sm font-medium text-foreground">{selectedAlert.eventId}</p>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{selectedAlert.relatedLocation} · {selectedAlert.relatedSku} · {selectedAlert.relatedItemName}</p>
+                    <p className="text-[11px] text-muted-foreground mt-2">{selectedAlert.relatedStatus} · {selectedAlert.relatedSource} · Recorded {selectedAlert.relatedRecordedAt}</p>
+                  </div>
+                  <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Acknowledgement posture</p>
+                    <p className="text-sm font-medium text-foreground">{selectedAlert.acknowledgementLabel}</p>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{selectedAlert.acknowledgementHelper}</p>
+                    <button disabled className="mt-3 inline-flex items-center gap-1.5 h-9 px-4 text-sm rounded-xl border border-border bg-muted text-muted-foreground cursor-not-allowed">
+                      <ShieldCheck size={14} /> Acknowledge (API pending)
+                    </button>
+                  </div>
+                  <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Next operator step</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{selectedAlert.nextAction}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate(`/Wastage/workspace?event=${encodeURIComponent(selectedAlert.eventId)}`)}
+                  className="inline-flex items-center gap-1.5 h-9 px-4 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
+                >
+                  Open related event <ArrowRight size={14} />
+                </button>
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Select an alert instance to inspect its posture.</p>
             )}
           </SectionCard>
 
-          <SectionCard title="Alert API posture" subtitle="Writer endpoints are live; list and acknowledgement surfaces still need public contracts.">
+          <SectionCard title="Alert read posture" subtitle="This pass leans into the read side that is already stored in the engine.">
             <div className="space-y-3">
-              {alertApiPosture.map((item) => (
+              {alertReadiness.map((item) => (
                 <ReadinessLine key={item.label} item={item} />
               ))}
             </div>
           </SectionCard>
 
-          <SectionCard title="Prototype boundary" subtitle="Important engine-honest reminder for this surface.">
+          <SectionCard title="Prototype boundary" subtitle="Keep the UI honest while still making manager review useful.">
             <div className="space-y-3 text-sm text-muted-foreground">
-              <p><span className="font-medium text-foreground">Rules and evaluate-now posture exist</span> — That matches the current engine structure.</p>
-              <p><span className="font-medium text-foreground">Acknowledgement stays scaffolded</span> — Do not imply a finished acknowledgement write flow until the API exposes it.</p>
+              <p><span className="font-medium text-foreground">Read acknowledgement now</span> — The fields can already be shown calmly on the instance detail.</p>
+              <p><span className="font-medium text-foreground">Do not imply finished write support</span> — Leave acknowledgement actions visibly disabled until a public endpoint exists.</p>
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Alert API posture" subtitle="Writer endpoints are live; queue and acknowledgement remain read-first surfaces.">
+            <div className="space-y-3">
+              {alertApiPosture.map((item) => (
+                <ReadinessLine key={item.label} item={item} />
+              ))}
             </div>
           </SectionCard>
         </div>
