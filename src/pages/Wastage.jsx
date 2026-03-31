@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, BellRing, Filter, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BellRing, Download, Filter, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
 import {
   getAlertBreaches,
   getBarcodeMappings,
   getGovernanceSummary,
   getKpiSummary,
   getReasonGovernanceRows,
+  getReportingPrototype,
   getUnresolvedScans,
   getWastageRows,
   statusStyle,
@@ -25,9 +26,154 @@ const surfaceTabs = [
   { key: 'OPERATIONS', label: 'Operations Queue' },
   { key: 'REASONS', label: 'Reason Guide' },
   { key: 'BARCODES', label: 'Barcode Guide' },
+  { key: 'REPORTING', label: 'Reporting Prototype' },
 ];
 
 function KpiCard({ label, value, helper, tone = 'text-foreground' }) {
+
+  const reportWindowTabs = [
+    { key: '7D', label: 'Last 7 days' },
+    { key: '30D', label: 'Last 30 days' },
+    { key: 'SNAPSHOT', label: 'Current snapshot' },
+  ];
+
+  const reportScopeTabs = [
+    { key: 'APPROVED', label: 'Approved only' },
+    { key: 'REVIEWED', label: 'Reviewed' },
+    { key: 'ALL', label: 'All events' },
+  ];
+
+  const reportGroupTabs = [
+    { key: 'REASON', label: 'By reason' },
+    { key: 'SKU', label: 'By SKU' },
+    { key: 'LOCATION', label: 'By location' },
+  ];
+
+  const renderReportingSurface = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <KpiCard label="Visible Events" value={reporting.summary.visibleEvents} helper="Events in the current reporting view" tone="text-slate-700" />
+        <KpiCard label="Visible Waste Qty" value={reporting.summary.visibleQty} helper="Quantity represented in this prototype report" tone="text-amber-700" />
+        <KpiCard label="Affected SKUs" value={reporting.summary.affectedSkus} helper="Unique SKUs in the current view" tone="text-blue-700" />
+        <KpiCard label="Top Driver" value={reporting.summary.topDriverLabel} helper={reporting.summary.topDriverHelper} tone="text-green-700" />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+        <div className="xl:col-span-8 space-y-4">
+          <SectionCard
+            title="Reporting filters"
+            subtitle="This prototype keeps reporting calm and easy to scan before backend reporting endpoints exist."
+            action={<span className="text-xs text-muted-foreground">Prototype surface</span>}
+          >
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Window</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportWindowTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportWindow === tab.key} onClick={() => setReportWindow(tab.key)} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Scope</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportScopeTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportScope === tab.key} onClick={() => setReportScope(tab.key)} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Group results</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportGroupTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportGroupBy === tab.key} onClick={() => setReportGroupBy(tab.key)} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Grouped report view"
+            subtitle={reporting.tableSubtitle}
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="inline-flex items-center gap-1.5 h-9 px-3.5 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                  <Download size={14} /> CSV prototype
+                </button>
+                <button className="inline-flex items-center gap-1.5 h-9 px-3.5 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                  <Download size={14} /> PDF prototype
+                </button>
+              </div>
+            }
+          >
+            {reporting.groups.length === 0 ? (
+              <div className="px-2 py-12 text-center">
+                <p className="text-base font-medium text-foreground mb-1">No data in this reporting view</p>
+                <p className="text-sm text-muted-foreground">Try widening the window or changing the scope.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[920px]">
+                  <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    <tr>
+                      {[reporting.primaryHeading, 'Events', 'Qty', 'Latest Event', 'Status Mix', 'Notes'].map((heading) => (
+                        <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reporting.groups.map((group, index) => (
+                      <tr key={group.key} className={`border-t border-border ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
+                        <td className="px-4 py-3 align-top min-w-[220px]">
+                          <div className="font-medium text-foreground">{group.label}</div>
+                          {group.subLabel ? <div className="text-[11px] text-muted-foreground mt-0.5">{group.subLabel}</div> : null}
+                        </td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.events}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.qty}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.latestOccurred}</td>
+                        <td className="px-4 py-3 align-top min-w-[170px] text-muted-foreground">{group.statusMix}</td>
+                        <td className="px-4 py-3 align-top min-w-[240px] text-muted-foreground">{group.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
+        <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
+          <SectionCard
+            title="How to use this page"
+            subtitle="Keep this as a management prototype, not a live reporting claim."
+          >
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p><span className="font-medium text-foreground">Start broad</span> — Use the current snapshot first, then narrow the scope only if needed.</p>
+              <p><span className="font-medium text-foreground">Look for patterns</span> — Group by reason, SKU, or location depending on the question you are answering.</p>
+              <p><span className="font-medium text-foreground">Treat exports as prototype actions</span> — This build shapes the flow before real export endpoints exist.</p>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Prototype boundaries"
+            subtitle="Engine-honest reminders for this reporting surface."
+          >
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p><span className="font-medium text-foreground">Backed by current event rows</span> — This view derives from the same wastage records used in the queue.</p>
+              <p><span className="font-medium text-foreground">Not a full BI module</span> — Cost, value, and scheduled exports still need backend support.</p>
+              <p><span className="font-medium text-foreground">Useful for direction now</span> — It helps shape calm manager-facing reporting before deeper endpoints exist.</p>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px] shadow-sm">
       <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">{label}</p>
@@ -38,6 +184,150 @@ function KpiCard({ label, value, helper, tone = 'text-foreground' }) {
 }
 
 function PillTab({ active, onClick, label }) {
+
+  const reportWindowTabs = [
+    { key: '7D', label: 'Last 7 days' },
+    { key: '30D', label: 'Last 30 days' },
+    { key: 'SNAPSHOT', label: 'Current snapshot' },
+  ];
+
+  const reportScopeTabs = [
+    { key: 'APPROVED', label: 'Approved only' },
+    { key: 'REVIEWED', label: 'Reviewed' },
+    { key: 'ALL', label: 'All events' },
+  ];
+
+  const reportGroupTabs = [
+    { key: 'REASON', label: 'By reason' },
+    { key: 'SKU', label: 'By SKU' },
+    { key: 'LOCATION', label: 'By location' },
+  ];
+
+  const renderReportingSurface = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <KpiCard label="Visible Events" value={reporting.summary.visibleEvents} helper="Events in the current reporting view" tone="text-slate-700" />
+        <KpiCard label="Visible Waste Qty" value={reporting.summary.visibleQty} helper="Quantity represented in this prototype report" tone="text-amber-700" />
+        <KpiCard label="Affected SKUs" value={reporting.summary.affectedSkus} helper="Unique SKUs in the current view" tone="text-blue-700" />
+        <KpiCard label="Top Driver" value={reporting.summary.topDriverLabel} helper={reporting.summary.topDriverHelper} tone="text-green-700" />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+        <div className="xl:col-span-8 space-y-4">
+          <SectionCard
+            title="Reporting filters"
+            subtitle="This prototype keeps reporting calm and easy to scan before backend reporting endpoints exist."
+            action={<span className="text-xs text-muted-foreground">Prototype surface</span>}
+          >
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Window</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportWindowTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportWindow === tab.key} onClick={() => setReportWindow(tab.key)} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Scope</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportScopeTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportScope === tab.key} onClick={() => setReportScope(tab.key)} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Group results</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportGroupTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportGroupBy === tab.key} onClick={() => setReportGroupBy(tab.key)} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Grouped report view"
+            subtitle={reporting.tableSubtitle}
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="inline-flex items-center gap-1.5 h-9 px-3.5 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                  <Download size={14} /> CSV prototype
+                </button>
+                <button className="inline-flex items-center gap-1.5 h-9 px-3.5 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                  <Download size={14} /> PDF prototype
+                </button>
+              </div>
+            }
+          >
+            {reporting.groups.length === 0 ? (
+              <div className="px-2 py-12 text-center">
+                <p className="text-base font-medium text-foreground mb-1">No data in this reporting view</p>
+                <p className="text-sm text-muted-foreground">Try widening the window or changing the scope.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[920px]">
+                  <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    <tr>
+                      {[reporting.primaryHeading, 'Events', 'Qty', 'Latest Event', 'Status Mix', 'Notes'].map((heading) => (
+                        <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reporting.groups.map((group, index) => (
+                      <tr key={group.key} className={`border-t border-border ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
+                        <td className="px-4 py-3 align-top min-w-[220px]">
+                          <div className="font-medium text-foreground">{group.label}</div>
+                          {group.subLabel ? <div className="text-[11px] text-muted-foreground mt-0.5">{group.subLabel}</div> : null}
+                        </td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.events}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.qty}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.latestOccurred}</td>
+                        <td className="px-4 py-3 align-top min-w-[170px] text-muted-foreground">{group.statusMix}</td>
+                        <td className="px-4 py-3 align-top min-w-[240px] text-muted-foreground">{group.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
+        <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
+          <SectionCard
+            title="How to use this page"
+            subtitle="Keep this as a management prototype, not a live reporting claim."
+          >
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p><span className="font-medium text-foreground">Start broad</span> — Use the current snapshot first, then narrow the scope only if needed.</p>
+              <p><span className="font-medium text-foreground">Look for patterns</span> — Group by reason, SKU, or location depending on the question you are answering.</p>
+              <p><span className="font-medium text-foreground">Treat exports as prototype actions</span> — This build shapes the flow before real export endpoints exist.</p>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Prototype boundaries"
+            subtitle="Engine-honest reminders for this reporting surface."
+          >
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p><span className="font-medium text-foreground">Backed by current event rows</span> — This view derives from the same wastage records used in the queue.</p>
+              <p><span className="font-medium text-foreground">Not a full BI module</span> — Cost, value, and scheduled exports still need backend support.</p>
+              <p><span className="font-medium text-foreground">Useful for direction now</span> — It helps shape calm manager-facing reporting before deeper endpoints exist.</p>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <button
       onClick={onClick}
@@ -51,6 +341,150 @@ function PillTab({ active, onClick, label }) {
 }
 
 function SectionCard({ title, subtitle, children, action }) {
+
+  const reportWindowTabs = [
+    { key: '7D', label: 'Last 7 days' },
+    { key: '30D', label: 'Last 30 days' },
+    { key: 'SNAPSHOT', label: 'Current snapshot' },
+  ];
+
+  const reportScopeTabs = [
+    { key: 'APPROVED', label: 'Approved only' },
+    { key: 'REVIEWED', label: 'Reviewed' },
+    { key: 'ALL', label: 'All events' },
+  ];
+
+  const reportGroupTabs = [
+    { key: 'REASON', label: 'By reason' },
+    { key: 'SKU', label: 'By SKU' },
+    { key: 'LOCATION', label: 'By location' },
+  ];
+
+  const renderReportingSurface = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <KpiCard label="Visible Events" value={reporting.summary.visibleEvents} helper="Events in the current reporting view" tone="text-slate-700" />
+        <KpiCard label="Visible Waste Qty" value={reporting.summary.visibleQty} helper="Quantity represented in this prototype report" tone="text-amber-700" />
+        <KpiCard label="Affected SKUs" value={reporting.summary.affectedSkus} helper="Unique SKUs in the current view" tone="text-blue-700" />
+        <KpiCard label="Top Driver" value={reporting.summary.topDriverLabel} helper={reporting.summary.topDriverHelper} tone="text-green-700" />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+        <div className="xl:col-span-8 space-y-4">
+          <SectionCard
+            title="Reporting filters"
+            subtitle="This prototype keeps reporting calm and easy to scan before backend reporting endpoints exist."
+            action={<span className="text-xs text-muted-foreground">Prototype surface</span>}
+          >
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Window</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportWindowTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportWindow === tab.key} onClick={() => setReportWindow(tab.key)} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Scope</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportScopeTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportScope === tab.key} onClick={() => setReportScope(tab.key)} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Group results</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportGroupTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportGroupBy === tab.key} onClick={() => setReportGroupBy(tab.key)} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Grouped report view"
+            subtitle={reporting.tableSubtitle}
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="inline-flex items-center gap-1.5 h-9 px-3.5 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                  <Download size={14} /> CSV prototype
+                </button>
+                <button className="inline-flex items-center gap-1.5 h-9 px-3.5 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                  <Download size={14} /> PDF prototype
+                </button>
+              </div>
+            }
+          >
+            {reporting.groups.length === 0 ? (
+              <div className="px-2 py-12 text-center">
+                <p className="text-base font-medium text-foreground mb-1">No data in this reporting view</p>
+                <p className="text-sm text-muted-foreground">Try widening the window or changing the scope.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[920px]">
+                  <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    <tr>
+                      {[reporting.primaryHeading, 'Events', 'Qty', 'Latest Event', 'Status Mix', 'Notes'].map((heading) => (
+                        <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reporting.groups.map((group, index) => (
+                      <tr key={group.key} className={`border-t border-border ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
+                        <td className="px-4 py-3 align-top min-w-[220px]">
+                          <div className="font-medium text-foreground">{group.label}</div>
+                          {group.subLabel ? <div className="text-[11px] text-muted-foreground mt-0.5">{group.subLabel}</div> : null}
+                        </td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.events}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.qty}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.latestOccurred}</td>
+                        <td className="px-4 py-3 align-top min-w-[170px] text-muted-foreground">{group.statusMix}</td>
+                        <td className="px-4 py-3 align-top min-w-[240px] text-muted-foreground">{group.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
+        <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
+          <SectionCard
+            title="How to use this page"
+            subtitle="Keep this as a management prototype, not a live reporting claim."
+          >
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p><span className="font-medium text-foreground">Start broad</span> — Use the current snapshot first, then narrow the scope only if needed.</p>
+              <p><span className="font-medium text-foreground">Look for patterns</span> — Group by reason, SKU, or location depending on the question you are answering.</p>
+              <p><span className="font-medium text-foreground">Treat exports as prototype actions</span> — This build shapes the flow before real export endpoints exist.</p>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Prototype boundaries"
+            subtitle="Engine-honest reminders for this reporting surface."
+          >
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p><span className="font-medium text-foreground">Backed by current event rows</span> — This view derives from the same wastage records used in the queue.</p>
+              <p><span className="font-medium text-foreground">Not a full BI module</span> — Cost, value, and scheduled exports still need backend support.</p>
+              <p><span className="font-medium text-foreground">Useful for direction now</span> — It helps shape calm manager-facing reporting before deeper endpoints exist.</p>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="border border-border rounded-2xl bg-card shadow-sm overflow-hidden">
       <div className="px-4 py-3 border-b border-border bg-muted/20 flex items-start gap-3">
@@ -81,6 +515,9 @@ export default function Wastage() {
   const [activeTab, setActiveTab] = useState('ALL');
   const [refreshTick, setRefreshTick] = useState(0);
   const [activeSurface, setActiveSurface] = useState(initialSurface);
+  const [reportWindow, setReportWindow] = useState('30D');
+  const [reportScope, setReportScope] = useState('REVIEWED');
+  const [reportGroupBy, setReportGroupBy] = useState('REASON');
 
   const rows = useMemo(() => getWastageRows(), [refreshTick]);
   const reasonRows = useMemo(() => getReasonGovernanceRows(), [refreshTick]);
@@ -89,6 +526,10 @@ export default function Wastage() {
   const governanceSummary = useMemo(() => getGovernanceSummary(), [refreshTick]);
   const alertBreaches = useMemo(() => getAlertBreaches(rows), [rows]);
   const kpis = useMemo(() => getKpiSummary(rows), [rows]);
+  const reporting = useMemo(
+    () => getReportingPrototype(rows, { window: reportWindow, scope: reportScope, groupBy: reportGroupBy }),
+    [reportGroupBy, reportScope, reportWindow, rows]
+  );
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -458,19 +899,163 @@ export default function Wastage() {
     </div>
   );
 
+
+  const reportWindowTabs = [
+    { key: '7D', label: 'Last 7 days' },
+    { key: '30D', label: 'Last 30 days' },
+    { key: 'SNAPSHOT', label: 'Current snapshot' },
+  ];
+
+  const reportScopeTabs = [
+    { key: 'APPROVED', label: 'Approved only' },
+    { key: 'REVIEWED', label: 'Reviewed' },
+    { key: 'ALL', label: 'All events' },
+  ];
+
+  const reportGroupTabs = [
+    { key: 'REASON', label: 'By reason' },
+    { key: 'SKU', label: 'By SKU' },
+    { key: 'LOCATION', label: 'By location' },
+  ];
+
+  const renderReportingSurface = () => (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <KpiCard label="Visible Events" value={reporting.summary.visibleEvents} helper="Events in the current reporting view" tone="text-slate-700" />
+        <KpiCard label="Visible Waste Qty" value={reporting.summary.visibleQty} helper="Quantity represented in this prototype report" tone="text-amber-700" />
+        <KpiCard label="Affected SKUs" value={reporting.summary.affectedSkus} helper="Unique SKUs in the current view" tone="text-blue-700" />
+        <KpiCard label="Top Driver" value={reporting.summary.topDriverLabel} helper={reporting.summary.topDriverHelper} tone="text-green-700" />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
+        <div className="xl:col-span-8 space-y-4">
+          <SectionCard
+            title="Reporting filters"
+            subtitle="This prototype keeps reporting calm and easy to scan before backend reporting endpoints exist."
+            action={<span className="text-xs text-muted-foreground">Prototype surface</span>}
+          >
+            <div className="space-y-4">
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Window</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportWindowTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportWindow === tab.key} onClick={() => setReportWindow(tab.key)} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Scope</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportScopeTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportScope === tab.key} onClick={() => setReportScope(tab.key)} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-2">Group results</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {reportGroupTabs.map((tab) => (
+                    <PillTab key={tab.key} label={tab.label} active={reportGroupBy === tab.key} onClick={() => setReportGroupBy(tab.key)} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Grouped report view"
+            subtitle={reporting.tableSubtitle}
+            action={
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="inline-flex items-center gap-1.5 h-9 px-3.5 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                  <Download size={14} /> CSV prototype
+                </button>
+                <button className="inline-flex items-center gap-1.5 h-9 px-3.5 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground">
+                  <Download size={14} /> PDF prototype
+                </button>
+              </div>
+            }
+          >
+            {reporting.groups.length === 0 ? (
+              <div className="px-2 py-12 text-center">
+                <p className="text-base font-medium text-foreground mb-1">No data in this reporting view</p>
+                <p className="text-sm text-muted-foreground">Try widening the window or changing the scope.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[920px]">
+                  <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    <tr>
+                      {[reporting.primaryHeading, 'Events', 'Qty', 'Latest Event', 'Status Mix', 'Notes'].map((heading) => (
+                        <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">
+                          {heading}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reporting.groups.map((group, index) => (
+                      <tr key={group.key} className={`border-t border-border ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
+                        <td className="px-4 py-3 align-top min-w-[220px]">
+                          <div className="font-medium text-foreground">{group.label}</div>
+                          {group.subLabel ? <div className="text-[11px] text-muted-foreground mt-0.5">{group.subLabel}</div> : null}
+                        </td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.events}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.qty}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">{group.latestOccurred}</td>
+                        <td className="px-4 py-3 align-top min-w-[170px] text-muted-foreground">{group.statusMix}</td>
+                        <td className="px-4 py-3 align-top min-w-[240px] text-muted-foreground">{group.note}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        </div>
+
+        <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
+          <SectionCard
+            title="How to use this page"
+            subtitle="Keep this as a management prototype, not a live reporting claim."
+          >
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p><span className="font-medium text-foreground">Start broad</span> — Use the current snapshot first, then narrow the scope only if needed.</p>
+              <p><span className="font-medium text-foreground">Look for patterns</span> — Group by reason, SKU, or location depending on the question you are answering.</p>
+              <p><span className="font-medium text-foreground">Treat exports as prototype actions</span> — This build shapes the flow before real export endpoints exist.</p>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Prototype boundaries"
+            subtitle="Engine-honest reminders for this reporting surface."
+          >
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p><span className="font-medium text-foreground">Backed by current event rows</span> — This view derives from the same wastage records used in the queue.</p>
+              <p><span className="font-medium text-foreground">Not a full BI module</span> — Cost, value, and scheduled exports still need backend support.</p>
+              <p><span className="font-medium text-foreground">Useful for direction now</span> — It helps shape calm manager-facing reporting before deeper endpoints exist.</p>
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="p-5 lg:p-6 space-y-4">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Wastage</h1>
         <p className="text-sm text-muted-foreground">
-          Keep operations primary, with calm reason and barcode reference surfaces available when needed.
+          Keep operations primary, with calm guidance and prototype surfaces available when needed.
         </p>
       </div>
 
       <div className="border border-border rounded-2xl bg-card px-4 py-3 shadow-sm flex flex-col xl:flex-row xl:items-center gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <div className="h-9 w-9 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center flex-shrink-0">
-            {activeSurface === 'OPERATIONS' ? <ShieldCheck size={16} /> : <ScanLine size={16} />}
+            {activeSurface === 'OPERATIONS' ? <ShieldCheck size={16} /> : activeSurface === 'REPORTING' ? <Download size={16} /> : <ScanLine size={16} />}
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-foreground">
@@ -478,14 +1063,18 @@ export default function Wastage() {
                 ? 'Operational wastage workflow'
                 : activeSurface === 'REASONS'
                   ? 'Reason guidance reference'
-                  : 'Scanner and barcode guidance'}
+                  : activeSurface === 'BARCODES'
+                    ? 'Scanner and barcode guidance'
+                    : 'Reporting and export prototype'}
             </p>
             <p className="text-sm text-muted-foreground leading-relaxed">
               {activeSurface === 'OPERATIONS'
                 ? 'Use this queue to record wastage, review status, and take the next action without extra clutter.'
                 : activeSurface === 'REASONS'
                   ? 'This view brings back the deleted reason surface as a calmer guide for choosing and interpreting wastage reasons.'
-                  : 'This view brings back barcode support guidance in a calmer way, without letting it overwhelm daily capture work.'}
+                  : activeSurface === 'BARCODES'
+                    ? 'This view brings back barcode support guidance in a calmer way, without letting it overwhelm daily capture work.'
+                    : 'This prototype shapes manager-facing reporting and exports without pretending the backend is already report-complete.'}
             </p>
           </div>
         </div>
@@ -524,6 +1113,7 @@ export default function Wastage() {
       {activeSurface === 'OPERATIONS' && renderOperationsSurface()}
       {activeSurface === 'REASONS' && renderReasonsSurface()}
       {activeSurface === 'BARCODES' && renderBarcodeSurface()}
+      {activeSurface === 'REPORTING' && renderReportingSurface()}
     </div>
   );
 }

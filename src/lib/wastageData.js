@@ -379,6 +379,131 @@ export function getGovernanceSummary() {
   };
 }
 
+function parseOccurredAt(value) {
+  const parsed = Date.parse(value || '');
+  if (!Number.isNaN(parsed)) return parsed;
+  return Date.parse('2026-03-31T00:00:00');
+}
+
+function matchesWindow(row, windowKey) {
+  if (windowKey === 'SNAPSHOT') return true;
+  const current = Date.parse('2026-03-31T23:59:59');
+  const diffDays = (current - parseOccurredAt(row.occurredAt)) / (1000 * 60 * 60 * 24);
+  if (windowKey === '7D') return diffDays <= 7;
+  return diffDays <= 30;
+}
+
+function matchesScope(row, scopeKey) {
+  if (scopeKey === 'ALL') return true;
+  if (scopeKey === 'APPROVED') return row.status === 'APPROVED';
+  return ['SUBMITTED', 'APPROVED', 'REJECTED', 'REVERSED'].includes(row.status);
+}
+
+function buildReportGroup(groupBy, key, groupedRows) {
+  const sample = groupedRows[0];
+  const events = groupedRows.length;
+  const qty = groupedRows.reduce((sum, row) => sum + Number(row.qty || 0), 0);
+  const latestOccurred = groupedRows
+    .slice()
+    .sort((a, b) => parseOccurredAt(b.occurredAt) - parseOccurredAt(a.occurredAt))[0]?.occurredAt || '—';
+  const statusMix = Array.from(new Set(groupedRows.map((row) => row.status))).join(' · ');
+
+  if (groupBy === 'SKU') {
+    return {
+      key,
+      label: sample.sku,
+      subLabel: sample.itemName,
+      events,
+      qty,
+      latestOccurred,
+      statusMix,
+      note: `${sample.location} appears in the latest matching record.`,
+    };
+  }
+
+  if (groupBy === 'LOCATION') {
+    return {
+      key,
+      label: sample.location,
+      subLabel: `${new Set(groupedRows.map((row) => row.sku)).size} SKUs represented`,
+      events,
+      qty,
+      latestOccurred,
+      statusMix,
+      note: `Top visible reason: ${groupedRows[0]?.reason || '—'}.`,
+    };
+  }
+
+  const policy = getReasonPolicy(sample.reason);
+  return {
+    key,
+    label: sample.reason,
+    subLabel: policy.bucket,
+    events,
+    qty,
+    latestOccurred,
+    statusMix,
+    note: policy.reorderBehavior,
+  };
+}
+
+export function getReportingPrototype(rows = wastageRows, options = {}) {
+  const { window = '30D', scope = 'REVIEWED', groupBy = 'REASON' } = options;
+  const visibleRows = rows.filter((row) => matchesWindow(row, window) && matchesScope(row, scope));
+
+  const summary = {
+    visibleEvents: visibleRows.length,
+    visibleQty: visibleRows.reduce((sum, row) => sum + Number(row.qty || 0), 0),
+    affectedSkus: new Set(visibleRows.map((row) => row.sku)).size,
+    topDriverLabel: 'No data',
+    topDriverHelper: 'Change the scope or grouping to see a stronger signal.',
+  };
+
+  const topReasonEntry = Object.entries(
+    visibleRows.reduce((acc, row) => {
+      acc[row.reason] = (acc[row.reason] || 0) + Number(row.qty || 0);
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1])[0];
+
+  if (topReasonEntry) {
+    summary.topDriverLabel = topReasonEntry[0];
+    summary.topDriverHelper = `${topReasonEntry[1]} units in the current reporting view.`;
+  }
+
+  const keyForRow = (row) => {
+    if (groupBy === 'SKU') return row.sku;
+    if (groupBy === 'LOCATION') return row.location;
+    return row.reason;
+  };
+
+  const grouped = visibleRows.reduce((acc, row) => {
+    const key = keyForRow(row);
+    acc[key] = acc[key] || [];
+    acc[key].push(row);
+    return acc;
+  }, {});
+
+  const groups = Object.entries(grouped)
+    .map(([key, groupedRows]) => buildReportGroup(groupBy, key, groupedRows))
+    .sort((a, b) => b.qty - a.qty || b.events - a.events);
+
+  const primaryHeading = groupBy === 'SKU' ? 'SKU' : groupBy === 'LOCATION' ? 'Location' : 'Reason';
+  const tableSubtitle =
+    groupBy === 'SKU'
+      ? 'Prototype view of wastage grouped by SKU for manager review.'
+      : groupBy === 'LOCATION'
+        ? 'Prototype view of wastage grouped by location for trend scanning.'
+        : 'Prototype view of wastage grouped by reason for calmer pattern review.';
+
+  return {
+    summary,
+    groups,
+    primaryHeading,
+    tableSubtitle,
+  };
+}
+
 export function getAlertRules() {
   return alertRules.map((rule) => ({ ...rule }));
 }
