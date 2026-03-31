@@ -1,51 +1,51 @@
 const reasonPolicyMeta = {
   'Damage in Handling': {
     bucket: 'Reorder affecting',
-    helper: 'Counts toward stock loss and should stay visible to replenishment review.',
+    helper: 'Counts toward stock-loss review and may influence replenishment planning.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
     reorderBehavior: 'Included in reorder review',
     approvalPath: 'Manager review',
-    reviewNote: 'Operational loss should remain visible because the stock was genuinely lost.',
+    reviewNote: 'Operational loss should be reviewed before stock is posted.',
     catalogStatus: 'Active',
-    captureGuidance: 'Use when stock was physically damaged during handling or movement.',
+    captureGuidance: 'Use when product was damaged during handling, transfer, or storage.',
   },
-  Theft: {
+  'Theft/Shrink': {
     bucket: 'Reorder affecting',
-    helper: 'Counts toward stock loss and should stay visible to replenishment review.',
+    helper: 'Counts toward shrink review and may influence replenishment planning.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
     reorderBehavior: 'Included in reorder review',
     approvalPath: 'Manager review',
-    reviewNote: 'Stock is no longer on hand and must remain visible to loss review.',
-    catalogStatus: 'Active',
-    captureGuidance: 'Use for shrinkage or confirmed theft events after manager validation.',
+    reviewNote: 'Higher-sensitivity stock loss should stay under stronger review.',
+    catalogStatus: 'Watchlist',
+    captureGuidance: 'Use when unexplained loss or suspected theft needs to be recorded.',
   },
   'Production Use': {
     bucket: 'Reorder affecting',
-    helper: 'Counts toward drawdown because stock was consumed operationally.',
+    helper: 'Counts toward operational consumption and planning visibility.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
     reorderBehavior: 'Included in reorder review',
     approvalPath: 'Standard review',
-    reviewNote: 'Operational consumption is still real stock drawdown for replenishment.',
+    reviewNote: 'Can follow the normal wastage approval flow.',
     catalogStatus: 'Active',
-    captureGuidance: 'Use when stock is consumed for business operations or production.',
+    captureGuidance: 'Use when inventory is consumed operationally and should remain visible to planning.',
   },
   'Sampling/Promos': {
     bucket: 'Reorder affecting',
-    helper: 'Counts toward drawdown because stock left inventory through business-directed use.',
+    helper: 'Counts toward promotional drawdown review and planning visibility.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
     reorderBehavior: 'Included in reorder review',
     approvalPath: 'Standard review',
-    reviewNote: 'Promotional or sampling loss should still stay visible to replenishment review.',
+    reviewNote: 'Promo-linked drawdown can use the normal manager workflow.',
     catalogStatus: 'Active',
-    captureGuidance: 'Use when stock leaves inventory for samples, promos, or giveaways.',
+    captureGuidance: 'Use when stock is intentionally consumed for demos, promos, or sampling.',
   },
   Spillage: {
     bucket: 'Reorder affecting',
-    helper: 'Counts toward stock loss and should stay visible to replenishment review.',
+    helper: 'Counts toward stock-loss review and may influence replenishment planning.',
     chipClass: 'bg-amber-50 text-amber-800 border border-amber-200',
     impactTone: 'text-amber-800',
     reorderBehavior: 'Included in reorder review',
@@ -241,36 +241,6 @@ const initialRows = [
   },
 ];
 
-const exportHistory = [
-  {
-    id: 'EXP-001',
-    format: 'CSV',
-    scope: 'Approved events · Main Store · 7 days',
-    status: 'Verified',
-    generatedAt: '30 Mar 2026, 18:34',
-    generatedBy: 'A. Manager',
-    helper: 'Prototype export log for ops review and external handoff.',
-  },
-  {
-    id: 'EXP-002',
-    format: 'JSON',
-    scope: 'Approved + rejected events · All locations · 30 days',
-    status: 'Pending verification',
-    generatedAt: '29 Mar 2026, 16:08',
-    generatedBy: 'S. Cruz',
-    helper: 'Awaiting audit-safe verification before external distribution.',
-  },
-  {
-    id: 'EXP-003',
-    format: 'CSV',
-    scope: 'Report-only reasons · Branch A · 14 days',
-    status: 'Blocked',
-    generatedAt: '29 Mar 2026, 09:42',
-    generatedBy: 'R. Santos',
-    helper: 'Blocked because unresolved scan corrections still exist in the prototype queue.',
-  },
-];
-
 const alertRules = [
   {
     id: 'ALR-01',
@@ -379,16 +349,18 @@ export function resolveScannedItem(scanValue) {
   return {
     status: 'unresolved',
     scanValue: raw,
-    helper: 'No barcode or SKU match found. Resolve the item manually before submit.',
+    helper: 'No match found. Enter SKU manually.',
   };
 }
 
 export function getKpiSummary(rows = wastageRows) {
   const drafts = rows.filter((row) => row.status === 'DRAFT').length;
   const submitted = rows.filter((row) => row.status === 'SUBMITTED').length;
-  const approvedQty = rows.filter((row) => row.status === 'APPROVED').reduce((sum, row) => sum + Number(row.qty || 0), 0);
-  const reorderEvents = rows.filter((row) => getReasonPolicy(row.reason).bucket === 'Reorder affecting').length;
-  return { drafts, submitted, approvedQty, reorderEvents };
+  const approvedEvents = rows.filter((row) => row.status === 'APPROVED').length;
+  const approvedQty = rows
+    .filter((row) => row.status === 'APPROVED')
+    .reduce((sum, row) => sum + Number(row.qty || 0), 0);
+  return { drafts, submitted, approvedEvents, approvedQty };
 }
 
 export function getGovernanceSummary() {
@@ -467,6 +439,7 @@ export function getAlertBreaches(rows = wastageRows) {
   return breaches;
 }
 
+<<<<<<< HEAD
 export function getReportingSummary(rows = wastageRows) {
   const approvedRows = rows.filter((row) => row.status === 'APPROVED');
   const reviewedRows = rows.filter((row) => ['APPROVED', 'SUBMITTED', 'REJECTED', 'REVERSED'].includes(row.status));
@@ -548,6 +521,8 @@ export function getExportReadiness(rows = wastageRows) {
   };
 }
 
+=======
+>>>>>>> e4e8de4 (Reinstate wastage guide surfaces with neurodiverse-friendly redesign)
 export function getWorkflowSteps(status) {
   return [
     { key: 'created', label: 'Created', done: true },
