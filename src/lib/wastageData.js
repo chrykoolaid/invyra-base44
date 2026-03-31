@@ -150,6 +150,35 @@ export const sourceOptions = ['ADMIN', 'SCANNER', 'POS', 'IMPORT'];
 export const captureModes = ['SCANNER', 'MANUAL'];
 export const reasonOptions = Object.keys(reasonPolicyMeta);
 
+const sourcePostureMeta = {
+  ADMIN: {
+    label: 'Manual / admin capture',
+    helper: 'Created directly by a user in the wastage workflow. Best for calm, deliberate review.',
+    chipClass: 'bg-slate-100 text-slate-700 border border-slate-200',
+  },
+  SCANNER: {
+    label: 'Scanner-assisted capture',
+    helper: 'Item identity came through a scan flow. Keep scanner resolution visible so mismatches can be stopped before posting.',
+    chipClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+  },
+  POS: {
+    label: 'POS-originated signal',
+    helper: 'Originated from a POS-style operational flow. Keep it visible as source-aware wastage, not just a manual note.',
+    chipClass: 'bg-violet-50 text-violet-700 border border-violet-200',
+  },
+  IMPORT: {
+    label: 'Import-originated capture',
+    helper: 'Came from an external import path. These records often need a little extra review before submission.',
+    chipClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+  },
+};
+
+const defaultSourcePosture = {
+  label: 'Unknown source',
+  helper: 'This source type is not governed yet and should be reviewed before posting.',
+  chipClass: 'bg-slate-100 text-slate-700 border border-slate-200',
+};
+
 function formatDisplayDate(iso) {
   if (!iso) return '—';
   const date = new Date(iso);
@@ -780,6 +809,157 @@ export function getBarcodeMappings() {
 
 export function getUnresolvedScans() {
   return unresolvedScanQueue.map((scan) => ({ ...scan }));
+}
+
+export function getSourcePosture(source) {
+  return sourcePostureMeta[source] || defaultSourcePosture;
+}
+
+export function getMovementLedger(limit = 20) {
+  const rows = wastageRows.flatMap((event) =>
+    (event.movementRows || []).map((row) => ({
+      ...row,
+      eventId: event.id,
+      eventStatus: event.status,
+      itemName: event.itemName,
+      location: row.location || event.location,
+      source: event.source,
+    }))
+  );
+
+  return sortByIsoDesc(rows, 'tsIso').slice(0, limit);
+}
+
+export function getAuditFeed(limit = 20) {
+  const rows = wastageRows.flatMap((event) =>
+    (event.auditTrail || []).map((row) => ({
+      ...row,
+      eventId: event.id,
+      eventStatus: event.status,
+      sku: event.sku,
+      itemName: event.itemName,
+      location: event.location,
+      source: event.source,
+    }))
+  );
+
+  return sortByIsoDesc(rows, 'tsIso').slice(0, limit);
+}
+
+export function getActionGuards(status) {
+  const guardSets = {
+    DRAFT: [
+      { action: 'Submit draft', allowed: true, helper: 'Only DRAFT can be submitted.' },
+      { action: 'Approve', allowed: false, helper: 'Blocked until the event reaches SUBMITTED.' },
+      { action: 'Reject', allowed: false, helper: 'Blocked until the event reaches SUBMITTED.' },
+      { action: 'Reverse', allowed: false, helper: 'Blocked until the event reaches APPROVED.' },
+    ],
+    SUBMITTED: [
+      { action: 'Submit draft', allowed: false, helper: 'Already submitted.' },
+      { action: 'Approve', allowed: true, helper: 'Only SUBMITTED can be approved.' },
+      { action: 'Reject', allowed: true, helper: 'Only SUBMITTED can be rejected.' },
+      { action: 'Reverse', allowed: false, helper: 'Blocked until approval posts stock movement.' },
+    ],
+    APPROVED: [
+      { action: 'Submit draft', allowed: false, helper: 'Already beyond draft state.' },
+      { action: 'Approve', allowed: false, helper: 'Already approved.' },
+      { action: 'Reject', allowed: false, helper: 'Reject is only available while SUBMITTED.' },
+      { action: 'Reverse', allowed: true, helper: 'Only APPROVED can be reversed.' },
+    ],
+    REJECTED: [
+      { action: 'Submit draft', allowed: false, helper: 'Rejected records stay as stopped workflow history.' },
+      { action: 'Approve', allowed: false, helper: 'Rejected records cannot be approved later.' },
+      { action: 'Reject', allowed: false, helper: 'Already rejected.' },
+      { action: 'Reverse', allowed: false, helper: 'No stock posting happened, so there is nothing to reverse.' },
+    ],
+    REVERSED: [
+      { action: 'Submit draft', allowed: false, helper: 'This record is closed historical proof.' },
+      { action: 'Approve', allowed: false, helper: 'Already approved and then reversed.' },
+      { action: 'Reject', allowed: false, helper: 'Reject no longer applies after approval.' },
+      { action: 'Reverse', allowed: false, helper: 'Already reversed.' },
+    ],
+  };
+
+  return guardSets[status] || [];
+}
+
+export function getReadinessBoard() {
+  const liveContracts = [
+    { label: 'Create wastage event', state: 'live', helper: 'POST /wastage creates a DRAFT record.' },
+    { label: 'Workflow writes', state: 'live', helper: 'Submit, approve, reject, and reverse are already exposed as write actions.' },
+    { label: 'Thin event list', state: 'live', helper: 'GET /wastage returns a compact list record, not a full detail payload.' },
+    { label: 'KPI report', state: 'live', helper: 'GET /reports/kpis exposes a basic live KPI surface.' },
+    { label: 'Alert rule create + evaluate', state: 'live', helper: 'POST /alerts/rules and POST /alerts/evaluate are available.' },
+  ];
+
+  const storedContracts = [
+    { label: 'Decision metadata read', state: 'stored', helper: 'submitted_at, approved_at/by, rejected_at/by/reason, and reversed_at/by/reason are stored but not yet exposed as a dedicated detail read.' },
+    { label: 'Movement ledger read', state: 'stored', helper: 'stock_movements rows already exist with delta, reason_code, ref_type, ref_id, actor, note, and post_on_hand.' },
+    { label: 'Audit trail read', state: 'stored', helper: 'wastage_audit_log is written today, but needs a clean read surface.' },
+    { label: 'Alert rule / instance list reads', state: 'stored', helper: 'Rules and generated instances exist, but public list endpoints are still needed.' },
+    { label: 'Acknowledgement posture', state: 'stored', helper: 'Acknowledgement fields are scaffolded but write support is not yet public.' },
+  ];
+
+  return {
+    summary: {
+      live: liveContracts.length,
+      stored: storedContracts.length,
+      approvedMovements: getMovementLedger(999).length,
+      auditRows: getAuditFeed(999).length,
+    },
+    liveContracts,
+    storedContracts,
+  };
+}
+
+export function getAlertApiPosture() {
+  return [
+    { label: 'Create alert rule', state: 'live', helper: 'POST /alerts/rules exists now.' },
+    { label: 'Evaluate alerts', state: 'live', helper: 'POST /alerts/evaluate exists now.' },
+    { label: 'List rules', state: 'stored', helper: 'Rule rows exist, but a public list read is still needed.' },
+    { label: 'List instances', state: 'stored', helper: 'Generated instances exist, but a public list read is still needed.' },
+    { label: 'Acknowledge alert', state: 'stored', helper: 'Acknowledgement fields are scaffolded, but the write flow is not yet exposed.' },
+  ];
+}
+
+export function getEventReadinessRows(event) {
+  if (!event) return [];
+
+  return [
+    {
+      label: 'Public list record',
+      state: 'live',
+      helper: 'Current API exposes this event as a thin list row with core fields only.',
+    },
+    {
+      label: 'Decision detail payload',
+      state: 'stored',
+      helper: event.submittedAt || event.approvedAt || event.rejectedAt || event.reversedAt
+        ? 'The engine already holds decision timestamps, actors, and reasons. A dedicated detail read would let the UI stop enriching this by hand.'
+        : 'The UI is reserved for future decision metadata, even when the event has not progressed yet.',
+    },
+    {
+      label: 'Movement ledger linkage',
+      state: event.movementRows?.length ? 'stored' : 'future',
+      helper: event.movementRows?.length
+        ? 'Movement rows already exist and should eventually be read through a clean ledger contract.'
+        : 'No movement rows exist yet because the event has not posted stock movement.',
+    },
+    {
+      label: 'Audit history linkage',
+      state: event.auditTrail?.length ? 'stored' : 'future',
+      helper: event.auditTrail?.length
+        ? 'Audit rows are already written for the visible workflow actions.'
+        : 'Audit history will appear as workflow actions occur.',
+    },
+    {
+      label: 'Alert posture',
+      state: event.linkedAlertInstances?.length ? 'stored' : 'future',
+      helper: event.linkedAlertInstances?.length
+        ? 'Linked alert instances exist, but acknowledgement remains prototype-safe until a write endpoint exists.'
+        : 'No linked alert instances are attached to this event right now.',
+    },
+  ];
 }
 
 export function resolveScannedItem(scanValue) {

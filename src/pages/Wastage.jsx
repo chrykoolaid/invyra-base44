@@ -1,19 +1,24 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, BellRing, Download, Filter, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BellRing, Download, Filter, History, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   createAlertRule,
   evaluateAlertRules,
+  getAlertApiPosture,
   getAlertInstances,
   getAlertRules,
+  getAuditFeed,
   getBarcodeMappings,
   getGovernanceSummary,
   getKpiSummary,
   getLastAlertEvaluation,
   getLiveKpiSummary,
+  getMovementLedger,
+  getReadinessBoard,
   getReasonGovernanceRows,
   getReportingPrototype,
+  getSourcePosture,
   getUnresolvedScans,
   getWastageRows,
   reasonOptions,
@@ -119,6 +124,26 @@ function AlertInstanceCard({ instance }) {
   );
 }
 
+function ReadinessLine({ item }) {
+  const stateClass = item.state === 'live'
+    ? 'bg-green-50 text-green-700 border border-green-200'
+    : item.state === 'stored'
+      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+      : 'bg-slate-100 text-slate-700 border border-slate-200';
+
+  const stateLabel = item.state === 'live' ? 'Live now' : item.state === 'stored' ? 'Stored in engine' : 'Future-ready';
+
+  return (
+    <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${stateClass}`}>{stateLabel}</span>
+        <p className="text-sm font-medium text-foreground">{item.label}</p>
+      </div>
+      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{item.helper}</p>
+    </div>
+  );
+}
+
 export default function Wastage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -152,6 +177,10 @@ export default function Wastage() {
   const governanceSummary = useMemo(() => getGovernanceSummary(), [refreshTick]);
   const alertRules = useMemo(() => getAlertRules(), [refreshTick]);
   const alertInstances = useMemo(() => getAlertInstances(), [refreshTick]);
+  const movementLedger = useMemo(() => getMovementLedger(10), [refreshTick]);
+  const auditFeed = useMemo(() => getAuditFeed(8), [refreshTick]);
+  const readinessBoard = useMemo(() => getReadinessBoard(), [refreshTick]);
+  const alertApiPosture = useMemo(() => getAlertApiPosture(), [refreshTick]);
   const lastAlertEvaluation = useMemo(() => getLastAlertEvaluation(), [refreshTick]);
   const kpis = useMemo(() => getKpiSummary(rows), [rows]);
   const liveKpis = useMemo(() => getLiveKpiSummary(Number(reportWindowHours)), [reportWindowHours, refreshTick]);
@@ -255,6 +284,7 @@ export default function Wastage() {
                           <div className="font-medium text-foreground">{row.id}</div>
                           <div className="text-[11px] text-muted-foreground mt-0.5">{row.location} · {row.sku}</div>
                           <div className="text-[11px] text-muted-foreground mt-0.5">{row.itemName}</div>
+                          <div className="mt-2"><span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${getSourcePosture(row.source).chipClass}`}>{row.source}</span></div>
                         </td>
                         <td className="px-4 py-3 align-top min-w-[180px]">
                           <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>{row.status}</span>
@@ -289,6 +319,60 @@ export default function Wastage() {
               </div>
             )}
           </SectionCard>
+
+          <SectionCard title="Recent stock movement ledger" subtitle="Approval and reversal are the only points where the engine posts stock movements.">
+            {movementLedger.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No movement rows have been posted yet.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[980px]">
+                  <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    <tr>
+                      {['Timestamp', 'Event', 'Ref Type', 'Delta', 'Post On Hand', 'Reason', 'Actor'].map((heading) => (
+                        <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movementLedger.map((row, index) => (
+                      <tr key={row.id} className={`border-t border-border ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
+                        <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{row.ts}</td>
+                        <td className="px-4 py-3 align-top min-w-[220px]">
+                          <div className="font-medium text-foreground">{row.eventId}</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">{row.location} · {row.sku}</div>
+                        </td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap"><span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${row.refType === 'WASTAGE' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>{row.refType}</span></td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap font-medium text-foreground">{row.delta > 0 ? `+${row.delta}` : row.delta}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{row.postOnHand}</td>
+                        <td className="px-4 py-3 align-top min-w-[180px] text-muted-foreground">{row.reasonCode}</td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{row.actor || 'System'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard title="Recent audit feed" subtitle="Operational history is already written by the engine, even before a dedicated public audit read exists.">
+            {auditFeed.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No audit rows recorded yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {auditFeed.map((row) => (
+                  <div key={row.id} className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <History size={14} className="text-muted-foreground" />
+                      <p className="text-sm font-medium text-foreground">{row.action.replaceAll('_', ' ')}</p>
+                      <span className="text-[11px] text-muted-foreground">{row.ts}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{row.details || 'No extra detail recorded.'}</p>
+                    <p className="text-[11px] text-muted-foreground mt-2">{row.eventId} · {row.location} · {row.sku} · {row.actor || 'System'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
         </div>
 
         <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
@@ -312,6 +396,18 @@ export default function Wastage() {
                 ))}
               </div>
             )}
+          </SectionCard>
+
+          <SectionCard title="Read model posture" subtitle="Keep the UI honest about what is public API today versus what is stored deeper in the engine.">
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <KpiCard label="Live Contracts" value={readinessBoard.summary.live} helper="Public endpoints already usable" tone="text-green-700" />
+              <KpiCard label="Stored Depth" value={readinessBoard.summary.stored} helper="Needs dedicated reads" tone="text-blue-700" />
+            </div>
+            <div className="space-y-3">
+              {readinessBoard.storedContracts.slice(0, 3).map((item) => (
+                <ReadinessLine key={item.label} item={item} />
+              ))}
+            </div>
           </SectionCard>
         </div>
       </div>
@@ -421,6 +517,14 @@ export default function Wastage() {
                 ))}
               </div>
             )}
+          </SectionCard>
+
+          <SectionCard title="Alert API posture" subtitle="Writer endpoints are live; list and acknowledgement surfaces still need public contracts.">
+            <div className="space-y-3">
+              {alertApiPosture.map((item) => (
+                <ReadinessLine key={item.label} item={item} />
+              ))}
+            </div>
           </SectionCard>
 
           <SectionCard title="Prototype boundary" subtitle="Important engine-honest reminder for this surface.">

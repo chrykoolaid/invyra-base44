@@ -26,8 +26,11 @@ import {
 import {
   approveEvent,
   createSubmittedEvent,
+  getActionGuards,
   getEventById,
+  getEventReadinessRows,
   getReasonPolicy,
+  getSourcePosture,
   getWorkflowSteps,
   reasonOptions,
   rejectEvent,
@@ -141,6 +144,8 @@ function MovementRow({ row }) {
       </td>
       <td className="px-4 py-3 align-top whitespace-nowrap font-medium text-foreground">{row.delta > 0 ? `+${row.delta}` : row.delta}</td>
       <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{row.postOnHand}</td>
+      <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{row.reasonCode}</td>
+      <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{row.refId}</td>
       <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{row.actor || 'System'}</td>
       <td className="px-4 py-3 align-top min-w-[240px] text-muted-foreground">{row.note || '—'}</td>
     </tr>
@@ -159,6 +164,38 @@ function AlertInstanceCard({ instance }) {
       </div>
       <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{instance.message}</p>
       <p className="text-[11px] text-muted-foreground mt-2">{instance.scope}</p>
+    </div>
+  );
+}
+
+function ReadinessLine({ item }) {
+  const stateClass = item.state === 'live'
+    ? 'bg-green-50 text-green-700 border border-green-200'
+    : item.state === 'stored'
+      ? 'bg-blue-50 text-blue-700 border border-blue-200'
+      : 'bg-slate-100 text-slate-700 border border-slate-200';
+
+  const stateLabel = item.state === 'live' ? 'Live now' : item.state === 'stored' ? 'Stored in engine' : 'Future-ready';
+
+  return (
+    <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${stateClass}`}>{stateLabel}</span>
+        <span className="text-sm font-medium text-foreground">{item.label}</span>
+      </div>
+      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{item.helper}</p>
+    </div>
+  );
+}
+
+function GuardLine({ item }) {
+  return (
+    <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${item.allowed ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>{item.allowed ? 'Allowed now' : 'Blocked now'}</span>
+        <span className="text-sm font-medium text-foreground">{item.action}</span>
+      </div>
+      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{item.helper}</p>
     </div>
   );
 }
@@ -238,6 +275,9 @@ export default function WastageWorkspace() {
   const liveEvent = mode === 'review' && eventId ? getEventById(eventId) || selectedEvent : null;
   const workspaceStatus = liveEvent?.status || 'UNKNOWN';
   const policy = getReasonPolicy(mode === 'create' ? formState.reason : liveEvent?.reason);
+  const sourcePosture = mode === 'create' ? getSourcePosture(formState.source) : getSourcePosture(liveEvent?.source);
+  const actionGuards = useMemo(() => getActionGuards(workspaceStatus), [workspaceStatus]);
+  const readinessRows = useMemo(() => getEventReadinessRows(liveEvent), [liveEvent]);
 
   useEffect(() => {
     if (mode === 'create') {
@@ -655,6 +695,21 @@ export default function WastageWorkspace() {
                     </div>
                   ) : null}
 
+                  <SectionCard label="Stock result posture" helper="Keep the stock result visible separately from the workflow badge.">
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <SummaryCard label="On hand before" value={String(liveEvent.onHandBefore)} helper="Snapshot before any approval posting" />
+                        <SummaryCard label="Projected after approval" value={String(liveEvent.onHandAfterApproval)} helper="Expected result if approval posts" tone="text-amber-700" />
+                        <SummaryCard label="Current visible on hand" value={String(liveEvent.currentOnHand)} helper="Latest visible stock position" tone={workspaceStatus === 'APPROVED' ? 'text-green-700' : workspaceStatus === 'REVERSED' ? 'text-slate-700' : 'text-foreground'} />
+                        <SummaryCard label="Stock posting state" value={liveEvent.movementState} helper={getStockEffectText(workspaceStatus)} tone={workspaceStatus === 'APPROVED' ? 'text-green-700' : workspaceStatus === 'REVERSED' ? 'text-slate-700' : 'text-amber-700'} />
+                      </div>
+                      <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+                        <p className="text-sm font-medium text-foreground">Stock result note</p>
+                        <p className="text-sm text-muted-foreground mt-2 leading-relaxed">Approval and reversal are the only moments where the engine writes stock movement rows and updates post-on-hand. Draft, submitted, and rejected states keep the record visible without posting stock.</p>
+                      </div>
+                    </div>
+                  </SectionCard>
+
                   <SectionCard label="Stock movement proof" helper="Movement rows mirror the engine ledger shape: delta, reason, ref type, actor, note, and post-on-hand.">
                     {liveEvent.movementRows.length === 0 ? (
                       <div className="space-y-2 text-sm text-muted-foreground">
@@ -672,7 +727,7 @@ export default function WastageWorkspace() {
                           <table className="w-full text-sm min-w-[760px]">
                             <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
                               <tr>
-                                {['Timestamp', 'Ref Type', 'Delta', 'Post On Hand', 'Actor', 'Note'].map((heading) => (
+                                {['Timestamp', 'Ref Type', 'Delta', 'Post On Hand', 'Reason', 'Ref ID', 'Actor', 'Note'].map((heading) => (
                                   <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
                                 ))}
                               </tr>
@@ -725,6 +780,33 @@ export default function WastageWorkspace() {
                     <div className="space-y-3 text-sm text-muted-foreground">
                       <p>{getReviewActionText(workspaceStatus)}</p>
                       <p><span className="font-medium text-foreground">Prototype-enriched detail</span> — This layout already reserves space for real decision timestamps, reasons, movement proof, and audit rows.</p>
+                    </div>
+                  </SectionCard>
+
+                  <SectionCard label="Workflow guardrails" helper="State rules come directly from the engine lifecycle, so blocked actions stay visible instead of surprising the operator.">
+                    <div className="space-y-3">
+                      {actionGuards.map((item) => (
+                        <GuardLine key={item.action} item={item} />
+                      ))}
+                    </div>
+                  </SectionCard>
+
+                  <SectionCard label="Source posture" helper="The engine already stores source type, so the UI should keep that operational context visible.">
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${sourcePosture.chipClass}`}>{liveEvent.source}</span>
+                        <span className="text-sm font-medium text-foreground">{sourcePosture.label}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed">{sourcePosture.helper}</p>
+                      {liveEvent.scanResolution ? <p className="text-xs text-muted-foreground leading-relaxed">Scanner resolution: {liveEvent.scanResolution}</p> : null}
+                    </div>
+                  </SectionCard>
+
+                  <SectionCard label="Read model posture" helper="This makes it clear which parts of the record are already public reads and which parts are stored deeper in the engine.">
+                    <div className="space-y-3">
+                      {readinessRows.map((item) => (
+                        <ReadinessLine key={item.label} item={item} />
+                      ))}
                     </div>
                   </SectionCard>
 
