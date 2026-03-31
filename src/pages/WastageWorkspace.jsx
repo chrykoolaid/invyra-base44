@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, CheckCircle2, ScanLine, Save, Undo2, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Clock3,
+  ScanLine,
+  Save,
+  ShieldCheck,
+  Undo2,
+  X,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -14,18 +24,20 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  appendEventNote,
+  approveEvent,
   createSubmittedEvent,
   getEventById,
   getReasonPolicy,
-  getWastageRows,
   getWorkflowSteps,
   reasonOptions,
+  rejectEvent,
   resolveScannedItem,
+  reverseEvent,
   saveDraftEvent,
   sourceOptions,
   statusStyle,
-  updateEvent,
+  submitEvent,
+  getWastageRows,
 } from '../lib/wastageData.js';
 
 function SummaryCard({ label, value, helper, tone = 'text-foreground' }) {
@@ -38,12 +50,15 @@ function SummaryCard({ label, value, helper, tone = 'text-foreground' }) {
   );
 }
 
-function SectionCard({ label, children, helper }) {
+function SectionCard({ label, children, helper, action }) {
   return (
     <div className="border border-border rounded-2xl overflow-hidden bg-card shadow-sm">
-      <div className="px-4 py-2.5 border-b border-border bg-muted/20">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em]">{label}</span>
-        {helper ? <p className="text-xs text-muted-foreground mt-1 normal-case tracking-normal leading-relaxed">{helper}</p> : null}
+      <div className="px-4 py-2.5 border-b border-border bg-muted/20 flex items-start gap-3">
+        <div className="min-w-0">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em]">{label}</span>
+          {helper ? <p className="text-xs text-muted-foreground mt-1 normal-case tracking-normal leading-relaxed">{helper}</p> : null}
+        </div>
+        {action ? <div className="ml-auto">{action}</div> : null}
       </div>
       <div className="p-4">{children}</div>
     </div>
@@ -99,6 +114,55 @@ function WorkflowStep({ done, label, helper }) {
   );
 }
 
+function TimelineRow({ item }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-1 h-2.5 w-2.5 rounded-full bg-primary/70" />
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-medium text-foreground">{item.action.replaceAll('_', ' ')}</p>
+          <span className="text-[11px] text-muted-foreground">{item.ts}</span>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1">{item.actor || 'System'}</p>
+        {item.details ? <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{item.details}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function MovementRow({ row }) {
+  return (
+    <tr className="border-t border-border">
+      <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{row.ts}</td>
+      <td className="px-4 py-3 align-top whitespace-nowrap">
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${row.refType === 'WASTAGE' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>
+          {row.refType}
+        </span>
+      </td>
+      <td className="px-4 py-3 align-top whitespace-nowrap font-medium text-foreground">{row.delta > 0 ? `+${row.delta}` : row.delta}</td>
+      <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{row.postOnHand}</td>
+      <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{row.actor || 'System'}</td>
+      <td className="px-4 py-3 align-top min-w-[240px] text-muted-foreground">{row.note || '—'}</td>
+    </tr>
+  );
+}
+
+function AlertInstanceCard({ instance }) {
+  return (
+    <div className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${instance.severity === 'HIGH' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+          {instance.severity}
+        </span>
+        <span className="text-sm font-medium text-foreground">{instance.ruleId}</span>
+        <span className="text-[11px] text-muted-foreground">{instance.window}</span>
+      </div>
+      <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{instance.message}</p>
+      <p className="text-[11px] text-muted-foreground mt-2">{instance.scope}</p>
+    </div>
+  );
+}
+
 function buildFormStateFromEvent(event) {
   if (!event) {
     return {
@@ -108,7 +172,7 @@ function buildFormStateFromEvent(event) {
       itemName: '',
       qty: 1,
       reason: 'Damage in Handling',
-      occurredAt: '30 Mar 2026, 20:45',
+      occurredAt: '31 Mar 2026, 21:00',
       source: 'ADMIN',
       notes: '',
       currentOnHand: '—',
@@ -128,7 +192,7 @@ function buildFormStateFromEvent(event) {
     reason: event.reason,
     occurredAt: event.occurredAt,
     source: event.source,
-    notes: event.notes,
+    notes: event.notes || '',
     currentOnHand: event.currentOnHand,
     recordedBy: event.recordedBy,
     activeAlert: Boolean(event.activeAlert),
@@ -138,43 +202,42 @@ function buildFormStateFromEvent(event) {
 }
 
 function getStockEffectText(status) {
-  if (status === 'DRAFT') return 'No stock movement yet';
-  if (status === 'SUBMITTED') return 'Waiting for approval';
+  if (status === 'DRAFT') return 'No stock impact yet';
+  if (status === 'SUBMITTED') return 'Waiting for approval posting';
   if (status === 'APPROVED') return 'Stock deducted';
   if (status === 'REVERSED') return 'Stock restored';
-  return 'No stock movement';
+  return 'No stock movement posted';
 }
 
 function getReviewActionText(status) {
   if (status === 'DRAFT') return 'Review the saved details, then submit the draft when ready.';
-  if (status === 'SUBMITTED') return 'Choose approve or reject after checking the details and stock effect.';
-  if (status === 'APPROVED') return 'Reverse only if this wastage event was posted in error.';
-  if (status === 'REJECTED') return 'This event is stopped and stays read only in this build.';
-  if (status === 'REVERSED') return 'This event has already been reversed and stays read only.';
+  if (status === 'SUBMITTED') return 'Review the record, then approve or reject it.';
+  if (status === 'APPROVED') return 'Review the posted movement proof. Reverse only if the posted event should be undone.';
+  if (status === 'REJECTED') return 'The workflow stopped before stock posting. Keep this record for review history.';
+  if (status === 'REVERSED') return 'The original approved movement was undone. Keep this record as historical proof.';
   return 'Review the record and follow the current workflow state.';
 }
 
 export default function WastageWorkspace() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const mode = searchParams.get('mode');
   const eventId = searchParams.get('event');
-
+  const mode = eventId ? 'review' : 'create';
+  const selectedEvent = useMemo(() => (eventId ? getEventById(eventId) : null), [eventId]);
   const [rows, setRows] = useState(() => getWastageRows());
-  const [actionStatus, setActionStatus] = useState(null);
+  const [formState, setFormState] = useState(() => buildFormStateFromEvent(selectedEvent));
+  const [captureMode, setCaptureMode] = useState(selectedEvent?.source === 'SCANNER' ? 'SCANNER' : 'MANUAL');
+  const [scanInput, setScanInput] = useState(selectedEvent?.scanValue || '');
+  const [scanState, setScanState] = useState({ status: 'idle', helper: 'Scan an item code or type it here to fill the SKU field.' });
+  const [actionStatus, setActionStatus] = useState('');
   const [rejectOpen, setRejectOpen] = useState(false);
   const [reverseOpen, setReverseOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [reverseReason, setReverseReason] = useState('');
-  const [formState, setFormState] = useState(() => buildFormStateFromEvent(null));
-  const [captureMode, setCaptureMode] = useState('MANUAL');
-  const [scanInput, setScanInput] = useState('');
-  const [scanState, setScanState] = useState({ status: 'idle', helper: 'Scan an item code or type it here to fill the SKU field.' });
 
-  const selectedEvent = useMemo(() => rows.find((row) => row.id === eventId) || getEventById(eventId), [eventId, rows]);
-  const isFormMode = mode === 'create';
-  const workspaceStatus = isFormMode ? 'CREATE' : selectedEvent?.status || 'UNKNOWN';
-  const policy = getReasonPolicy(isFormMode ? formState.reason : selectedEvent?.reason);
+  const liveEvent = mode === 'review' && eventId ? getEventById(eventId) || selectedEvent : null;
+  const workspaceStatus = liveEvent?.status || 'UNKNOWN';
+  const policy = getReasonPolicy(mode === 'create' ? formState.reason : liveEvent?.reason);
 
   useEffect(() => {
     if (mode === 'create') {
@@ -187,8 +250,7 @@ export default function WastageWorkspace() {
 
     if (selectedEvent) {
       setFormState(buildFormStateFromEvent(selectedEvent));
-      const nextMode = selectedEvent.source === 'SCANNER' ? 'SCANNER' : 'MANUAL';
-      setCaptureMode(nextMode);
+      setCaptureMode(selectedEvent.source === 'SCANNER' ? 'SCANNER' : 'MANUAL');
       setScanInput(selectedEvent.scanValue || '');
       setScanState({
         status: selectedEvent.scanValue ? 'resolved' : 'idle',
@@ -201,10 +263,11 @@ export default function WastageWorkspace() {
     const onHand = Number(formState.currentOnHand);
     const qty = Number(formState.qty || 0);
     if (Number.isNaN(onHand)) return '—';
-    return onHand - qty;
+    return String(onHand - qty);
   }, [formState.currentOnHand, formState.qty]);
 
   const canSubmitForm = Boolean(formState.sku && formState.itemName && Number(formState.qty) > 0);
+  const workflowSteps = !mode === 'create' ? [] : getWorkflowSteps(workspaceStatus);
 
   const handleFormChange = (field, value) => {
     setFormState((prev) => {
@@ -219,10 +282,8 @@ export default function WastageWorkspace() {
           next.activeAlert = Boolean(match.activeAlert);
           if (captureMode === 'MANUAL') {
             next.scanResolution = 'Manual SKU entry';
-          } else if (scanState.status === 'unresolved') {
-            next.scanResolution = 'Manual SKU entered after unmatched scan';
           }
-        } else if (field === 'sku') {
+        } else {
           next.itemName = '';
           next.currentOnHand = '—';
           next.activeAlert = false;
@@ -234,10 +295,6 @@ export default function WastageWorkspace() {
 
       if (field === 'reason') {
         next.activeAlert = getReasonPolicy(value).bucket === 'Reorder affecting';
-      }
-
-      if (field === 'source' && value !== 'SCANNER' && captureMode === 'SCANNER') {
-        setCaptureMode('MANUAL');
       }
 
       return next;
@@ -287,7 +344,7 @@ export default function WastageWorkspace() {
       occurredAt: formState.occurredAt,
       source: formState.source,
       notes: formState.notes,
-      currentOnHand: Number.isNaN(Number(formState.currentOnHand)) ? formState.currentOnHand : Number(formState.currentOnHand),
+      currentOnHand: Number(formState.currentOnHand),
       recordedBy: formState.recordedBy || 'Current User',
       activeAlert: formState.activeAlert,
       scanValue: formState.scanValue,
@@ -298,26 +355,26 @@ export default function WastageWorkspace() {
     setRows(getWastageRows());
     setFormState((prev) => ({ ...prev, id: savedId }));
     setActionStatus(nextStatus === 'DRAFT' ? 'draft_saved' : 'submitted');
-    setTimeout(() => navigate(`/Wastage/workspace?event=${encodeURIComponent(savedId)}`), 350);
+    setTimeout(() => navigate(`/Wastage/workspace?event=${encodeURIComponent(savedId)}`), 250);
   };
 
   const handleSubmitDraft = () => {
-    if (!selectedEvent) return;
-    updateEvent(selectedEvent.id, { status: 'SUBMITTED' });
+    if (!liveEvent) return;
+    submitEvent(liveEvent.id, 'Current User');
     setRows(getWastageRows());
     setActionStatus('submitted');
   };
 
   const handleApprove = () => {
-    if (!selectedEvent) return;
-    updateEvent(selectedEvent.id, { status: 'APPROVED' });
+    if (!liveEvent) return;
+    approveEvent(liveEvent.id, 'Current User');
     setRows(getWastageRows());
     setActionStatus('approved');
   };
 
   const handleReject = () => {
-    if (!selectedEvent || !rejectReason.trim()) return;
-    appendEventNote(selectedEvent.id, `Rejection reason: ${rejectReason.trim()}.`, 'REJECTED');
+    if (!liveEvent || !rejectReason.trim()) return;
+    rejectEvent(liveEvent.id, rejectReason.trim(), 'Current User');
     setRows(getWastageRows());
     setRejectOpen(false);
     setRejectReason('');
@@ -325,8 +382,8 @@ export default function WastageWorkspace() {
   };
 
   const handleReverse = () => {
-    if (!selectedEvent || !reverseReason.trim()) return;
-    appendEventNote(selectedEvent.id, `Reversal reason: ${reverseReason.trim()}.`, 'REVERSED');
+    if (!liveEvent || !reverseReason.trim()) return;
+    reverseEvent(liveEvent.id, reverseReason.trim(), 'Current User');
     setRows(getWastageRows());
     setReverseOpen(false);
     setReverseReason('');
@@ -347,10 +404,6 @@ export default function WastageWorkspace() {
     );
   }
 
-  const liveEvent = selectedEvent ? getEventById(selectedEvent.id) || selectedEvent : null;
-  const stockEffectText = getStockEffectText(liveEvent?.status);
-  const workflowSteps = !isFormMode ? getWorkflowSteps(liveEvent.status) : [];
-
   return (
     <>
       <div className="flex flex-col min-h-screen bg-background">
@@ -362,17 +415,17 @@ export default function WastageWorkspace() {
             <ArrowLeft size={14} /> Back to Wastage
           </button>
 
-          {isFormMode ? (
+          {mode === 'create' ? (
             <>
               <div className="space-y-1">
                 <h1 className="text-lg font-semibold text-foreground">Record Wastage</h1>
-                <p className="text-sm text-muted-foreground">Enter the details, save safely as a draft, then review before submission.</p>
+                <p className="text-sm text-muted-foreground">Capture the event safely first. The deeper workflow, posting, and history surfaces appear once the record exists.</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <SummaryCard label="Step 1" value="Choose capture method" helper="Scan first or enter the SKU manually." />
-                <SummaryCard label="Step 2" value="Check the item" helper="Confirm SKU, quantity, reason, and location." />
-                <SummaryCard label="Step 3" value="Save safely" helper="Save Draft is the safest next step in this build." tone="text-green-700" />
+                <SummaryCard label="Step 2" value="Check the event" helper="Confirm SKU, quantity, reason, and location." />
+                <SummaryCard label="Step 3" value="Save safely" helper="Save Draft keeps the event editable before submission." tone="text-green-700" />
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
@@ -420,38 +473,17 @@ export default function WastageWorkspace() {
                               }}
                             />
                           </div>
-                          <button onClick={resolveScan} className="flex items-center justify-center gap-2 h-10 px-4 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium">
-                            <ScanLine size={14} /> Resolve Scan
+                          <button
+                            onClick={resolveScan}
+                            className="h-10 px-4 rounded-xl border border-border bg-card hover:bg-muted transition-colors text-sm font-medium text-foreground"
+                          >
+                            Resolve Scan
                           </button>
                         </div>
 
-                        <div className={`rounded-2xl border px-4 py-3 ${scanState.status === 'resolved' ? 'border-green-200 bg-green-50/70' : scanState.status === 'unresolved' ? 'border-amber-200 bg-amber-50/70' : 'border-border bg-muted/10'}`}>
-                          <p className={`text-sm font-medium ${scanState.status === 'resolved' ? 'text-green-800' : scanState.status === 'unresolved' ? 'text-amber-800' : 'text-foreground'}`}>
-                            {scanState.status === 'resolved' ? 'Scan resolved' : scanState.status === 'unresolved' ? 'No match found yet' : 'Scanner ready'}
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{scanState.helper}</p>
-                          {scanState.status === 'unresolved' ? (
-                            <div className="mt-3 flex flex-wrap items-center gap-2">
-                              <span className="text-sm text-muted-foreground">Enter the SKU manually to continue.</span>
-                              <button
-                                onClick={() => navigate('/Wastage?surface=BARCODES')}
-                                className="inline-flex items-center gap-1.5 h-8 px-3 text-xs rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
-                              >
-                                Open Barcode Guide
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                          <div className="rounded-2xl border border-border bg-muted/10 px-4 py-3">
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1">Resolved SKU</p>
-                            <p className="font-medium text-foreground">{formState.sku || 'Waiting for a scan result'}</p>
-                          </div>
-                          <div className="rounded-2xl border border-border bg-muted/10 px-4 py-3">
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1">Resolution Path</p>
-                            <p className="font-medium text-foreground">{formState.scanResolution || 'No resolution captured yet'}</p>
-                          </div>
+                        <div className={`rounded-2xl border px-4 py-3 ${scanState.status === 'resolved' ? 'border-green-200 bg-green-50/60' : scanState.status === 'unresolved' ? 'border-amber-200 bg-amber-50/60' : 'border-border bg-background/40'}`}>
+                          <p className="text-sm font-medium text-foreground">Scanner status</p>
+                          <p className="text-sm text-muted-foreground mt-1">{scanState.helper}</p>
                         </div>
                       </div>
                     </SectionCard>
@@ -464,98 +496,68 @@ export default function WastageWorkspace() {
                         <select
                           value={formState.location}
                           onChange={(e) => handleFormChange('location', e.target.value)}
-                          className="h-10 w-full border border-border rounded-xl bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                          className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
                         >
-                          <option>Main Store</option>
-                          <option>Branch A</option>
-                          <option>Branch B</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">SKU</label>
-                        <Input value={formState.sku} onChange={(e) => handleFormChange('sku', e.target.value)} placeholder={captureMode === 'SCANNER' ? 'You can correct the resolved SKU here' : 'Enter SKU code'} />
-                      </div>
-
-                      <div className="md:col-span-2 border border-border rounded-2xl bg-muted/10 px-4 py-3 space-y-2">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em]">Item Preview</p>
-                        {formState.itemName ? (
-                          <>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="text-sm font-medium text-foreground">{formState.itemName}</div>
-                              <PolicyChip reason={formState.reason} />
-                              {formState.source === 'SCANNER' ? <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700 border border-blue-200">Scanner capture</span> : null}
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-muted-foreground">
-                              <span>SKU: <span className="font-medium text-foreground">{formState.sku}</span></span>
-                              <span>Location: <span className="font-medium text-foreground">{formState.location}</span></span>
-                              <span>On Hand: <span className="font-medium text-foreground">{formState.currentOnHand}</span></span>
-                            </div>
-                          </>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">{captureMode === 'SCANNER' ? 'Resolve the scan or enter a valid SKU to preview the item.' : 'Enter a matching SKU to preview the item.'}</p>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">Qty</label>
-                        <Input type="number" min={1} value={formState.qty} onChange={(e) => handleFormChange('qty', e.target.value)} />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">Reason</label>
-                        <select
-                          value={formState.reason}
-                          onChange={(e) => handleFormChange('reason', e.target.value)}
-                          className="h-10 w-full border border-border rounded-xl bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-                        >
-                          {reasonOptions.map((reason) => (
-                            <option key={reason}>{reason}</option>
+                          {['Main Store', 'Branch A'].map((option) => (
+                            <option key={option} value={option}>{option}</option>
                           ))}
                         </select>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">Occurred At</label>
-                        <Input value={formState.occurredAt} onChange={(e) => handleFormChange('occurredAt', e.target.value)} placeholder="30 Mar 2026, 20:45" />
                       </div>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground block mb-1.5">Source</label>
                         <select
                           value={formState.source}
                           onChange={(e) => handleFormChange('source', e.target.value)}
-                          className="h-10 w-full border border-border rounded-xl bg-card px-3 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                          className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
                         >
-                          {sourceOptions.map((source) => (
-                            <option key={source}>{source}</option>
+                          {sourceOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">SKU</label>
+                        <Input value={formState.sku} onChange={(e) => handleFormChange('sku', e.target.value)} placeholder="Enter SKU" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">Item name</label>
+                        <Input value={formState.itemName} onChange={(e) => handleFormChange('itemName', e.target.value)} placeholder="Resolved item name" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">Quantity</label>
+                        <Input type="number" min="1" value={formState.qty} onChange={(e) => handleFormChange('qty', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">Reason</label>
+                        <select
+                          value={formState.reason}
+                          onChange={(e) => handleFormChange('reason', e.target.value)}
+                          className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
+                        >
+                          {reasonOptions.map((option) => (
+                            <option key={option} value={option}>{option}</option>
                           ))}
                         </select>
                       </div>
                       <div className="md:col-span-2">
                         <label className="text-xs font-medium text-muted-foreground block mb-1.5">Notes</label>
-                        <Textarea rows={4} value={formState.notes} onChange={(e) => handleFormChange('notes', e.target.value)} placeholder="Add short operational notes if they help the reviewer." />
+                        <Textarea value={formState.notes} onChange={(e) => handleFormChange('notes', e.target.value)} placeholder="Add a short operational note" rows={4} />
                       </div>
                     </div>
                   </SectionCard>
                 </div>
 
                 <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-3">
-                    <SummaryCard label="Current On Hand" value={String(formState.currentOnHand)} helper="Quantity snapshot before approval." />
-                    <SummaryCard label="Projected On Approval" value={String(projectedOnHand)} helper="This only posts after approval." tone={projectedOnHand === '—' ? 'text-muted-foreground' : 'text-foreground'} />
+                  <div className="grid grid-cols-1 gap-3">
+                    <SummaryCard label="Current On Hand" value={String(formState.currentOnHand)} helper="Snapshot before approval." />
+                    <SummaryCard label="Projected On Approval" value={projectedOnHand} helper="No stock movement posts until approval." tone={projectedOnHand === '—' ? 'text-muted-foreground' : 'text-foreground'} />
                     <SummaryCard label="Reason Fit" value={policy.bucket} helper={policy.reorderBehavior} tone={policy.impactTone} />
                   </div>
 
-                  <SectionCard label="What to check before saving">
+                  <SectionCard label="Engine alignment note" helper="This capture surface stays simple on purpose.">
                     <div className="space-y-3 text-sm text-muted-foreground">
-                      <p>Confirm the item preview matches the stock you are recording.</p>
-                      <p>Check the quantity and reason before saving the event.</p>
-                      <p>Use Save Draft first when you want the calmest, safest next step.</p>
-                    </div>
-                  </SectionCard>
-
-                  <SectionCard label="Workflow reminders">
-                    <div className="space-y-3 text-sm text-muted-foreground">
-                      <p>Drafts do not post stock.</p>
-                      <p>Submitted events wait for review.</p>
-                      <p>Only approved events deduct stock.</p>
+                      <p><span className="font-medium text-foreground">Create first</span> — Deeper workflow metadata, stock proof, and history become useful after the record exists.</p>
+                      <p><span className="font-medium text-foreground">Submit later if needed</span> — Draft is the safest path for uncertain captures.</p>
                     </div>
                   </SectionCard>
                 </div>
@@ -566,23 +568,28 @@ export default function WastageWorkspace() {
               <div className="space-y-1">
                 <div className="flex items-baseline gap-3 flex-wrap">
                   <h1 className="text-lg font-semibold text-foreground">Event {liveEvent.id}</h1>
-                  <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[liveEvent.status]}`}>
-                    {liveEvent.status}
-                  </span>
+                  <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[liveEvent.status]}`}>{liveEvent.status}</span>
                   <PolicyChip reason={liveEvent.reason} />
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                    {liveEvent.detailContractStatus === 'prototype_enriched' ? 'Detail contract ready' : 'Live detail'}
+                  </span>
                 </div>
-                <p className="text-sm text-muted-foreground">{liveEvent.location}</p>
+                <p className="text-sm text-muted-foreground">{liveEvent.location} · {liveEvent.sku} · {liveEvent.itemName}</p>
               </div>
 
-              <SectionCard label="Current state" helper={getReviewActionText(workspaceStatus)}>
+              <SectionCard
+                label="Current state"
+                helper={getReviewActionText(workspaceStatus)}
+                action={<span className="text-xs text-muted-foreground">Workflow-backed review surface</span>}
+              >
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">{stockEffectText}</p>
-                    <p className="text-sm text-muted-foreground">Use the action bar below for the next step available to this record.</p>
+                    <p className="text-sm font-medium text-foreground">{getStockEffectText(workspaceStatus)}</p>
+                    <p className="text-sm text-muted-foreground">This layout is shaped around the engine record, movement proof, and action history instead of a thin list row.</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {workspaceStatus === 'DRAFT' ? <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 border border-amber-200">Next action: Submit Draft</span> : null}
-                    {workspaceStatus === 'SUBMITTED' ? <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 border border-amber-200">Next action: Approve or Reject</span> : null}
+                    {workspaceStatus === 'DRAFT' ? <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 border border-amber-200">Next action: Submit draft</span> : null}
+                    {workspaceStatus === 'SUBMITTED' ? <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-amber-50 text-amber-700 border border-amber-200">Next action: Approve or reject</span> : null}
                     {workspaceStatus === 'APPROVED' ? <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-blue-50 text-blue-700 border border-blue-200">Next action: Reverse if needed</span> : null}
                     {['REJECTED', 'REVERSED'].includes(workspaceStatus) ? <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-slate-100 text-slate-700 border border-slate-200">Read only</span> : null}
                   </div>
@@ -590,36 +597,112 @@ export default function WastageWorkspace() {
               </SectionCard>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                <SummaryCard label="Qty" value={String(liveEvent.qty)} helper="Units affected by this record" />
-                <SummaryCard label="Stock Effect" value={stockEffectText} helper="Outcome for the current status" tone={liveEvent.status === 'APPROVED' ? 'text-green-700' : liveEvent.status === 'SUBMITTED' ? 'text-amber-700' : 'text-muted-foreground'} />
-                <SummaryCard label="Current On Hand" value={String(liveEvent.currentOnHand)} helper="Inventory quantity at this location" />
-                <SummaryCard label="Recorded By" value={liveEvent.recordedBy} helper={`Recorded ${liveEvent.recordedAt}`} />
+                <SummaryCard label="Workflow state" value={liveEvent.status} helper="Current engine lifecycle state" />
+                <SummaryCard label="Stock posting" value={liveEvent.movementState} helper="Posting posture for this record" tone={workspaceStatus === 'APPROVED' ? 'text-green-700' : workspaceStatus === 'REVERSED' ? 'text-slate-700' : 'text-amber-700'} />
+                <SummaryCard label="Current on hand" value={String(liveEvent.currentOnHand)} helper="Latest visible on-hand for this record" />
+                <SummaryCard label="Latest action" value={liveEvent.lastAction?.action?.replaceAll('_', ' ') || 'Recorded'} helper={liveEvent.lastAction?.ts || liveEvent.recordedAt} tone="text-blue-700" />
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
                 <div className="xl:col-span-8 space-y-4">
-                  <SectionCard label="Event Summary">
+                  <SectionCard label="Record header" helper="The current public list endpoint is thin, so this prototype-enriched layout expects the richer detail contract later.">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <DetailRow label="Event ID" value={liveEvent.id} emphasis />
                       <DetailRow label="Status" value={liveEvent.status} />
-                      <DetailRow label="Occurred At" value={liveEvent.occurredAt} muted />
-                      <DetailRow label="Recorded At" value={liveEvent.recordedAt} muted />
+                      <DetailRow label="Occurred at" value={liveEvent.occurredAt} muted />
+                      <DetailRow label="Recorded at" value={liveEvent.recordedAt} muted />
+                      <DetailRow label="Recorded by" value={liveEvent.recordedBy} />
+                      <DetailRow label="Source" value={liveEvent.source} muted />
                       <DetailRow label="Location" value={liveEvent.location} />
                       <DetailRow label="SKU" value={liveEvent.sku} muted />
-                      <DetailRow label="Item Name" value={liveEvent.itemName} emphasis />
-                      <DetailRow label="Qty" value={String(liveEvent.qty)} />
+                      <DetailRow label="Item name" value={liveEvent.itemName} emphasis />
+                      <DetailRow label="Quantity" value={String(liveEvent.qty)} />
                       <DetailRow label="Reason" value={liveEvent.reason} />
-                      <DetailRow label="Source" value={liveEvent.source} muted />
-                      <DetailRow label="Capture Path" value={liveEvent.scanResolution || (liveEvent.source === 'SCANNER' ? 'Resolved to SKU before submit' : 'Manual or system-originated record')} muted />
+                      <DetailRow label="Capture path" value={liveEvent.scanResolution || (liveEvent.source === 'SCANNER' ? 'Scanner capture' : 'Manual or system-originated')} muted />
                       <div className="md:col-span-2">
-                        <DetailRow label="Notes" value={liveEvent.notes || 'No notes provided.'} muted={!liveEvent.notes} />
+                        <DetailRow label="Notes" value={liveEvent.notes || 'No notes recorded.'} muted={!liveEvent.notes} />
                       </div>
                     </div>
                   </SectionCard>
 
-                  <SectionCard label="Workflow Progress" helper="This helps the current state feel easier to follow at a glance.">
+                  <SectionCard label="Workflow metadata" helper="Actor and timestamp breakdown for each possible lifecycle step.">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-3">
+                        <DetailRow label="Recorded" value={`${liveEvent.recordedBy} · ${liveEvent.recordedAt}`} />
+                        <DetailRow label="Submitted" value={liveEvent.submittedAt ? `${liveEvent.submittedBy || 'Unknown'} · ${liveEvent.submittedAt}` : 'Not submitted yet'} muted={!liveEvent.submittedAt} />
+                        <DetailRow label="Approved" value={liveEvent.approvedAt ? `${liveEvent.approvedBy || 'Unknown'} · ${liveEvent.approvedAt}` : 'Not approved'} muted={!liveEvent.approvedAt} />
+                      </div>
+                      <div className="space-y-3">
+                        <DetailRow label="Rejected" value={liveEvent.rejectedAt ? `${liveEvent.rejectedBy || 'Unknown'} · ${liveEvent.rejectedAt}` : 'Not rejected'} muted={!liveEvent.rejectedAt} />
+                        <DetailRow label="Reversed" value={liveEvent.reversedAt ? `${liveEvent.reversedBy || 'Unknown'} · ${liveEvent.reversedAt}` : 'Not reversed'} muted={!liveEvent.reversedAt} />
+                        <DetailRow label="Current posture" value={getReviewActionText(workspaceStatus)} muted />
+                      </div>
+                    </div>
+                  </SectionCard>
+
+                  {(liveEvent.rejectionReason || liveEvent.reversalReason) ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {liveEvent.rejectionReason ? (
+                        <SectionCard label="Rejection reason" helper="Decision detail kept with the engine record.">
+                          <p className="text-sm text-muted-foreground leading-relaxed">{liveEvent.rejectionReason}</p>
+                        </SectionCard>
+                      ) : null}
+                      {liveEvent.reversalReason ? (
+                        <SectionCard label="Reversal reason" helper="Reversal stays visible because the original movement already happened.">
+                          <p className="text-sm text-muted-foreground leading-relaxed">{liveEvent.reversalReason}</p>
+                        </SectionCard>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <SectionCard label="Stock movement proof" helper="Movement rows mirror the engine ledger shape: delta, reason, ref type, actor, note, and post-on-hand.">
+                    {liveEvent.movementRows.length === 0 ? (
+                      <div className="space-y-2 text-sm text-muted-foreground">
+                        <p>No movement rows have been posted for this event yet.</p>
+                        {workspaceStatus === 'SUBMITTED' ? <p>Approval is the point where the engine posts the stock deduction.</p> : null}
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <SummaryCard label="On hand before" value={String(liveEvent.onHandBefore)} helper="Snapshot before posting" />
+                          <SummaryCard label="Posted rows" value={String(liveEvent.movementRows.length)} helper="Ledger rows linked to this event" />
+                          <SummaryCard label="Current visible on hand" value={String(liveEvent.currentOnHand)} helper="Latest post-on-hand position" tone="text-green-700" />
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm min-w-[760px]">
+                            <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                              <tr>
+                                {['Timestamp', 'Ref Type', 'Delta', 'Post On Hand', 'Actor', 'Note'].map((heading) => (
+                                  <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {liveEvent.movementRows.map((row) => (
+                                <MovementRow key={row.id} row={row} />
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </SectionCard>
+
+                  <SectionCard label="Action history" helper="A calmer operational history block that can map cleanly to a future audit endpoint.">
                     <div className="space-y-4">
-                      {workflowSteps.map((step) => (
+                      {liveEvent.auditTrail.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No action history recorded yet.</p>
+                      ) : (
+                        liveEvent.auditTrail.map((item) => <TimelineRow key={item.id} item={item} />)
+                      )}
+                    </div>
+                  </SectionCard>
+                </div>
+
+                <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
+                  <SectionCard label="Workflow progress" helper="This makes the lifecycle easier to follow at a glance.">
+                    <div className="space-y-4">
+                      {getWorkflowSteps(liveEvent.status).map((step) => (
                         <WorkflowStep
                           key={step.key}
                           done={step.done}
@@ -637,52 +720,34 @@ export default function WastageWorkspace() {
                       ))}
                     </div>
                   </SectionCard>
-                </div>
 
-                <div className="xl:col-span-4 space-y-4 xl:sticky xl:top-6">
-                  <SectionCard label="Stock Impact">
-                    <div className="grid grid-cols-1 gap-3">
-                      <DetailRow label="Current On Hand" value={String(liveEvent.currentOnHand)} />
-                      {liveEvent.status === 'DRAFT' ? (
-                        <>
-                          <DetailRow label="Posting State" value="Draft saved — no stock movement yet" muted />
-                          <DetailRow label="Projected On Approval" value={String(liveEvent.currentOnHand - liveEvent.qty)} emphasis />
-                        </>
-                      ) : liveEvent.status === 'SUBMITTED' ? (
-                        <>
-                          <DetailRow label="Adjustment on Approval" value={`-${liveEvent.qty}`} muted />
-                          <DetailRow label="Projected On Hand" value={String(liveEvent.currentOnHand - liveEvent.qty)} emphasis />
-                        </>
-                      ) : liveEvent.status === 'APPROVED' ? (
-                        <>
-                          <DetailRow label="Stock Deducted" value={`-${liveEvent.qty}`} muted />
-                          <DetailRow label="Resulting On Hand" value={String(liveEvent.currentOnHand - liveEvent.qty)} emphasis />
-                        </>
-                      ) : liveEvent.status === 'REVERSED' ? (
-                        <>
-                          <DetailRow label="Restored Qty" value={`+${liveEvent.qty}`} muted />
-                          <DetailRow label="Restored On Hand" value={String(liveEvent.currentOnHand)} emphasis />
-                        </>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No stock movement has been posted for this event.</p>
-                      )}
+                  <SectionCard label="Decision posture" helper="Who can act next and what that action means.">
+                    <div className="space-y-3 text-sm text-muted-foreground">
+                      <p>{getReviewActionText(workspaceStatus)}</p>
+                      <p><span className="font-medium text-foreground">Prototype-enriched detail</span> — This layout already reserves space for real decision timestamps, reasons, movement proof, and audit rows.</p>
                     </div>
                   </SectionCard>
 
-                  <SectionCard label="Reason Guidance">
+                  <SectionCard label="Related alerts" helper="Rule and instance structure is surfaced without implying unsupported acknowledgement writes.">
+                    {liveEvent.linkedAlertInstances?.length ? (
+                      <div className="space-y-3">
+                        {liveEvent.linkedAlertInstances.map((instance) => (
+                          <AlertInstanceCard key={instance.id} instance={instance} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No active alert instances are linked to this event right now.</p>
+                    )}
+                  </SectionCard>
+
+                  <SectionCard label="Reason guidance">
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <PolicyChip reason={liveEvent.reason} />
-                        {liveEvent.activeAlert ? <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-red-50 text-red-700 border border-red-200">Active alert</span> : null}
+                        {liveEvent.activeAlert ? <span className="text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-red-50 text-red-700 border border-red-200">Active alert instance</span> : null}
                       </div>
                       <p className={`text-sm leading-relaxed ${policy.impactTone}`}>{policy.helper}</p>
-                    </div>
-                  </SectionCard>
-
-                  <SectionCard label="Available Action">
-                    <div className="space-y-3 text-sm text-muted-foreground">
-                      <p>{getReviewActionText(workspaceStatus)}</p>
-                      <p>Buttons only appear when that action is valid for the current state.</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{policy.reviewNote}</p>
                     </div>
                   </SectionCard>
                 </div>
@@ -692,41 +757,21 @@ export default function WastageWorkspace() {
         </div>
 
         <div className="fixed bottom-0 left-56 right-0 bg-card/95 backdrop-blur border-t border-border px-4 py-2.5 flex flex-wrap items-center gap-3 z-10 shadow-[0_-6px_18px_rgba(15,23,42,0.04)]">
-          {actionStatus === 'draft_saved' && (
-            <span className="text-xs text-green-700 font-medium flex items-center gap-1.5">
-              <Save size={13} /> Draft saved
-            </span>
-          )}
-          {actionStatus === 'submitted' && (
-            <span className="text-xs text-amber-700 font-medium flex items-center gap-1.5">
-              <AlertTriangle size={13} /> Event submitted for approval
-            </span>
-          )}
-          {actionStatus === 'approved' && (
-            <span className="text-xs text-green-700 font-medium flex items-center gap-1.5">
-              <CheckCircle2 size={13} /> Wastage approved — stock adjustment posted
-            </span>
-          )}
-          {actionStatus === 'rejected' && (
-            <span className="text-xs text-red-700 font-medium flex items-center gap-1.5">
-              <X size={13} /> Wastage rejected
-            </span>
-          )}
-          {actionStatus === 'reversed' && (
-            <span className="text-xs text-slate-700 font-medium flex items-center gap-1.5">
-              <Undo2 size={13} /> Wastage reversed
-            </span>
-          )}
+          {actionStatus === 'draft_saved' ? <span className="text-xs text-green-700 font-medium flex items-center gap-1.5"><Save size={13} /> Draft saved</span> : null}
+          {actionStatus === 'submitted' ? <span className="text-xs text-amber-700 font-medium flex items-center gap-1.5"><AlertTriangle size={13} /> Event submitted for approval</span> : null}
+          {actionStatus === 'approved' ? <span className="text-xs text-green-700 font-medium flex items-center gap-1.5"><CheckCircle2 size={13} /> Wastage approved — stock adjustment posted</span> : null}
+          {actionStatus === 'rejected' ? <span className="text-xs text-red-700 font-medium flex items-center gap-1.5"><X size={13} /> Wastage rejected</span> : null}
+          {actionStatus === 'reversed' ? <span className="text-xs text-slate-700 font-medium flex items-center gap-1.5"><Undo2 size={13} /> Wastage reversed</span> : null}
 
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <button
               onClick={() => navigate('/Wastage')}
               className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
             >
-              {isFormMode ? <X size={14} /> : <ArrowLeft size={14} />} {isFormMode ? 'Cancel' : 'Back to Wastage'}
+              {mode === 'create' ? <X size={14} /> : <ArrowLeft size={14} />} {mode === 'create' ? 'Cancel' : 'Back to Wastage'}
             </button>
 
-            {isFormMode ? (
+            {mode === 'create' ? (
               <>
                 <button
                   onClick={() => persistForm('DRAFT')}
@@ -763,17 +808,19 @@ export default function WastageWorkspace() {
                   onClick={handleApprove}
                   className="flex items-center gap-2 h-9 px-5 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
                 >
-                  <CheckCircle2 size={14} /> Approve
+                  <ShieldCheck size={14} /> Approve
                 </button>
               </>
             ) : workspaceStatus === 'APPROVED' ? (
               <button
                 onClick={() => setReverseOpen(true)}
-                className="flex items-center gap-2 h-9 px-5 text-sm rounded-xl border border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors font-medium"
+                className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl border border-border bg-card hover:bg-muted transition-colors text-foreground"
               >
                 <Undo2 size={14} /> Reverse
               </button>
-            ) : null}
+            ) : (
+              <div className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock3 size={13} /> No further action available</div>
+            )}
           </div>
         </div>
       </div>
@@ -781,22 +828,15 @@ export default function WastageWorkspace() {
       <AlertDialog open={rejectOpen} onOpenChange={setRejectOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reject Wastage Event</AlertDialogTitle>
+            <AlertDialogTitle>Reject wastage event</AlertDialogTitle>
             <AlertDialogDescription>
-              Provide a short reason for rejecting this submitted wastage event.
+              This stops the workflow before stock movement posting. Add the reason so the decision stays with the record.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Rejection reason" rows={3} />
+          <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Why is this record being rejected?" rows={4} />
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setRejectReason('')}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                handleReject();
-              }}
-            >
-              Confirm Rejection
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleReject} disabled={!rejectReason.trim()}>Reject event</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -804,22 +844,15 @@ export default function WastageWorkspace() {
       <AlertDialog open={reverseOpen} onOpenChange={setReverseOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reverse Approved Wastage</AlertDialogTitle>
+            <AlertDialogTitle>Reverse approved wastage</AlertDialogTitle>
             <AlertDialogDescription>
-              Reversing this event will restore on-hand quantity through an opposite stock movement.
+              This posts an equal and opposite movement. Add the reason so the reversal stays visible in history.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Textarea value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} placeholder="Reversal reason" rows={3} />
+          <Textarea value={reverseReason} onChange={(e) => setReverseReason(e.target.value)} placeholder="Why should this approved record be reversed?" rows={4} />
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setReverseReason('')}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                handleReverse();
-              }}
-            >
-              Confirm Reversal
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleReverse} disabled={!reverseReason.trim()}>Reverse event</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
