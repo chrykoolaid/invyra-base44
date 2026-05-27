@@ -31,6 +31,15 @@ export default function GapScan() {
   const [selected, setSelected] = useState(new Set());
   const [showExplanation, setShowExplanation] = useState(false);
   const [highlightedRow, setHighlightedRow] = useState(null);
+  const [results, setResults] = useState([]);
+  const hasResults = results.length > 0;
+
+  const handleRunScan = () => {
+    setResults(scanData);
+    setSelected(new Set());
+    setShowExplanation(false);
+    setHighlightedRow(null);
+  };
 
   const toggleRow = (sku) => {
     setSelected(prev => {
@@ -41,16 +50,16 @@ export default function GapScan() {
   };
 
   const toggleAll = () => {
-    setSelected(prev => prev.size === scanData.length ? new Set() : new Set(scanData.map(r => r.sku)));
+    setSelected(prev => prev.size === results.length ? new Set() : new Set(results.map(r => r.sku)));
   };
 
   const getExplanation = () => {
     if (selected.size === 0) return '';
-    
-    const selectedItems = scanData.filter(r => selected.has(r.sku));
+
+    const selectedItems = results.filter(r => selected.has(r.sku));
     const avgDaysLeft = selectedItems.reduce((sum, r) => sum + r.daysLeft, 0) / selectedItems.length;
     const avgUsage = selectedItems.reduce((sum, r) => sum + r.avgUse, 0) / selectedItems.length;
-    
+
     if (avgDaysLeft <= 3 && avgUsage > 2) {
       return 'High usage rate with low remaining stock. Suggested reorder to maintain 14-day coverage.';
     } else if (avgDaysLeft <= 7) {
@@ -81,11 +90,17 @@ export default function GapScan() {
           </select>
         </div>
 
-        <button className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity">
+        <button
+          onClick={handleRunScan}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+        >
           <Play size={12} /> Run Scan
         </button>
 
-        <button className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground">
+        <button
+          disabled={!hasResults}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+        >
           <Download size={13} /> Export
         </button>
 
@@ -97,7 +112,9 @@ export default function GapScan() {
           <Lightbulb size={13} /> Explain Selected {selected.size > 0 && `(${selected.size})`}
         </button>
 
-        <span className="ml-auto text-xs text-muted-foreground">{scanData.length} items scanned</span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {hasResults ? `${results.length} items scanned` : 'No scan run'}
+        </span>
       </div>
 
       {/* Explanation panel */}
@@ -113,68 +130,78 @@ export default function GapScan() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="border border-border rounded overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
-            <tr>
-              <th className="px-4 py-2.5 w-8">
-                <input
-                  type="checkbox"
-                  checked={selected.size === scanData.length}
-                  onChange={toggleAll}
-                  className="cursor-pointer"
-                />
-              </th>
-              {['SKU', 'Item', 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag'].map(h => (
-                <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {scanData.map((row, i) => (
-              <tr
-                key={row.sku}
-                onClick={() => toggleRow(row.sku)}
-                className={`border-t border-border cursor-pointer transition-all duration-150 ${
-                  highlightedRow === row.sku ? 'bg-primary/10 scale-98' :
-                  selected.has(row.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
-                } hover:bg-accent/40`}
-              >
-                <td className="px-4 py-2.5">
+      {!hasResults ? (
+        <div className="border border-dashed border-border rounded bg-card min-h-[220px] flex items-center justify-center text-center px-6">
+          <div className="max-w-md">
+            <p className="text-sm font-medium text-foreground mb-1">No gap scan results yet</p>
+            <p className="text-sm text-muted-foreground">
+              Choose a lookback period, then run the scan to populate stock risk, days left, and suggested order quantities.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="border border-border rounded overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
+              <tr>
+                <th className="px-4 py-2.5 w-8">
                   <input
                     type="checkbox"
-                    checked={selected.has(row.sku)}
-                    onChange={() => toggleRow(row.sku)}
-                    onClick={e => e.stopPropagation()}
+                    checked={selected.size === results.length}
+                    onChange={toggleAll}
                     className="cursor-pointer"
                   />
-                </td>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
-                <td 
-                  onClick={() => {
-                    setHighlightedRow(row.sku);
-                    setTimeout(() => navigate('/Inventory'), 200);
-                  }}
-                  className="px-4 py-2.5 font-medium text-primary hover:underline cursor-pointer transition-colors"
-                >
-                  {row.name}
-                </td>
-                <td className="px-4 py-2.5">{row.onHand.toLocaleString()}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{row.avgUse}</td>
-                <td className={`px-4 py-2.5 ${daysLeftStyle(row.daysLeft)}`}>{row.daysLeft}</td>
-                <td className="px-4 py-2.5">{row.suggested > 0 ? row.suggested : '—'}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{row.risk}</td>
-                <td className="px-4 py-2.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${flagStyle[row.flag]}`}>
-                    {row.flag}
-                  </span>
-                </td>
+                </th>
+                {['SKU', 'Item', 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag'].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {results.map((row, i) => (
+                <tr
+                  key={row.sku}
+                  onClick={() => toggleRow(row.sku)}
+                  className={`border-t border-border cursor-pointer transition-all duration-150 ${
+                    highlightedRow === row.sku ? 'bg-primary/10 scale-98' :
+                    selected.has(row.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
+                  } hover:bg-accent/40`}
+                >
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(row.sku)}
+                      onChange={() => toggleRow(row.sku)}
+                      onClick={e => e.stopPropagation()}
+                      className="cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
+                  <td
+                    onClick={() => {
+                      setHighlightedRow(row.sku);
+                      setTimeout(() => navigate('/Inventory'), 200);
+                    }}
+                    className="px-4 py-2.5 font-medium text-primary hover:underline cursor-pointer transition-colors"
+                  >
+                    {row.name}
+                  </td>
+                  <td className="px-4 py-2.5">{row.onHand.toLocaleString()}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{row.avgUse}</td>
+                  <td className={`px-4 py-2.5 ${daysLeftStyle(row.daysLeft)}`}>{row.daysLeft}</td>
+                  <td className="px-4 py-2.5">{row.suggested > 0 ? row.suggested : '—'}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{row.risk}</td>
+                  <td className="px-4 py-2.5">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${flagStyle[row.flag]}`}>
+                      {row.flag}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

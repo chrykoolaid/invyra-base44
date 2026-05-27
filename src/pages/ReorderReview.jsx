@@ -36,7 +36,9 @@ export default function ReorderReview() {
   const [windowDays, setWindowDays] = useState(30);
   const [coverDays, setCoverDays]   = useState(14);
   const [selected, setSelected]     = useState(new Set());
-  const [data, setData]             = useState(() => generateData(30, 14));
+  const [data, setData]             = useState([]);
+  const hasRecommendations = data.length > 0;
+  const hasOrderableItems = data.some(row => row.action === 'Order Now');
 
   const toggleRow = (sku) => {
     setSelected(prev => {
@@ -56,6 +58,8 @@ export default function ReorderReview() {
   };
 
   const handleCreateDraftOrders = () => {
+    if (!hasOrderableItems) return;
+
     // Collect all "Order Now" items regardless of selection
     const orderNowItems = data.filter(r => r.action === 'Order Now');
 
@@ -133,76 +137,89 @@ export default function ReorderReview() {
 
         <button
           onClick={handleCreateDraftOrders}
-          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
+          disabled={!hasOrderableItems}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <Send size={13} /> Create Draft Orders
         </button>
 
-        <span className="ml-auto text-xs text-muted-foreground">{data.length} items</span>
+        <span className="ml-auto text-xs text-muted-foreground">
+          {hasRecommendations ? `${data.length} items` : 'No recommendations generated'}
+        </span>
       </div>
 
-      {/* Table */}
-      <div className="border border-border rounded overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
-            <tr>
-              <th className="px-4 py-2.5 w-8">
-                <input type="checkbox" checked={selected.size === data.length} onChange={toggleAll} className="cursor-pointer" />
-              </th>
-              {['SKU', 'Name', 'Supplier', 'On Hand', `Demand ${windowDays}D`, 'Daily', `Coverage (days)`, 'Suggested', 'Action', 'Reasons'].map(h => {
-                const isNumeric = ['On Hand', `Demand ${windowDays}D`, 'Daily', 'Coverage (days)', 'Suggested'].includes(h);
-                return (
-                  <th key={h} className={`px-5 py-2.5 font-semibold whitespace-nowrap text-muted-foreground text-xs uppercase tracking-wide ${isNumeric ? 'text-right' : 'text-left'}`}>{h}</th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((row, i) => (
-              <tr
-                key={row.sku}
-                onClick={() => toggleRow(row.sku)}
-                className={`border-t border-border cursor-pointer transition-colors ${
-                  selected.has(row.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
-                } hover:bg-accent/40`}
-              >
-                <td className="px-4 py-2.5">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(row.sku)}
-                    onChange={() => toggleRow(row.sku)}
-                    onClick={e => e.stopPropagation()}
-                    className="cursor-pointer"
-                  />
-                </td>
-                <td className="px-5 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
-                <td className="px-5 py-2.5 font-medium">{row.name}</td>
-                <td className="px-5 py-2.5 text-muted-foreground">{row.supplier}</td>
-                <td className="px-5 py-2.5 text-right font-mono text-sm">{row.onHand.toLocaleString()}</td>
-                <td className="px-5 py-2.5 text-right font-mono text-sm text-muted-foreground">{row.demand30.toLocaleString()}</td>
-                <td className="px-5 py-2.5 text-right font-mono text-sm text-muted-foreground">{row.daily}</td>
-                <td className={`px-5 py-2.5 text-right font-mono text-sm font-semibold ${coverageStyle(row.coverage, coverDays)}`}>{row.coverage}</td>
-                <td className="px-5 py-2.5 text-right font-mono text-sm">{row.suggested > 0 ? row.suggested : '—'}</td>
-                <td className="px-5 py-2.5">
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      if (row.action === 'Order Now') {
-                        navigate('/Orders?source=reorder_review');
-                      }
-                    }}
-                    disabled={row.action !== 'Order Now'}
-                    className={`text-xs px-3 py-1 rounded font-semibold cursor-pointer transition-opacity disabled:cursor-default ${actionStyle[row.action]} ${row.action === 'Order Now' ? 'hover:opacity-80' : ''}`}
-                  >
-                    {row.action}
-                  </button>
-                </td>
-                <td className="px-5 py-2.5 text-muted-foreground text-xs max-w-xs">{row.reasons}</td>
+      {!hasRecommendations ? (
+        <div className="border border-dashed border-border rounded bg-card min-h-[220px] flex items-center justify-center text-center px-6">
+          <div className="max-w-md">
+            <p className="text-sm font-medium text-foreground mb-1">No reorder recommendations yet</p>
+            <p className="text-sm text-muted-foreground">
+              Choose a demand window and cover target, then generate recommendations to populate suggested order quantities and reorder actions.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="border border-border rounded overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
+              <tr>
+                <th className="px-4 py-2.5 w-8">
+                  <input type="checkbox" checked={selected.size === data.length} onChange={toggleAll} className="cursor-pointer" />
+                </th>
+                {['SKU', 'Name', 'Supplier', 'On Hand', `Demand ${windowDays}D`, 'Daily', `Coverage (days)`, 'Suggested', 'Action', 'Reasons'].map(h => {
+                  const isNumeric = ['On Hand', `Demand ${windowDays}D`, 'Daily', 'Coverage (days)', 'Suggested'].includes(h);
+                  return (
+                    <th key={h} className={`px-5 py-2.5 font-semibold whitespace-nowrap text-muted-foreground text-xs uppercase tracking-wide ${isNumeric ? 'text-right' : 'text-left'}`}>{h}</th>
+                  );
+                })}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {data.map((row, i) => (
+                <tr
+                  key={row.sku}
+                  onClick={() => toggleRow(row.sku)}
+                  className={`border-t border-border cursor-pointer transition-colors ${
+                    selected.has(row.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
+                  } hover:bg-accent/40`}
+                >
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(row.sku)}
+                      onChange={() => toggleRow(row.sku)}
+                      onClick={e => e.stopPropagation()}
+                      className="cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-5 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
+                  <td className="px-5 py-2.5 font-medium">{row.name}</td>
+                  <td className="px-5 py-2.5 text-muted-foreground">{row.supplier}</td>
+                  <td className="px-5 py-2.5 text-right font-mono text-sm">{row.onHand.toLocaleString()}</td>
+                  <td className="px-5 py-2.5 text-right font-mono text-sm text-muted-foreground">{row.demand30.toLocaleString()}</td>
+                  <td className="px-5 py-2.5 text-right font-mono text-sm text-muted-foreground">{row.daily}</td>
+                  <td className={`px-5 py-2.5 text-right font-mono text-sm font-semibold ${coverageStyle(row.coverage, coverDays)}`}>{row.coverage}</td>
+                  <td className="px-5 py-2.5 text-right font-mono text-sm">{row.suggested > 0 ? row.suggested : '—'}</td>
+                  <td className="px-5 py-2.5">
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (row.action === 'Order Now') {
+                          navigate('/Orders?source=reorder_review');
+                        }
+                      }}
+                      disabled={row.action !== 'Order Now'}
+                      className={`text-xs px-3 py-1 rounded font-semibold cursor-pointer transition-opacity disabled:cursor-default ${actionStyle[row.action]} ${row.action === 'Order Now' ? 'hover:opacity-80' : ''}`}
+                    >
+                      {row.action}
+                    </button>
+                  </td>
+                  <td className="px-5 py-2.5 text-muted-foreground text-xs max-w-xs">{row.reasons}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
