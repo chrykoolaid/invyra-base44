@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ArrowRight, BellRing, Download, Filter, History, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
+import { ArrowRight, BellRing, Download, Filter, History, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   createAlertRule,
@@ -17,7 +17,6 @@ import {
   getLastAlertEvaluation,
   getLiveKpiSummary,
   getMovementLedger,
-  getReadinessBoard,
   getReasonGovernanceRows,
   getReportingPrototype,
   getSourcePosture,
@@ -262,7 +261,6 @@ export default function Wastage() {
   const alertReadiness = useMemo(() => getAlertRuleReadinessRows(), [refreshTick]);
   const movementLedger = useMemo(() => getMovementLedger(10), [refreshTick]);
   const auditFeed = useMemo(() => getAuditFeed(8), [refreshTick]);
-  const readinessBoard = useMemo(() => getReadinessBoard(), [refreshTick]);
   const alertApiPosture = useMemo(() => getAlertApiPosture(), [refreshTick]);
   const lastAlertEvaluation = useMemo(() => getLastAlertEvaluation(), [refreshTick]);
   const kpis = useMemo(() => getKpiSummary(rows), [rows]);
@@ -288,7 +286,6 @@ export default function Wastage() {
     });
   }, [activeTab, query, rows]);
 
-  const highSeverityAlerts = alertInstances.filter((instance) => instance.severity === 'HIGH');
   const filteredAlertInstances = useMemo(() => {
     const q = alertQuery.trim().toLowerCase();
     return alertInstances.filter((instance) => {
@@ -359,192 +356,163 @@ export default function Wastage() {
         <KpiCard label="Active Alerts" value={kpis.activeAlerts} helper="Generated instances from the current ruleset" tone="text-red-700" />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] gap-4 items-start min-w-0">
-        <div className="min-w-0 space-y-4">
-          <SectionCard
-            title="Operations queue"
-            subtitle="Table-first review of wastage events. Open a record to see workflow metadata, stock proof, and action history."
-            action={<span className="text-xs text-muted-foreground">{filteredRows.length} visible</span>}
-          >
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="relative w-full lg:max-w-md">
-                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by event, SKU, item, reason, location, or user" className="pl-9" />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => navigate('/Wastage/workspace')}
-                  className="inline-flex items-center gap-1.5 h-9 px-4 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
-                >
-                  <Plus size={14} /> Record Wastage
-                </button>
-              </div>
+      <div className="min-w-0 space-y-4">
+        <SectionCard
+          title="Operations queue"
+          subtitle="Full-width review of wastage events. Open a record to see workflow metadata, stock proof, and action history."
+          action={<span className="text-xs text-muted-foreground">{filteredRows.length} visible</span>}
+        >
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-xl">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by event, SKU, item, reason, location, or user" className="pl-9" />
             </div>
-
-            <div className="flex flex-wrap items-center gap-2 mt-4">
-              {statusTabs.map((tab) => (
-                <PillTab key={tab.key} label={tab.label} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)} />
-              ))}
-              <div className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Filter size={13} /> Calm queue filters</div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => navigate('/Wastage/workspace')}
+                className="inline-flex items-center gap-1.5 h-9 px-4 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
+              >
+                <Plus size={14} /> Record Wastage
+              </button>
             </div>
+          </div>
 
-            {filteredRows.length === 0 ? (
-              <div className="px-2 py-12 text-center">
-                <p className="text-base font-medium text-foreground mb-1">No wastage events match this view</p>
-                <p className="text-sm text-muted-foreground">Try clearing the search or switching the status filter.</p>
+          <div className="flex flex-wrap items-center gap-2 mt-4">
+            {statusTabs.map((tab) => (
+              <PillTab key={tab.key} label={tab.label} active={activeTab === tab.key} onClick={() => setActiveTab(tab.key)} />
+            ))}
+            <div className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Filter size={13} /> Calm queue filters</div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-2xl border border-border bg-muted/15 px-3 py-2.5 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Workflow guide</span>
+            <span><span className="font-medium text-foreground">Draft</span> no stock movement</span>
+            <span><span className="font-medium text-foreground">Submitted</span> awaiting decision</span>
+            <span><span className="font-medium text-foreground">Approved</span> movement posted</span>
+            <span><span className="font-medium text-foreground">Rejected</span> no stock impact</span>
+            <span><span className="font-medium text-foreground">Reversed</span> movement undone</span>
+          </div>
+
+          {filteredRows.length === 0 ? (
+            <div className="px-2 py-12 text-center">
+              <p className="text-base font-medium text-foreground mb-1">No wastage events match this view</p>
+              <p className="text-sm text-muted-foreground">Try clearing the search or switching the status filter.</p>
+            </div>
+          ) : (
+            <div className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-border">
+              <div className="hidden lg:grid grid-cols-[minmax(0,2.15fr)_minmax(150px,1.2fr)_80px_minmax(150px,1fr)_minmax(180px,1.35fr)] gap-3 bg-muted/15 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                <div className="min-w-0">Event / Item</div>
+                <div className="min-w-0">Workflow</div>
+                <div className="min-w-0 text-right">Qty</div>
+                <div className="min-w-0">Reason</div>
+                <div className="min-w-0">Impact</div>
               </div>
-            ) : (
-              <div className="mt-4 min-w-0 overflow-hidden rounded-2xl border border-border">
-                <div className="hidden lg:grid grid-cols-[minmax(0,2.15fr)_minmax(140px,1.25fr)_72px_minmax(120px,1fr)_minmax(150px,1.45fr)] gap-3 bg-muted/15 px-4 py-2.5 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  <div className="min-w-0">Event / Item</div>
-                  <div className="min-w-0">Workflow</div>
-                  <div className="min-w-0 text-right">Qty</div>
-                  <div className="min-w-0">Reason</div>
-                  <div className="min-w-0">Impact</div>
-                </div>
-                <div className="divide-y divide-border">
-                  {filteredRows.map((row, index) => {
-                    const impactLines = getOperationsImpactLines(row);
-                    const sourcePosture = getSourcePosture(row.source);
-                    return (
-                      <div
-                        key={row.id}
-                        className={`grid grid-cols-1 lg:grid-cols-[minmax(0,2.15fr)_minmax(140px,1.25fr)_72px_minmax(120px,1fr)_minmax(150px,1.45fr)] gap-3 px-4 py-3 transition-colors ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'} hover:bg-muted/25`}
-                      >
-                        <div className="min-w-0 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium text-foreground break-words">{row.id}</span>
-                            <span className={`inline-flex shrink-0 text-[11px] px-2.5 py-0.5 rounded-full font-medium ${sourcePosture.chipClass}`}>{row.source}</span>
-                          </div>
-                          <div className="text-[11px] text-muted-foreground break-words">{row.location} · {row.sku}</div>
-                          <div className="text-[11px] text-muted-foreground break-words">{row.itemName}</div>
+              <div className="divide-y divide-border">
+                {filteredRows.map((row, index) => {
+                  const impactLines = getOperationsImpactLines(row);
+                  const sourcePosture = getSourcePosture(row.source);
+                  return (
+                    <div
+                      key={row.id}
+                      className={`grid grid-cols-1 lg:grid-cols-[minmax(0,2.15fr)_minmax(150px,1.2fr)_80px_minmax(150px,1fr)_minmax(180px,1.35fr)] gap-3 px-4 py-3 transition-colors ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'} hover:bg-muted/25`}
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium text-foreground break-words">{row.id}</span>
+                          <span className={`inline-flex shrink-0 text-[11px] px-2.5 py-0.5 rounded-full font-medium ${sourcePosture.chipClass}`}>{row.source}</span>
                         </div>
-
-                        <div className="min-w-0 space-y-1.5">
-                          <span className={`inline-flex w-fit text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>{row.status}</span>
-                          <div className="text-[11px] text-muted-foreground break-words">Recorded {row.recordedAt}</div>
-                          {row.submittedAt ? <div className="text-[11px] text-muted-foreground break-words">Submitted {row.submittedAt}</div> : null}
-                        </div>
-
-                        <div className="min-w-0 lg:text-right font-semibold text-foreground">
-                          <span className="lg:hidden text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground mr-2">Qty</span>
-                          {row.qty}
-                        </div>
-
-                        <div className="min-w-0 space-y-1">
-                          <div className="text-foreground break-words">{row.reason}</div>
-                          <div className="text-[11px] text-muted-foreground break-words">{row.recordedBy}</div>
-                        </div>
-
-                        <div className="min-w-0 space-y-1">
-                          <div className="text-foreground break-words">{impactLines[0]}</div>
-                          <div className="text-[11px] text-muted-foreground break-words">{impactLines[1]}</div>
-                          <div className="text-[11px] text-muted-foreground break-words">{impactLines[2]}</div>
-                          <button
-                            onClick={() => navigate(`/Wastage/workspace?event=${encodeURIComponent(row.id)}`)}
-                            className="mt-2 inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:opacity-80"
-                          >
-                            Open <ArrowRight size={14} />
-                          </button>
-                        </div>
+                        <div className="text-[11px] text-muted-foreground break-words">{row.location} · {row.sku}</div>
+                        <div className="text-[11px] text-muted-foreground break-words">{row.itemName}</div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </SectionCard>
 
-          <SectionCard title="Recent stock movement ledger" subtitle="Approval and reversal are the only points where the engine posts stock movements.">
-            {movementLedger.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No movement rows have been posted yet.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm min-w-[980px]">
-                  <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
-                    <tr>
-                      {['Timestamp', 'Event', 'Ref Type', 'Delta', 'Post On Hand', 'Reason', 'Actor'].map((heading) => (
-                        <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {movementLedger.map((row, index) => (
-                      <tr key={row.id} className={`border-t border-border ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
-                        <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{row.ts}</td>
-                        <td className="px-4 py-3 align-top min-w-[220px]">
-                          <div className="font-medium text-foreground">{row.eventId}</div>
-                          <div className="text-[11px] text-muted-foreground mt-0.5">{row.location} · {row.sku}</div>
-                        </td>
-                        <td className="px-4 py-3 align-top whitespace-nowrap"><span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${row.refType === 'WASTAGE' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>{row.refType}</span></td>
-                        <td className="px-4 py-3 align-top whitespace-nowrap font-medium text-foreground">{row.delta > 0 ? `+${row.delta}` : row.delta}</td>
-                        <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{row.postOnHand}</td>
-                        <td className="px-4 py-3 align-top min-w-[180px] text-muted-foreground">{row.reasonCode}</td>
-                        <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{row.actor || 'System'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </SectionCard>
+                      <div className="min-w-0 space-y-1.5">
+                        <span className={`inline-flex w-fit text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>{row.status}</span>
+                        <div className="text-[11px] text-muted-foreground break-words">Recorded {row.recordedAt}</div>
+                        {row.submittedAt ? <div className="text-[11px] text-muted-foreground break-words">Submitted {row.submittedAt}</div> : null}
+                      </div>
 
-          <SectionCard title="Recent audit feed" subtitle="Operational history is already written by the engine, even before a dedicated public audit read exists.">
-            {auditFeed.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No audit rows recorded yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {auditFeed.map((row) => (
-                  <div key={row.id} className="border border-border rounded-2xl px-4 py-3 bg-background/40">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <History size={14} className="text-muted-foreground" />
-                      <p className="text-sm font-medium text-foreground">{row.action.replaceAll('_', ' ')}</p>
-                      <span className="text-[11px] text-muted-foreground">{row.ts}</span>
+                      <div className="min-w-0 lg:text-right font-semibold text-foreground">
+                        <span className="lg:hidden text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground mr-2">Qty</span>
+                        {row.qty}
+                      </div>
+
+                      <div className="min-w-0 space-y-1">
+                        <div className="text-foreground break-words">{row.reason}</div>
+                        <div className="text-[11px] text-muted-foreground break-words">{row.recordedBy}</div>
+                      </div>
+
+                      <div className="min-w-0 space-y-1">
+                        <div className="text-foreground break-words">{impactLines[0]}</div>
+                        <div className="text-[11px] text-muted-foreground break-words">{impactLines[1]}</div>
+                        <div className="text-[11px] text-muted-foreground break-words">{impactLines[2]}</div>
+                        <button
+                          onClick={() => navigate(`/Wastage/workspace?event=${encodeURIComponent(row.id)}`)}
+                          className="mt-2 inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:opacity-80"
+                        >
+                          Open <ArrowRight size={14} />
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{row.details || 'No extra detail recorded.'}</p>
-                    <p className="text-[11px] text-muted-foreground mt-2">{row.eventId} · {row.location} · {row.sku} · {row.actor || 'System'}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            )}
-          </SectionCard>
-        </div>
-
-        <div className="min-w-0 space-y-4 xl:sticky xl:top-6">
-          <SectionCard title="Workflow guide" subtitle="Plain-language status meanings for daily operations.">
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p><span className="font-medium text-foreground">Draft</span> — Record exists, no stock movement posted.</p>
-              <p><span className="font-medium text-foreground">Submitted</span> — Waiting for workflow decision.</p>
-              <p><span className="font-medium text-foreground">Approved</span> — Movement posted and on-hand changed.</p>
-              <p><span className="font-medium text-foreground">Rejected</span> — Decision stored, no stock impact.</p>
-              <p><span className="font-medium text-foreground">Reversed</span> — Original approved movement was undone.</p>
             </div>
-          </SectionCard>
+          )}
+        </SectionCard>
 
-          <SectionCard title="Active alert instances" subtitle="Engine-aligned signals generated from the current ruleset." action={<span className="text-xs text-muted-foreground">{alertInstances.length} active</span>}>
-            {alertInstances.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No active alert instances right now.</p>
-            ) : (
-              <div className="space-y-3">
-                {alertInstances.slice(0, 3).map((instance) => (
-                  <AlertInstanceCard key={instance.id} instance={instance} />
-                ))}
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard title="Read model posture" subtitle="Keep the UI honest about what is public API today versus what is stored deeper in the engine.">
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <KpiCard label="Live Contracts" value={readinessBoard.summary.live} helper="Public endpoints already usable" tone="text-green-700" />
-              <KpiCard label="Stored Depth" value={readinessBoard.summary.stored} helper="Needs dedicated reads" tone="text-blue-700" />
+        <SectionCard title="Recent stock movement ledger" subtitle="Approval and reversal are the only points where the engine posts stock movements.">
+          {movementLedger.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No movement rows have been posted yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[980px]">
+                <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                  <tr>
+                    {['Timestamp', 'Event', 'Ref Type', 'Delta', 'Post On Hand', 'Reason', 'Actor'].map((heading) => (
+                      <th key={heading} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{heading}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {movementLedger.map((row, index) => (
+                    <tr key={row.id} className={`border-t border-border ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
+                      <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{row.ts}</td>
+                      <td className="px-4 py-3 align-top min-w-[220px]">
+                        <div className="font-medium text-foreground">{row.eventId}</div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">{row.location} · {row.sku}</div>
+                      </td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap"><span className={`inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium ${row.refType === 'WASTAGE' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>{row.refType}</span></td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap font-medium text-foreground">{row.delta > 0 ? `+${row.delta}` : row.delta}</td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{row.postOnHand}</td>
+                      <td className="px-4 py-3 align-top min-w-[180px] text-muted-foreground">{row.reasonCode}</td>
+                      <td className="px-4 py-3 align-top whitespace-nowrap text-muted-foreground">{row.actor || 'System'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Recent audit feed" subtitle="Operational history is already written by the engine, even before a dedicated public audit read exists.">
+          {auditFeed.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No audit rows recorded yet.</p>
+          ) : (
             <div className="space-y-3">
-              {readinessBoard.storedContracts.slice(0, 3).map((item) => (
-                <ReadinessLine key={item.label} item={item} />
+              {auditFeed.map((row) => (
+                <div key={row.id} className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <History size={14} className="text-muted-foreground" />
+                    <p className="text-sm font-medium text-foreground">{row.action.replaceAll('_', ' ')}</p>
+                    <span className="text-[11px] text-muted-foreground">{row.ts}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{row.details || 'No extra detail recorded.'}</p>
+                  <p className="text-[11px] text-muted-foreground mt-2">{row.eventId} · {row.location} · {row.sku} · {row.actor || 'System'}</p>
+                </div>
               ))}
             </div>
-          </SectionCard>
-        </div>
+          )}
+        </SectionCard>
       </div>
     </div>
   );
@@ -967,7 +935,7 @@ export default function Wastage() {
     <div className="p-5 lg:p-6 space-y-4">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Wastage</h1>
-        <p className="text-sm text-muted-foreground">This pass deepens the UI around the engine’s real lifecycle, stock effect, action history, and alert scaffolding.</p>
+        <p className="text-sm text-muted-foreground">Record, review, and track wastage events without narrowing the daily operations queue.</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
