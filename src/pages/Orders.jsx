@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, ChevronDown, AlertCircle } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import DraftOrderWorkspace from '@/components/DraftOrderWorkspace';
 import ActiveOrderWorkspace from '@/components/ActiveOrderWorkspace';
 
@@ -91,30 +92,62 @@ const initialOrders = [
 const statusStyle = {
   'Draft':               'bg-muted text-muted-foreground border border-border',
   'Submitted':           'bg-blue-50 text-blue-700 border border-blue-200',
+  'Confirmed':           'bg-violet-50 text-violet-700 border border-violet-200',
   'Awaiting Delivery':   'bg-amber-50 text-amber-700 border border-amber-200',
   'Partially Received':  'bg-orange-50 text-orange-700 border border-orange-200',
   'Received':            'bg-green-50 text-green-700 border border-green-200',
   'Cancelled':           'bg-red-50 text-red-400 border border-red-200',
 };
 
-const ALL_STATUSES = ['All', 'Draft', 'Submitted', 'Awaiting Delivery', 'Partially Received', 'Received', 'Cancelled'];
+const ALL_STATUSES = ['All', 'Draft', 'Submitted', 'Confirmed', 'Awaiting Delivery', 'Partially Received', 'Received', 'Cancelled'];
 
 export default function Orders() {
   const [orders, setOrders]           = useState(initialOrders);
   const [query, setQuery]             = useState('');
   const [statusFilter, setStatus]     = useState('All');
-  const [draftOrder, setDraftOrder]   = useState(null);   // open in DraftOrderWorkspace inline sub-page
-  const [activeOrder, setActiveOrder] = useState(null);   // open in ActiveOrderWorkspace inline sub-page
+  const [draftOrder, setDraftOrder]   = useState(null);
+  const [activeOrder, setActiveOrder] = useState(null);
   const [showBanner, setShowBanner]   = useState(false);
 
+  // Load live DB orders and merge/override static list
+  const loadDbOrders = useCallback(async () => {
+    const dbOrders = await base44.entities.PurchaseOrder.list('-created_date', 100);
+    if (dbOrders && dbOrders.length > 0) {
+      const mapped = dbOrders.map(o => ({
+        id: o.id,
+        orderNumber: o.order_number,
+        status: o.status || 'Draft',
+        supplier: o.supplier,
+        expectedDate: o.expected_date || '',
+        createdBy: o.created_by || '',
+        createdOn: o.created_date ? o.created_date.slice(0, 10) : '',
+        source: o.source || 'Manual',
+        notes: o.notes || '',
+        sourceModule: o.source || 'Manual Entry',
+        triggerReason: o.notes || '',
+        urgency: o.urgency || 'low',
+        coverageDays: 0,
+        onHandAtCreation: '—',
+        suggestedQty: 0,
+        lines: o.lines || [],
+        supplier_token: o.supplier_token,
+        supplier_confirmed_at: o.supplier_confirmed_at,
+        supplier_dispatched_at: o.supplier_dispatched_at,
+        supplier_dispatch_note: o.supplier_dispatch_note,
+      }));
+      setOrders(mapped);
+    }
+  }, []);
+
   useEffect(() => {
+    loadDbOrders();
     const params = new URLSearchParams(window.location.search);
     if (params.get('source') === 'reorder_review') {
       setShowBanner(true);
       const t = setTimeout(() => setShowBanner(false), 5000);
       return () => clearTimeout(t);
     }
-  }, []);
+  }, [loadDbOrders]);
 
   const handleOrderClick = (order) => {
     if (DRAFT_STATUSES.has(order.status)) {
@@ -125,10 +158,26 @@ export default function Orders() {
   };
 
   // Called when a draft is submitted — transition it to ActiveOrderWorkspace
-  const handleDraftSubmit = (submittedOrder) => {
+  const handleDraftSubmit = async (submittedOrder) => {
     setOrders(prev => prev.map(o => o.id === submittedOrder.id ? { ...submittedOrder } : o));
+    // Persist to DB if it has a real DB id
+    if (typeof submittedOrder.id === 'string' && submittedOrder.id.length > 10) {
+      await base44.entities.PurchaseOrder.update(submittedOrder.id, {
+        status: submittedOrder.status,
+        submitted_at: new Date().toISOString(),
+      });
+    }
     setDraftOrder(null);
     setActiveOrder(submittedOrder);
+  };
+
+  // Called when order status changes (cancel, etc.)
+  const handleStatusChange = async (orderId, newStatus) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
+    if (typeof orderId === 'string' && orderId.length > 10) {
+      await base44.entities.PurchaseOrder.update(orderId, { status: newStatus });
+    }
+    setActiveOrder(null);
   };
 
   const filtered = orders.filter(o => {
@@ -154,11 +203,8 @@ export default function Orders() {
     return (
       <ActiveOrderWorkspace
         order={activeOrder}
-        onBack={() => setActiveOrder(null)}
-        onCancelOrder={() => {
-          setOrders(prev => prev.map(o => o.id === activeOrder.id ? { ...o, status: 'Cancelled' } : o));
-          setActiveOrder(null);
-        }}
+        onBack={() => { setActiveOrder(null); loadDbOrders(); }}
+        onCancelOrder={() => handleStatusChange(activeOrder.id, 'Cancelled')}
       />
     );
   }

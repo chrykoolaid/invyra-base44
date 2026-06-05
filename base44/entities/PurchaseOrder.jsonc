@@ -1,0 +1,99 @@
+{
+  "name": "PurchaseOrder",
+  "type": "object",
+  "properties": {
+    "order_number": {
+      "type": "string"
+    },
+    "supplier": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Submitted",
+        "Confirmed",
+        "Awaiting Delivery",
+        "Partially Received",
+        "Received",
+        "Cancelled"
+      ],
+      "default": "Draft"
+    },
+    "source": {
+      "type": "string",
+      "default": "Manual"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "expected_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "urgency": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "low"
+    },
+    "lines": {
+      "type": "array",
+      "description": "Order line items",
+      "items": {
+        "type": "object",
+        "properties": {
+          "line_id": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "qty": {
+            "type": "number"
+          },
+          "unit_cost": {
+            "type": "number"
+          },
+          "supplier": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "supplier_token": {
+      "type": "string",
+      "description": "Unique token for supplier portal access (no login required)"
+    },
+    "supplier_confirmed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supplier_dispatched_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supplier_dispatch_note": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "order_number",
+    "supplier"
+  ]
+}

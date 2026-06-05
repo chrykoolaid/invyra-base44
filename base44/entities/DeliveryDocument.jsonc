@@ -1,0 +1,52 @@
+{
+  "name": "DeliveryDocument",
+  "type": "object",
+  "properties": {
+    "doc_id": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "Loadsheet",
+        "Delivery Note"
+      ],
+      "default": "Loadsheet"
+    },
+    "supplier": {
+      "type": "string"
+    },
+    "po_number": {
+      "type": "string"
+    },
+    "po_id": {
+      "type": "string",
+      "description": "Reference to PurchaseOrder.id"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL to the uploaded file"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "New",
+        "Reviewed",
+        "Printed"
+      ],
+      "default": "New"
+    },
+    "uploaded_by": {
+      "type": "string",
+      "description": "Who uploaded (supplier token or user email)"
+    }
+  },
+  "required": [
+    "type",
+    "supplier",
+    "po_number"
+  ]
+}

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { ArrowLeft, GitBranch, Plus, Trash2, Check, X, Clock } from 'lucide-react';
+import { ArrowLeft, GitBranch, Plus, Trash2, Check, X, Clock, Link2, CheckCircle2, Truck } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 const lineStatusStyle = {
   original:    'bg-muted text-muted-foreground border border-border',
@@ -10,6 +11,7 @@ const lineStatusStyle = {
 
 const statusStyle = {
   'Submitted':          'bg-blue-50 text-blue-700 border border-blue-200',
+  'Confirmed':          'bg-violet-50 text-violet-700 border border-violet-200',
   'Awaiting Delivery':  'bg-amber-50 text-amber-700 border border-amber-200',
   'Partially Received': 'bg-orange-50 text-orange-700 border border-orange-200',
   'Received':           'bg-green-50 text-green-700 border border-green-200',
@@ -179,6 +181,34 @@ export default function ActiveOrderWorkspace({ order, onBack, onCancelOrder }) {
       }}],
     }));
   };
+
+  // ── Supplier portal link ─────────────────────────────────────────────────
+  const [portalLink, setPortalLink] = useState(
+    order.supplier_token
+      ? `${window.location.origin}/SupplierPortal?token=${order.supplier_token}`
+      : null
+  );
+  const [generatingLink, setGeneratingLink] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const handleGenerateLink = async () => {
+    if (!order.id || typeof order.id !== 'string' || order.id.length < 10) return;
+    setGeneratingLink(true);
+    const res = await base44.functions.invoke('generateSupplierToken', { order_id: order.id });
+    setPortalLink(res.data?.portal_url || null);
+    setGeneratingLink(false);
+  };
+
+  const handleCopyLink = () => {
+    if (!portalLink) return;
+    navigator.clipboard.writeText(portalLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  };
+
+  // Supplier confirmation status from order data
+  const supplierConfirmed = order.supplier_confirmed_at;
+  const supplierDispatched = order.supplier_dispatched_at;
 
   // ── Activity log (static placeholder) ────────────────────────────────────
   const activityLog = [
@@ -449,6 +479,49 @@ export default function ActiveOrderWorkspace({ order, onBack, onCancelOrder }) {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </section>
+
+            {/* Supplier Portal section */}
+            <section className="mb-6">
+              <SectionHeading>Supplier Confirmation</SectionHeading>
+              <div className="border border-border rounded bg-card p-4 space-y-4">
+                {/* Status row */}
+                <div className="flex flex-wrap gap-3">
+                  <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg border ${supplierConfirmed ? 'bg-violet-50 border-violet-200 text-violet-700' : 'bg-muted border-border text-muted-foreground'}`}>
+                    <CheckCircle2 size={14} />
+                    <span>{supplierConfirmed ? `Confirmed ${new Date(supplierConfirmed).toLocaleDateString()}` : 'Awaiting confirmation'}</span>
+                  </div>
+                  <div className={`flex items-center gap-2 text-sm px-3 py-2 rounded-lg border ${supplierDispatched ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-muted border-border text-muted-foreground'}`}>
+                    <Truck size={14} />
+                    <span>{supplierDispatched ? `Dispatched ${new Date(supplierDispatched).toLocaleDateString()}` : 'Not dispatched yet'}</span>
+                  </div>
+                </div>
+
+                {order.supplier_dispatch_note && (
+                  <p className="text-xs text-muted-foreground border-l-2 border-border pl-3">{order.supplier_dispatch_note}</p>
+                )}
+
+                {/* Portal link */}
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Send this link to <span className="font-medium text-foreground">{order.supplier}</span> — they can confirm and mark as dispatched without logging in.</p>
+                  {portalLink ? (
+                    <div className="flex items-center gap-2">
+                      <input readOnly value={portalLink} className="flex-1 h-8 border border-border rounded px-3 text-xs bg-background font-mono text-muted-foreground focus:outline-none" />
+                      <button onClick={handleCopyLink} className="flex items-center gap-1.5 h-8 px-3 text-xs border border-border rounded bg-card hover:bg-muted transition-colors text-foreground whitespace-nowrap">
+                        <Link2 size={12} /> {linkCopied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleGenerateLink}
+                      disabled={generatingLink || !order.id || typeof order.id !== 'string' || order.id.length < 10}
+                      className="flex items-center gap-1.5 h-8 px-4 text-xs border border-border rounded bg-card hover:bg-muted transition-colors text-foreground disabled:opacity-40"
+                    >
+                      <Link2 size={12} /> {generatingLink ? 'Generating…' : 'Generate Supplier Portal Link'}
+                    </button>
+                  )}
+                </div>
               </div>
             </section>
 
