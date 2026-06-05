@@ -1,20 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { base44 } from '@/api/base44Client';
 import {
   Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History
 } from 'lucide-react';
-
-const initialItems = [
-  { sku: 'CHM-001', name: 'Premium Detergent 20L',  onHand: 48,  unitCost: 32.00, price: 45.00, expiry: '2027-06-01', supplier: 'ChemSupply' },
-  { sku: 'CHM-002', name: 'Fabric Softener 20L',    onHand: 30,  unitCost: 28.50, price: 39.00, expiry: '2027-04-15', supplier: 'ChemSupply' },
-  { sku: 'CHM-003', name: 'Bleach 5L',              onHand: 72,  unitCost: 8.00,  price: 13.00, expiry: '2026-12-01', supplier: 'CleanTex' },
-  { sku: 'CHM-004', name: 'Stain Remover 2L',       onHand: 55,  unitCost: 11.00, price: 17.50, expiry: '2026-09-30', supplier: 'CleanTex' },
-  { sku: 'PKG-001', name: 'Packaging Bag Large',    onHand: 1200, unitCost: 0.15, price: 0.30,  expiry: '—',          supplier: 'PackPro' },
-  { sku: 'PKG-002', name: 'Garment Tag Roll',       onHand: 18,  unitCost: 4.50,  price: 7.00,  expiry: '—',          supplier: 'PackPro' },
-  { sku: 'OPS-001', name: 'Gloves Disposable',      onHand: 340, unitCost: 0.08,  price: 0.18,  expiry: '2028-01-01', supplier: 'SafetyFirst' },
-  { sku: 'OPS-002', name: 'Hanger Standard',        onHand: 890, unitCost: 0.22,  price: 0.50,  expiry: '—',          supplier: 'HangerCo' },
-  { sku: 'MNT-001', name: 'Machine Descaler',       onHand: 14,  unitCost: 19.00, price: 29.00, expiry: '2027-03-01', supplier: 'ChemSupply' },
-  { sku: 'OPS-003', name: 'Thermal Receipt Roll',   onHand: 60,  unitCost: 1.80,  price: 3.50,  expiry: '—',          supplier: 'PackPro' },
-];
 
 const actions = [
   { label: 'Add / Update Item', icon: Plus },
@@ -27,26 +15,37 @@ const actions = [
 ];
 
 export default function Inventory() {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(new Set());
 
-  const filtered = initialItems.filter(item =>
-    item.name.toLowerCase().includes(search.toLowerCase()) ||
-    item.sku.toLowerCase().includes(search.toLowerCase()) ||
-    item.supplier.toLowerCase().includes(search.toLowerCase())
+  const loadItems = useCallback(async () => {
+    setLoading(true);
+    const rows = await base44.entities.InventoryItem.filter({ is_active: true }, '-updated_date', 200);
+    setItems(rows || []);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadItems(); }, [loadItems]);
+
+  const filtered = items.filter(item =>
+    (item.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (item.sku || '').toLowerCase().includes(search.toLowerCase()) ||
+    (item.unit || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  const toggleRow = (sku) => {
+  const toggleRow = (id) => {
     setSelected(prev => {
       const next = new Set(prev);
-      next.has(sku) ? next.delete(sku) : next.add(sku);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
 
   const toggleAll = () => {
-    setSelected(prev => prev.size === filtered.length ? new Set() : new Set(filtered.map(i => i.sku)));
+    setSelected(prev => prev.size === filtered.length ? new Set() : new Set(filtered.map(i => i.id)));
   };
 
   return (
@@ -83,9 +82,10 @@ export default function Inventory() {
         {actions.map(({ label, icon: Icon }) => (
           <button
             key={label}
+            onClick={label === 'Reload' ? loadItems : undefined}
             className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
           >
-            <Icon size={13} />
+            <Icon size={13} className={label === 'Reload' && loading ? 'animate-spin' : ''} />
             {label}
           </button>
         ))}
@@ -96,7 +96,7 @@ export default function Inventory() {
         <table className="w-full text-sm">
           <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
             <tr>
-                  <th className="px-4 py-2.5 w-8">
+              <th className="px-4 py-2.5 w-8">
                 <input
                   type="checkbox"
                   checked={filtered.length > 0 && selected.size === filtered.length}
@@ -104,41 +104,50 @@ export default function Inventory() {
                   className="cursor-pointer"
                 />
               </th>
-              {['SKU', 'Name', 'On Hand', 'Unit Cost', 'Price', 'Expiry', 'Supplier'].map(h => (
+              {['SKU', 'Name', 'On Hand', 'Unit', 'Reorder Point', 'Reorder Qty'].map(h => (
                 <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {filtered.map((item, i) => (
-              <tr
-                key={item.sku}
-                onClick={() => toggleRow(item.sku)}
-                className={`border-t border-border cursor-pointer transition-colors ${
-                  selected.has(item.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
-                } hover:bg-accent/40`}
-              >
-                <td className="px-4 py-2.5">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(item.sku)}
-                    onChange={() => toggleRow(item.sku)}
-                    onClick={e => e.stopPropagation()}
-                    className="cursor-pointer"
-                  />
-                </td>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{item.sku}</td>
-                <td className="px-4 py-2.5 font-medium">{item.name}</td>
-                <td className="px-4 py-2.5">{item.onHand.toLocaleString()}</td>
-                <td className="px-4 py-2.5">${item.unitCost.toFixed(2)}</td>
-                <td className="px-4 py-2.5">${item.price.toFixed(2)}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{item.expiry}</td>
-                <td className="px-4 py-2.5 text-muted-foreground">{item.supplier}</td>
-              </tr>
-            ))}
-            {filtered.length === 0 && (
+            {loading ? (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">Loading inventory…</td></tr>
+            ) : filtered.map((item, i) => {
+              const belowReorder = item.reorder_point != null && (item.stock || 0) <= item.reorder_point;
+              return (
+                <tr
+                  key={item.id}
+                  onClick={() => toggleRow(item.id)}
+                  className={`border-t border-border cursor-pointer transition-colors ${
+                    selected.has(item.id) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
+                  } hover:bg-accent/40`}
+                >
+                  <td className="px-4 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(item.id)}
+                      onChange={() => toggleRow(item.id)}
+                      onClick={e => e.stopPropagation()}
+                      className="cursor-pointer"
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{item.sku}</td>
+                  <td className="px-4 py-2.5 font-medium">{item.name}</td>
+                  <td className={`px-4 py-2.5 font-semibold ${belowReorder ? 'text-red-600' : 'text-foreground'}`}>
+                    {(item.stock ?? 0).toLocaleString()}
+                    {belowReorder && <span className="ml-1.5 text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 rounded-full px-1.5 py-0.5">Low</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{item.unit || '—'}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{item.reorder_point ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">{item.reorder_qty ?? '—'}</td>
+                </tr>
+              );
+            })}
+            {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground text-sm">No items found.</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                  {items.length === 0 ? 'No inventory items found. Seed items via InventoryItem entity.' : 'No items match your search.'}
+                </td>
               </tr>
             )}
           </tbody>
