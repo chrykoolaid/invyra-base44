@@ -292,7 +292,9 @@ export default function WastageWorkspace() {
   const [rejectReason, setRejectReason] = useState('');
   const [reverseReason, setReverseReason] = useState('');
   const [skuSearch, setSkuSearch] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [nameSearch, setNameSearch] = useState('');
+  const [showSkuSuggestions, setShowSkuSuggestions] = useState(false);
+  const [showNameSuggestions, setShowNameSuggestions] = useState(false);
 
   const liveEvent = mode === 'review' && eventId ? getEventById(eventId) || selectedEvent : null;
   const workspaceStatus = liveEvent?.status || 'UNKNOWN';
@@ -301,13 +303,17 @@ export default function WastageWorkspace() {
   const actionGuards = useMemo(() => getActionGuards(workspaceStatus), [workspaceStatus]);
   const readinessRows = useMemo(() => getEventReadinessRows(liveEvent), [liveEvent]);
 
-  const suggestions = useMemo(() => {
+  const skuSuggestions = useMemo(() => {
     if (!skuSearch.trim()) return [];
     const q = skuSearch.trim().toLowerCase();
-    return rows.filter(r =>
-      r.sku.toLowerCase().includes(q) || r.itemName.toLowerCase().includes(q)
-    ).slice(0, 8);
+    return rows.filter(r => r.sku.toLowerCase().includes(q)).slice(0, 8);
   }, [skuSearch, rows]);
+
+  const nameSuggestions = useMemo(() => {
+    if (!nameSearch.trim()) return [];
+    const q = nameSearch.trim().toLowerCase();
+    return rows.filter(r => r.itemName.toLowerCase().includes(q)).slice(0, 8);
+  }, [nameSearch, rows]);
 
   useEffect(() => {
     if (mode === 'create') {
@@ -683,19 +689,23 @@ export default function WastageWorkspace() {
                               setSkuSearch(v);
                               handleFormChange('sku', v);
                             }}
-                            onFocus={() => setShowSuggestions(true)}
-                            placeholder="Search by SKU or item name"
+                            onFocus={() => setShowSkuSuggestions(true)}
+                            placeholder="Search by SKU"
                           />
-                          {showSuggestions && suggestions.length > 0 && (
+                          {showSkuSuggestions && skuSuggestions.length > 0 && (
                             <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded shadow-lg z-20">
-                              {suggestions.map((row) => (
+                              {skuSuggestions.map((row) => (
                                 <button
                                   key={row.sku}
                                   type="button"
                                   onClick={() => {
                                     handleFormChange('sku', row.sku);
+                                    handleFormChange('itemName', row.itemName);
+                                    handleFormChange('currentOnHand', row.currentOnHand);
+                                    handleFormChange('location', row.location);
                                     setSkuSearch(row.sku);
-                                    setShowSuggestions(false);
+                                    setNameSearch(row.itemName);
+                                    setShowSkuSuggestions(false);
                                   }}
                                   className="w-full text-left px-3 py-2 text-xs hover:bg-muted border-b border-border last:border-b-0 transition-colors"
                                 >
@@ -709,7 +719,41 @@ export default function WastageWorkspace() {
                       </div>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground block mb-1.5">Item name</label>
-                        <Input value={formState.itemName} onChange={(e) => handleFormChange('itemName', e.target.value)} placeholder="Resolved item name" />
+                        <div className="relative">
+                          <Input
+                            value={formState.itemName}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setNameSearch(v);
+                              handleFormChange('itemName', v);
+                            }}
+                            onFocus={() => setShowNameSuggestions(true)}
+                            placeholder="Search by item name"
+                          />
+                          {showNameSuggestions && nameSuggestions.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded shadow-lg z-20">
+                              {nameSuggestions.map((row) => (
+                                <button
+                                  key={row.sku}
+                                  type="button"
+                                  onClick={() => {
+                                    handleFormChange('sku', row.sku);
+                                    handleFormChange('itemName', row.itemName);
+                                    handleFormChange('currentOnHand', row.currentOnHand);
+                                    handleFormChange('location', row.location);
+                                    setSkuSearch(row.sku);
+                                    setNameSearch(row.itemName);
+                                    setShowNameSuggestions(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted border-b border-border last:border-b-0 transition-colors"
+                                >
+                                  <span className="font-mono text-muted-foreground block">{row.sku}</span>
+                                  <span className="block text-foreground">{row.itemName}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground block mb-1.5">Quantity</label>
