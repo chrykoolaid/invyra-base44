@@ -24,6 +24,16 @@
       ],
       "default": "Complete"
     },
+    "discrepancy_status": {
+      "type": "string",
+      "enum": [
+        "Flagged",
+        "Awaiting Supplier Response",
+        "Supplier Responded",
+        "Resolved"
+      ],
+      "description": "Status of discrepancy resolution flow"
+    },
     "items": {
       "type": "array",
       "items": {
@@ -46,6 +56,25 @@
           },
           "discrepancy_note": {
             "type": "string"
+          }
+        }
+      }
+    },
+    "supplier_responses": {
+      "type": "array",
+      "description": "Thread of supplier responses to discrepancies",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       }

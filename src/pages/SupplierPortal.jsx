@@ -23,6 +23,8 @@ export default function SupplierPortal() {
   const [dispatchNote, setDispatchNote] = useState('');
   const [acting, setActing] = useState(false);
   const [done, setDone] = useState('');
+  const [responseText, setResponseText] = useState({});
+  const [expandedRecord, setExpandedRecord] = useState(null);
 
   useEffect(() => {
     if (!token) { setError('Invalid or missing access token.'); setLoading(false); return; }
@@ -58,6 +60,24 @@ export default function SupplierPortal() {
     });
     setOrder(prev => ({ ...prev, status: 'Awaiting Delivery', supplier_dispatched_at: new Date().toISOString() }));
     setDone('dispatched');
+    setActing(false);
+  };
+
+  const handleSubmitResponse = async (recordId) => {
+    const msg = responseText[recordId]?.trim();
+    if (!msg) return;
+
+    setActing(true);
+    const record = receivingRecords.find(r => r.id === recordId);
+    const newResponses = [...(record.supplier_responses || []), { id: Math.random().toString(36), message: msg, created_at: new Date().toISOString() }];
+
+    await base44.entities.ReceivingRecord.update(recordId, {
+      supplier_responses: newResponses,
+      discrepancy_status: 'Supplier Responded',
+    });
+
+    setReceivingRecords(prev => prev.map(r => r.id === recordId ? { ...r, supplier_responses: newResponses, discrepancy_status: 'Supplier Responded' } : r));
+    setResponseText(prev => ({ ...prev, [recordId]: '' }));
     setActing(false);
   };
 
@@ -124,52 +144,60 @@ export default function SupplierPortal() {
           )}
         </div>
 
-        {/* Discrepancy Summary */}
-        {receivingRecords.length > 0 && (
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Receiving History & Discrepancies</p>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="border-l-4 border-blue-400 pl-4 py-2">
-                <p className="text-2xl font-bold text-gray-900">{receivingRecords.length}</p>
-                <p className="text-xs text-gray-500 mt-1">Total Receiving Records</p>
-              </div>
-              <div className="border-l-4 border-amber-400 pl-4 py-2">
-                <p className="text-2xl font-bold text-gray-900">
-                  {receivingRecords.filter(r => r.status === 'Partial').length}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">Partial Receipts</p>
-              </div>
-              <div className="border-l-4 border-red-400 pl-4 py-2">
-                <p className="text-2xl font-bold text-gray-900">
-                  {receivingRecords.filter(r => r.status === 'Discrepancy').length}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">Discrepancy Reports</p>
-              </div>
-              <div className="border-l-4 border-green-400 pl-4 py-2">
-                <p className="text-2xl font-bold text-gray-900">
-                  {receivingRecords.filter(r => r.status === 'Complete').length}
-                </p>
-                <p className="text-xs text-gray-500 mt-1">Completed Orders</p>
-              </div>
-            </div>
-            
-            {receivingRecords.some(r => r.items?.some(item => item.supplier_stated_reason)) && (
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-xs font-semibold text-gray-600 mb-3">Recent Supplier-Stated Reasons</p>
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {receivingRecords.map(record =>
-                    record.items?.map(item =>
-                      item.supplier_stated_reason && (
-                        <div key={`${record.id}-${item.item}`} className="text-xs bg-amber-50 border border-amber-100 rounded px-3 py-2">
-                          <p className="font-medium text-amber-900">{item.item}</p>
-                          <p className="text-amber-700 mt-1">{item.supplier_stated_reason}</p>
+        {/* Flagged Discrepancies for Response */}
+        {receivingRecords.filter(r => r.status === 'Discrepancy').length > 0 && (
+          <div className="bg-white border border-red-200 rounded-2xl p-6 shadow-sm">
+            <p className="text-xs font-semibold text-red-600 uppercase tracking-widest mb-4">Flagged Discrepancies Requiring Your Response</p>
+            <div className="space-y-3">
+              {receivingRecords.filter(r => r.status === 'Discrepancy').map((record) => (
+                <div key={record.id} className="border border-red-100 rounded-xl p-4 bg-red-50/30">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <p className="font-semibold text-gray-800">{record.po_number}</p>
+                      <p className="text-xs text-gray-500 mt-1">{record.items?.map(i => i.item).join(', ')}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                      record.discrepancy_status === 'Supplier Responded' ? 'bg-green-100 text-green-700' :
+                      record.discrepancy_status === 'Awaiting Supplier Response' ? 'bg-amber-100 text-amber-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {record.discrepancy_status || 'Flagged'}
+                    </span>
+                  </div>
+
+                  {/* Response thread */}
+                  {record.supplier_responses && record.supplier_responses.length > 0 && (
+                    <div className="mb-4 space-y-2 bg-white rounded-lg p-3 border border-red-100">
+                      {record.supplier_responses.map((resp) => (
+                        <div key={resp.id} className="text-xs">
+                          <p className="font-medium text-gray-700">{new Date(resp.created_at).toLocaleString()}</p>
+                          <p className="text-gray-600 mt-1">{resp.message}</p>
                         </div>
-                      )
-                    )
+                      ))}
+                    </div>
                   )}
+
+                  {/* Add response */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-gray-700">Your response:</label>
+                    <textarea
+                      value={responseText[record.id] || ''}
+                      onChange={e => setResponseText(prev => ({ ...prev, [record.id]: e.target.value }))}
+                      placeholder="Explain the situation from your side..."
+                      rows={3}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-red-300"
+                    />
+                    <button
+                      onClick={() => handleSubmitResponse(record.id)}
+                      disabled={acting || !responseText[record.id]?.trim()}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                    >
+                      {acting ? 'Sending…' : 'Submit Response'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         )}
 
