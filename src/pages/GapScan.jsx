@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Download, Lightbulb, Upload, AlertCircle } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import ScanDataImportModal from '@/components/ScanDataImportModal';
 
@@ -27,6 +28,20 @@ const daysLeftStyle = (days) => {
   return 'text-foreground';
 };
 
+// Mock 30-day missing items trend data
+const generateTrendData = () => {
+  const data = [];
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    data.push({
+      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      missing: Math.floor(Math.random() * 8) + 2,
+    });
+  }
+  return data;
+};
+
 export default function GapScan() {
   const navigate = useNavigate();
   const [lookback, setLookback] = useState(14);
@@ -38,6 +53,7 @@ export default function GapScan() {
   const [importError, setImportError] = useState('');
   const [importedFrom, setImportedFrom] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
+  const [trendData] = useState(generateTrendData());
   const hasResults = results.length > 0;
 
   const handleRunScan = () => {
@@ -199,6 +215,25 @@ export default function GapScan() {
               <p className="text-blue-600">{getExplanation()}</p>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 30-day trend chart */}
+      {hasResults && (
+        <div className="mb-6 border border-border rounded bg-card p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4">Missing items trend (30 days)</h3>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={trendData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+              <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
+              <YAxis tick={{ fontSize: 12 }} stroke="var(--muted-foreground)" />
+              <Tooltip
+                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                labelStyle={{ color: 'var(--foreground)' }}
+              />
+              <Line type="monotone" dataKey="missing" stroke="hsl(0, 70%, 50%)" dot={false} strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       )}
 
