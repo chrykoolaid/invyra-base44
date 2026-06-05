@@ -1,0 +1,26 @@
+{
+  "name": "Site",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Site name"
+    },
+    "address": {
+      "type": "string",
+      "description": "Physical address"
+    },
+    "timezone": {
+      "type": "string",
+      "description": "IANA timezone string e.g. Australia/Sydney",
+      "default": "Australia/Sydney"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

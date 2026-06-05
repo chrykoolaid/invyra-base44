@@ -1,0 +1,95 @@
+{
+  "name": "StockMovement",
+  "type": "object",
+  "properties": {
+    "site_id": {
+      "type": "string",
+      "description": "Reference to Site.id"
+    },
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU for fast querying"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name for ledger display"
+    },
+    "movement_type": {
+      "type": "string",
+      "enum": [
+        "RECEIVE",
+        "WASTE",
+        "ADJUST",
+        "SALE",
+        "TRANSFER_IN",
+        "TRANSFER_OUT",
+        "STOCKTAKE",
+        "REVERSAL"
+      ],
+      "description": "Type of stock movement"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "IN",
+        "OUT"
+      ],
+      "description": "Stock direction"
+    },
+    "qty": {
+      "type": "number",
+      "description": "Quantity \u2014 always positive"
+    },
+    "balance_after": {
+      "type": "number",
+      "description": "Running stock balance at this site after this movement posted"
+    },
+    "source_ref": {
+      "type": "string",
+      "description": "Human-readable reference e.g. PO-2026-001, W-045"
+    },
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "RECEIVING",
+        "WASTAGE",
+        "POS",
+        "MANUAL",
+        "TRANSFER",
+        "STOCKTAKE"
+      ],
+      "description": "Module that originated this movement"
+    },
+    "reversal_of": {
+      "type": "string",
+      "description": "StockMovement.id this entry reverses \u2014 only set for REVERSAL type"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "POSTED",
+        "VOIDED"
+      ],
+      "default": "POSTED"
+    },
+    "posted_by": {
+      "type": "string",
+      "description": "User email or name at time of posting"
+    }
+  },
+  "required": [
+    "site_id",
+    "item_id",
+    "sku",
+    "movement_type",
+    "direction",
+    "qty"
+  ]
+}

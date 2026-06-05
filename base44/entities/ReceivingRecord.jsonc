@@ -1,0 +1,58 @@
+{
+  "name": "ReceivingRecord",
+  "type": "object",
+  "properties": {
+    "po_number": {
+      "type": "string"
+    },
+    "supplier": {
+      "type": "string"
+    },
+    "confirmed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "confirmed_by": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Complete",
+        "Partial",
+        "Discrepancy"
+      ],
+      "default": "Complete"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item": {
+            "type": "string"
+          },
+          "expected": {
+            "type": "number"
+          },
+          "received": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "discrepancy_reason": {
+            "type": "string"
+          },
+          "discrepancy_note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "po_number",
+    "supplier"
+  ]
+}

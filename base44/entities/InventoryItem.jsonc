@@ -1,0 +1,44 @@
+{
+  "name": "InventoryItem",
+  "type": "object",
+  "properties": {
+    "sku": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "stock": {
+      "type": "number",
+      "default": 0,
+      "description": "Denormalized total stock across all sites \u2014 rebuildable from StockMovement ledger"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "site_id": {
+      "type": "string",
+      "description": "Primary site this item belongs to"
+    },
+    "stock_per_site": {
+      "type": "object",
+      "description": "Denormalized per-site stock cache e.g. { 'site_abc': 12, 'site_xyz': 5 }"
+    },
+    "reorder_point": {
+      "type": "number",
+      "description": "Stock level that triggers a reorder alert"
+    },
+    "reorder_qty": {
+      "type": "number",
+      "description": "Suggested order quantity when reorder point is hit"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "sku",
+    "name"
+  ]
+}
