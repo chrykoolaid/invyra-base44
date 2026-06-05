@@ -78,6 +78,15 @@
           }
         }
       }
+    },
+    "resolution_note": {
+      "type": "string",
+      "description": "Warehouse's internal note on how discrepancy was resolved"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When discrepancy was marked resolved"
     }
   },
   "required": [
