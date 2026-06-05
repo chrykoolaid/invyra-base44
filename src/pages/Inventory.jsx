@@ -4,6 +4,7 @@ import {
   Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History, Upload
 } from 'lucide-react';
 import BulkStockUpload from '@/components/BulkStockUpload';
+import TransferModal from '@/components/TransferModal';
 
 const actions = [
   { label: 'Add / Update Item', icon: Plus },
@@ -22,6 +23,7 @@ export default function Inventory() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(new Set());
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -52,6 +54,14 @@ export default function Inventory() {
 
   return (
     <div className="p-6">
+      {showTransfer && (
+        <TransferModal
+          allItems={items}
+          onClose={() => setShowTransfer(false)}
+          onDone={loadItems}
+        />
+      )}
+
       {showBulkUpload && (
         <BulkStockUpload
           allItems={items}
@@ -100,7 +110,11 @@ export default function Inventory() {
         {actions.map(({ label, icon: Icon }) => (
           <button
             key={label}
-            onClick={label === 'Reload' ? loadItems : undefined}
+            onClick={
+              label === 'Reload' ? loadItems :
+              label === 'Transfer' ? () => setShowTransfer(true) :
+              undefined
+            }
             className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
           >
             <Icon size={13} className={label === 'Reload' && loading ? 'animate-spin' : ''} />
