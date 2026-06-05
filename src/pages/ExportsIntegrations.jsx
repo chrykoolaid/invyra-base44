@@ -51,14 +51,14 @@ const sections = [
       {
         icon: ReceiptText,
         title: 'Order history export',
-        body: 'Future export for draft, submitted, and received purchase order history once the orders flow is complete.',
-        tag: 'Depends on Orders',
+        body: 'Export for draft, submitted, and received purchase order history with supplier and status details.',
+        tag: 'Live',
       },
       {
         icon: ArrowUpFromLine,
         title: 'Adjustment and wastage export',
-        body: 'Later-stage outbound reporting for approved inventory changes, not placeholder rows pretending this already exists.',
-        tag: 'Later',
+        body: 'Outbound reporting for approved inventory wastage movements with dates, quantities, and posting details.',
+        tag: 'Live',
       },
     ],
   },
@@ -124,8 +124,8 @@ const releasePlan = [
   title: 'Phase 2',
   body: 'Introduce controlled CSV export only after the relevant inventory and order outputs have stable source data.',
   status: 'Complete',
-  reason: 'Inventory CSV export live',
-  milestones: ['Inventory CSV export ✓', 'Order history export', 'Adjustment/wastage export'],
+  reason: 'All inventory, order, and wastage exports now live',
+  milestones: ['Inventory CSV export ✓', 'Order history export ✓', 'Adjustment/wastage export ✓'],
 },
 {
   icon: Link2,
@@ -220,15 +220,15 @@ export default function ExportsIntegrations() {
   const [exporting, setExporting] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
 
-  const handleInventoryExport = async () => {
+  const handleExport = async (functionName, fileName) => {
     setExporting(true);
     try {
-      const response = await base44.functions.invoke('exportInventoryCSV', {});
+      const response = await base44.functions.invoke(functionName, {});
       const blob = new Blob([response.data], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `inventory-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `${fileName}-${new Date().toISOString().split('T')[0]}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
@@ -274,23 +274,55 @@ export default function ExportsIntegrations() {
                 <h2 className="text-sm font-semibold text-foreground">{section.title}</h2>
                 <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
+              <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">
                 {section.title === 'Planned exports' && (
-                  <button
-                    onClick={handleInventoryExport}
-                    disabled={exporting}
-                    className="inline-flex items-center gap-1.5 h-9 px-3 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                  >
-                    {exporting ? (
-                      <>
-                        <Loader2 size={14} className="animate-spin" /> Exporting…
-                      </>
-                    ) : (
-                      <>
-                        <Download size={14} /> Export
-                      </>
-                    )}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleExport('exportInventoryCSV', 'inventory')}
+                      disabled={exporting}
+                      className="inline-flex items-center gap-1.5 h-9 px-3 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {exporting ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" /> Exporting…
+                        </>
+                      ) : (
+                        <>
+                          <Download size={14} /> Inventory
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleExport('exportOrdersCSV', 'orders')}
+                      disabled={exporting}
+                      className="inline-flex items-center gap-1.5 h-9 px-3 text-sm rounded-xl bg-primary/70 text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {exporting ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" /> Exporting…
+                        </>
+                      ) : (
+                        <>
+                          <Download size={14} /> Orders
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleExport('exportWastageCSV', 'wastage')}
+                      disabled={exporting}
+                      className="inline-flex items-center gap-1.5 h-9 px-3 text-sm rounded-xl bg-primary/70 text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    >
+                      {exporting ? (
+                        <>
+                          <Loader2 size={14} className="animate-spin" /> Exporting…
+                        </>
+                      ) : (
+                        <>
+                          <Download size={14} /> Wastage
+                        </>
+                      )}
+                    </button>
+                  </>
                 )}
                 {section.title === 'Planned imports & connectors' && (
                   <button
