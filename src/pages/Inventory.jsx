@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import {
-  Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History, Upload
+  Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History, Upload, X
 } from 'lucide-react';
 import BulkStockUpload from '@/components/BulkStockUpload';
 import TransferModal from '@/components/TransferModal';
@@ -28,6 +28,8 @@ export default function Inventory() {
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showStockHistory, setShowStockHistory] = useState(false);
+  const [editingPrice, setEditingPrice] = useState(null);
+  const [priceInput, setPriceInput] = useState('');
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -54,6 +56,25 @@ export default function Inventory() {
 
   const toggleAll = () => {
     setSelected(prev => prev.size === filtered.length ? new Set() : new Set(filtered.map(i => i.id)));
+  };
+
+  const handlePriceEdit = (item) => {
+    setEditingPrice(item.id);
+    setPriceInput(item.cost_per_unit ? String(item.cost_per_unit) : '');
+  };
+
+  const handlePriceSave = async () => {
+    if (!editingPrice) return;
+    const price = priceInput.trim() ? parseFloat(priceInput) : null;
+    if (price !== null && isNaN(price)) return;
+    
+    const item = items.find(i => i.id === editingPrice);
+    if (!item) return;
+
+    await base44.entities.InventoryItem.update(editingPrice, { cost_per_unit: price });
+    setItems(prev => prev.map(i => i.id === editingPrice ? { ...i, cost_per_unit: price } : i));
+    setEditingPrice(null);
+    setPriceInput('');
   };
 
   return (
@@ -155,14 +176,14 @@ export default function Inventory() {
                   className="cursor-pointer"
                 />
               </th>
-              {['SKU', 'Name', 'On Hand', 'Unit', 'Reorder Point', 'Reorder Qty'].map(h => (
+              {['SKU', 'Name', 'On Hand', 'Unit', 'Unit Price', 'Reorder Point', 'Reorder Qty'].map(h => (
                 <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">Loading inventory…</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground text-sm">Loading inventory…</td></tr>
             ) : filtered.map((item, i) => {
               const belowReorder = item.reorder_point != null && (item.stock || 0) <= item.reorder_point;
               return (
@@ -189,14 +210,48 @@ export default function Inventory() {
                     {belowReorder && <span className="ml-1.5 text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 rounded-full px-1.5 py-0.5">Low</span>}
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{item.unit || '—'}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{item.reorder_point ?? '—'}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{item.reorder_qty ?? '—'}</td>
+                   <td className="px-4 py-2.5">
+                     {editingPrice === item.id ? (
+                       <div className="flex items-center gap-2">
+                         <input
+                           type="number"
+                           value={priceInput}
+                           onChange={e => setPriceInput(e.target.value)}
+                           placeholder="₱0.00"
+                           step="0.01"
+                           className="w-20 h-6 px-2 text-sm border border-border rounded focus:outline-none focus:ring-1 focus:ring-ring bg-card"
+                           autoFocus
+                         />
+                         <button
+                           onClick={handlePriceSave}
+                           className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:opacity-90"
+                         >
+                           Save
+                         </button>
+                         <button
+                           onClick={() => setEditingPrice(null)}
+                           className="text-xs text-muted-foreground hover:text-foreground"
+                         >
+                           <X size={14} />
+                         </button>
+                       </div>
+                     ) : (
+                       <button
+                         onClick={() => handlePriceEdit(item)}
+                         className="text-muted-foreground hover:text-primary transition-colors"
+                       >
+                         {item.cost_per_unit ? `₱${item.cost_per_unit.toFixed(2)}` : '—'}
+                       </button>
+                     )}
+                   </td>
+                   <td className="px-4 py-2.5 text-muted-foreground">{item.reorder_point ?? '—'}</td>
+                   <td className="px-4 py-2.5 text-muted-foreground">{item.reorder_qty ?? '—'}</td>
                 </tr>
               );
             })}
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground text-sm">
                   {items.length === 0 ? 'No inventory items found. Seed items via InventoryItem entity.' : 'No items match your search.'}
                 </td>
               </tr>
