@@ -20,6 +20,7 @@ import {
 import { base44 } from '@/api/base44Client';
 import SupplierImportModal from '@/components/SupplierImportModal';
 import AccountingConnectorPanel from '@/components/AccountingConnectorPanel';
+import SyncAuditViewer from '@/components/SyncAuditViewer';
 
 const summaryCards = [
   {
@@ -372,6 +373,11 @@ export default function ExportsIntegrations() {
           <Settings size={16} /> Configure Connectors & Webhooks
         </button>
       )}
+
+      {/* Sync Audit Log */}
+      <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
+        <SyncAuditViewer />
+      </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.08fr_0.92fr] gap-4">
         <section className="rounded-2xl border border-border bg-card overflow-hidden">

@@ -1,0 +1,91 @@
+{
+  "name": "SyncAuditLog",
+  "type": "object",
+  "properties": {
+    "sync_type": {
+      "type": "string",
+      "enum": [
+        "xero_inventory",
+        "webhook_inventory",
+        "webhook_order"
+      ],
+      "description": "Type of sync operation"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "outbound",
+        "inbound"
+      ],
+      "description": "Data direction"
+    },
+    "external_system": {
+      "type": "string",
+      "description": "Target external system (e.g., Xero, webhook endpoint)"
+    },
+    "source_entity": {
+      "type": "string",
+      "description": "Internal entity type synced (e.g., InventoryItem, StockMovement)"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "ID of the source entity"
+    },
+    "payload_sent": {
+      "type": "object",
+      "description": "The data payload transmitted"
+    },
+    "response_code": {
+      "type": "number",
+      "description": "HTTP response code from external system"
+    },
+    "response_data": {
+      "type": "object",
+      "description": "Response body from external system"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "partial",
+        "pending"
+      ],
+      "default": "pending",
+      "description": "Sync outcome status"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error details if sync failed"
+    },
+    "reconciliation_status": {
+      "type": "string",
+      "enum": [
+        "verified",
+        "mismatch",
+        "pending_review",
+        "resolved"
+      ],
+      "default": "pending_review",
+      "description": "Reconciliation state"
+    },
+    "reconciliation_notes": {
+      "type": "string",
+      "description": "Admin notes on reconciliation findings"
+    },
+    "triggered_by": {
+      "type": "string",
+      "description": "User email or automation name that triggered sync"
+    },
+    "sync_duration_ms": {
+      "type": "number",
+      "description": "Milliseconds taken to complete sync"
+    }
+  },
+  "required": [
+    "sync_type",
+    "direction",
+    "external_system",
+    "source_entity"
+  ]
+}
