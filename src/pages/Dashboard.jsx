@@ -413,6 +413,22 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Reorder point highlights */}
+      {(lowStockItems.length > 0 || outOfStockItems.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-red-500/40 bg-red-950/30 px-5 py-4">
+            <p className="text-[10px] font-semibold text-red-400 uppercase tracking-widest mb-2">Out of stock now</p>
+            <p className="text-5xl font-bold text-red-300">{outOfStockItems.length}</p>
+            <p className="text-xs text-red-400/70 mt-2">{outOfStockItems.map(i => i.name).join(', ')}</p>
+          </div>
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-950/30 px-5 py-4">
+            <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-widest mb-2">Below reorder point</p>
+            <p className="text-5xl font-bold text-amber-300">{lowStockItems.length}</p>
+            <p className="text-xs text-amber-400/70 mt-2">{lowStockItems.map(i => i.name).join(', ')}</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-2.5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-foreground">{dashboardMeta.title}</h1>
