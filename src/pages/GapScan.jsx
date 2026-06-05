@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Download, Lightbulb } from 'lucide-react';
+import { Play, Download, Lightbulb, Upload, AlertCircle } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 const scanData = [
   { sku: 'CHM-001', name: 'Premium Detergent 20L', onHand: 4,   avgUse: 3.2, daysLeft: 1,  suggested: 20, risk: 'Critical', flag: 'Critical' },
@@ -32,6 +33,9 @@ export default function GapScan() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [highlightedRow, setHighlightedRow] = useState(null);
   const [results, setResults] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [importedFrom, setImportedFrom] = useState('');
   const hasResults = results.length > 0;
 
   const handleRunScan = () => {
@@ -39,6 +43,31 @@ export default function GapScan() {
     setSelected(new Set());
     setShowExplanation(false);
     setHighlightedRow(null);
+    setImportedFrom('');
+    setImportError('');
+  };
+
+  const handleImportFromScanner = async () => {
+    setImporting(true);
+    setImportError('');
+    try {
+      const response = await base44.functions.invoke('receiveGapScanData', {
+        scanData: [],
+        trigger: 'manual_fetch',
+      });
+      
+      if (response.data?.success && response.data?.data) {
+        setResults(response.data.data);
+        setImportedFrom(`Imported ${response.data.data.length} items from scanner at ${new Date(response.data.receivedAt).toLocaleTimeString()}`);
+        setSelected(new Set());
+        setShowExplanation(false);
+        setHighlightedRow(null);
+      }
+    } catch (err) {
+      setImportError(`Import failed: ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
   };
 
   const toggleRow = (sku) => {
@@ -98,6 +127,14 @@ export default function GapScan() {
         </button>
 
         <button
+          onClick={handleImportFromScanner}
+          disabled={importing}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Upload size={13} /> {importing ? 'Importing…' : 'Import from Scanner'}
+        </button>
+
+        <button
           disabled={!hasResults}
           className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -116,6 +153,25 @@ export default function GapScan() {
           {hasResults ? `${results.length} items scanned` : 'No scan run'}
         </span>
       </div>
+
+      {/* Error panel */}
+      {importError && (
+        <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+          <div className="flex items-start gap-3">
+            <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">{importError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Imported from badge */}
+      {importedFrom && (
+        <div className="mb-5 p-3 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+          ✓ {importedFrom}
+        </div>
+      )}
 
       {/* Explanation panel */}
       {showExplanation && selected.size > 0 && (
