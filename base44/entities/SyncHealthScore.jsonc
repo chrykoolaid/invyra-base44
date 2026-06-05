@@ -1,0 +1,78 @@
+{
+  "name": "SyncHealthScore",
+  "type": "object",
+  "properties": {
+    "sync_type": {
+      "type": "string",
+      "enum": [
+        "xero_inventory",
+        "webhook_inventory",
+        "webhook_order"
+      ],
+      "description": "Type of sync being scored"
+    },
+    "external_system": {
+      "type": "string",
+      "description": "Target system (Xero, webhook endpoint)"
+    },
+    "uptime_percent": {
+      "type": "number",
+      "description": "Percentage of successful syncs in period (0-100)"
+    },
+    "accuracy_percent": {
+      "type": "number",
+      "description": "Percentage of verified/matched records (0-100)"
+    },
+    "avg_latency_ms": {
+      "type": "number",
+      "description": "Average sync duration in milliseconds"
+    },
+    "throughput_items_per_hour": {
+      "type": "number",
+      "description": "Items processed per hour"
+    },
+    "composite_score": {
+      "type": "number",
+      "description": "Weighted composite score (0-100): 40% uptime + 30% accuracy + 20% latency + 10% throughput"
+    },
+    "health_status": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "degraded",
+        "critical"
+      ],
+      "description": "Health classification: healthy (>85), degraded (70-85), critical (<70)"
+    },
+    "alert_triggered": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if score fell below threshold"
+    },
+    "alert_message": {
+      "type": "string",
+      "description": "Description of alert condition if triggered"
+    },
+    "measurement_window": {
+      "type": "string",
+      "enum": [
+        "1h",
+        "24h",
+        "7d"
+      ],
+      "default": "24h",
+      "description": "Time window for metrics"
+    },
+    "last_checked": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When scores were last calculated"
+    }
+  },
+  "required": [
+    "sync_type",
+    "external_system",
+    "composite_score",
+    "health_status"
+  ]
+}

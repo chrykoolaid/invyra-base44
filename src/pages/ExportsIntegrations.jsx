@@ -23,6 +23,7 @@ import SupplierImportModal from '@/components/SupplierImportModal';
 import AccountingConnectorPanel from '@/components/AccountingConnectorPanel';
 import SyncAuditViewer from '@/components/SyncAuditViewer';
 import SyncPerformanceMonitor from '@/components/SyncPerformanceMonitor';
+import SyncHealthScorer from '@/components/SyncHealthScorer';
 
 const summaryCards = [
   {
@@ -383,6 +384,11 @@ export default function ExportsIntegrations() {
           <Settings size={16} /> Configure Connectors & Webhooks
         </button>
       )}
+
+      {/* Sync Health Scores */}
+      <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
+        <SyncHealthScorer />
+      </section>
 
       {/* Sync Performance Monitor */}
       <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
