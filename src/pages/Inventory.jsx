@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
-  Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History
+  Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History, Upload
 } from 'lucide-react';
+import BulkStockUpload from '@/components/BulkStockUpload';
 
 const actions = [
   { label: 'Add / Update Item', icon: Plus },
@@ -20,6 +21,7 @@ export default function Inventory() {
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(new Set());
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -50,8 +52,24 @@ export default function Inventory() {
 
   return (
     <div className="p-6">
+      {showBulkUpload && (
+        <BulkStockUpload
+          allItems={items}
+          onClose={() => setShowBulkUpload(false)}
+          onDone={loadItems}
+        />
+      )}
+
       {/* Title */}
-      <h1 className="text-xl font-semibold text-foreground mb-4">Inventory</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold text-foreground">Inventory</h1>
+        <button
+          onClick={() => setShowBulkUpload(true)}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
+        >
+          <Upload size={13} /> Bulk Stock Update
+        </button>
+      </div>
 
       {/* Search row */}
       <div className="flex items-center gap-2 mb-4">
