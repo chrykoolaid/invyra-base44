@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Play, Download, Lightbulb, Upload, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import ScanDataImportModal from '@/components/ScanDataImportModal';
 
 const scanData = [
   { sku: 'CHM-001', name: 'Premium Detergent 20L', onHand: 4,   avgUse: 3.2, daysLeft: 1,  suggested: 20, risk: 'Critical', flag: 'Critical' },
@@ -36,6 +37,7 @@ export default function GapScan() {
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [importedFrom, setImportedFrom] = useState('');
+  const [showImportModal, setShowImportModal] = useState(false);
   const hasResults = results.length > 0;
 
   const handleRunScan = () => {
@@ -99,8 +101,23 @@ export default function GapScan() {
     return 'Review usage patterns and adjust reorder quantities as needed.';
   };
 
+  const handleImportSuccess = (data) => {
+    setResults(data);
+    setSelected(new Set());
+    setShowExplanation(false);
+    setHighlightedRow(null);
+    setImportedFrom(`Imported ${data.length} items from scan file`);
+    setImportError('');
+  };
+
   return (
     <div className="p-6">
+      {showImportModal && (
+        <ScanDataImportModal
+          onClose={() => setShowImportModal(false)}
+          onImportSuccess={handleImportSuccess}
+        />
+      )}
       {/* Title */}
       <h1 className="text-xl font-semibold text-foreground mb-4">Gap Scan</h1>
 
@@ -127,11 +144,10 @@ export default function GapScan() {
         </button>
 
         <button
-          onClick={handleImportFromScanner}
-          disabled={importing}
-          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={() => setShowImportModal(true)}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
         >
-          <Upload size={13} /> {importing ? 'Importing…' : 'Import from Scanner'}
+          <Upload size={13} /> Upload Scan File
         </button>
 
         <button
