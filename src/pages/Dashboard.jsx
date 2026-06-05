@@ -272,7 +272,6 @@ export default function Dashboard() {
   const missingCostItems = useMemo(() => inventoryItems.filter(i => i.cost_per_unit == null || i.cost_per_unit === 0), [inventoryItems]);
 
   const liveSetupHealth = useMemo(() => {
-    if (inventoryItems.length === 0) return setupHealth;
     return [
       {
         label: 'Thresholds missing',
@@ -297,7 +296,6 @@ export default function Dashboard() {
 
   // --- Live: Receiving & Delivery Watch ---
   const liveReceivingWatch = useMemo(() => {
-    if (receivingRecords.length === 0) return receivingWatch;
     return receivingRecords.slice(0, 4).map(r => {
       const isPartial = r.status === 'Partial';
       const isDiscrepancy = r.status === 'Discrepancy';
@@ -318,7 +316,6 @@ export default function Dashboard() {
 
   // --- Live: Recent Exceptions & Activity (from StockMovement ledger) ---
   const liveRecentActivity = useMemo(() => {
-    if (stockMovements.length === 0) return recentActivity;
     const toneMap = { WASTE: 'text-red-300', RECEIVE: 'text-emerald-300', ADJUST: 'text-amber-300', TRANSFER_IN: 'text-sky-300', TRANSFER_OUT: 'text-violet-300', STOCKTAKE: 'text-blue-300', REVERSAL: 'text-slate-400', SALE: 'text-sky-300' };
     const labelMap = { WASTE: 'Waste', RECEIVE: 'Receiving', ADJUST: 'Adjustment', TRANSFER_IN: 'Transfer In', TRANSFER_OUT: 'Transfer Out', STOCKTAKE: 'Stocktake', REVERSAL: 'Reversal', SALE: 'Sale' };
     return stockMovements.slice(0, 6).map(m => {
@@ -340,7 +337,6 @@ export default function Dashboard() {
 
   // --- Live: Pending Orders (from ReceivingRecord) ---
   const livePendingOrders = useMemo(() => {
-    if (receivingRecords.length === 0) return draftOrders;
     return receivingRecords.slice(0, 5).map(r => ({
       po: r.po_number,
       supplier: r.supplier,
@@ -353,8 +349,7 @@ export default function Dashboard() {
   const livePriorityIssues = useMemo(() => {
     const out = outOfStockItems.map(i => ({ sku: i.sku, item: i.name, onHand: i.stock || 0, status: 'Out', note: 'Active stockout' }));
     const low = lowStockItems.map(i => ({ sku: i.sku, item: i.name, onHand: i.stock || 0, status: 'Reorder', note: `Below reorder point of ${i.reorder_point}` }));
-    const combined = [...out, ...low].slice(0, 8);
-    return combined.length > 0 ? combined : priorityIssues; // fall back to static if no live data yet
+    return [...out, ...low].slice(0, 8);
   }, [outOfStockItems, lowStockItems]);
 
   // Live KPI overrides
