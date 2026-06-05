@@ -95,33 +95,28 @@ export default function ScanDataImportModal({ onClose, onImportSuccess }) {
       <div className="bg-card border border-border rounded-xl w-full max-w-lg shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Upload size={16} className="text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Import Scan Data</h2>
-          </div>
+          <h2 className="text-sm font-semibold text-foreground">Upload scan file</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X size={16} />
           </button>
         </div>
 
         {success ? (
-          <div className="px-5 py-10 text-center space-y-3">
-            <div className="flex justify-center">
-              <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-                <Check size={24} className="text-green-600" />
-              </div>
+          <div className="px-5 py-8 text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+              <Check size={24} className="text-green-600" />
             </div>
-            <p className="font-semibold text-foreground">Import successful</p>
-            <p className="text-sm text-muted-foreground">Scan data has been loaded and is ready for analysis.</p>
+            <div>
+              <p className="font-semibold text-foreground text-base">Done</p>
+              <p className="text-sm text-muted-foreground mt-1">Your scan data is now in GapScan.</p>
+            </div>
           </div>
         ) : (
-          <div className="px-5 py-4 space-y-4">
-            {/* File input */}
-            <div>
-              <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">
-                Select file
-              </label>
-              <label className="flex items-center justify-center w-full h-24 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors">
+          <div className="px-5 py-6 space-y-5">
+            {/* Step 1: File input */}
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-muted-foreground">Step 1: Pick your file</label>
+              <label className="flex items-center justify-center w-full h-28 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/20 transition-colors">
                 <input
                   type="file"
                   accept=".csv,.json"
@@ -130,40 +125,42 @@ export default function ScanDataImportModal({ onClose, onImportSuccess }) {
                   disabled={importing}
                 />
                 <div className="text-center">
-                  <Upload size={20} className="mx-auto text-muted-foreground mb-1" />
-                  <p className="text-xs text-muted-foreground">Drag CSV or JSON file here, or click to browse</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">Supported: .csv, .json</p>
+                  <p className="text-sm font-semibold text-foreground mb-1">Click or drag file</p>
+                  <p className="text-xs text-muted-foreground">.csv or .json only</p>
+                  {file && <p className="text-xs text-green-600 font-medium mt-2">✓ {file.name}</p>}
                 </div>
               </label>
-              {file && <p className="text-xs text-muted-foreground mt-2">✓ {file.name}</p>}
             </div>
 
-            {/* Error */}
+            {/* Error state */}
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 rounded text-xs text-red-700 flex items-start gap-2">
-                <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                <span>{error}</span>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex gap-3">
+                <AlertCircle size={16} className="text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-semibold text-red-700">Problem</p>
+                  <p className="text-xs text-red-600 mt-1">{error}</p>
+                </div>
               </div>
             )}
 
-            {/* Preview */}
-            {preview.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Preview (first 3 rows)</p>
-                <div className="border border-border rounded overflow-x-auto bg-background">
-                  <table className="w-full text-[11px]">
-                    <thead className="bg-muted text-muted-foreground">
+            {/* Step 2: Preview */}
+            {preview.length > 0 && !error && (
+              <div className="space-y-2">
+                <label className="block text-xs font-semibold text-muted-foreground">Step 2: Check your data</label>
+                <div className="border border-border rounded-lg overflow-auto max-h-40 bg-background">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-muted text-muted-foreground border-b border-border">
                       <tr>
                         {Object.keys(preview[0]).map(key => (
-                          <th key={key} className="text-left px-2 py-1.5 font-medium whitespace-nowrap">{key}</th>
+                          <th key={key} className="text-left px-3 py-2 font-semibold whitespace-nowrap">{key}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {preview.map((row, i) => (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-card' : 'bg-background border-t border-border'}>
+                        <tr key={i} className={`${i % 2 === 0 ? 'bg-card' : ''} border-t border-border`}>
                           {Object.values(row).map((val, j) => (
-                            <td key={j} className="px-2 py-1.5 text-muted-foreground">{String(val).slice(0, 20)}</td>
+                            <td key={j} className="px-3 py-2 text-foreground">{String(val).slice(0, 25)}</td>
                           ))}
                         </tr>
                       ))}
@@ -173,21 +170,25 @@ export default function ScanDataImportModal({ onClose, onImportSuccess }) {
               </div>
             )}
 
-            {/* Footer */}
-            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+            {/* Action buttons */}
+            <div className="flex gap-2 justify-end pt-2">
               <button
                 onClick={onClose}
                 disabled={importing}
-                className="h-8 px-4 text-sm border border-border rounded hover:bg-muted transition-colors text-foreground disabled:opacity-40"
+                className="h-9 px-4 text-sm border border-border rounded-lg text-foreground hover:bg-muted transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleImport}
                 disabled={importing || !file || preview.length === 0}
-                className="h-8 px-5 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                className={`h-9 px-5 text-sm rounded-lg font-semibold transition-opacity ${
+                  importing || !file || preview.length === 0
+                    ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
+                    : 'bg-primary text-primary-foreground hover:opacity-90'
+                }`}
               >
-                {importing ? 'Importing…' : 'Import'}
+                {importing ? 'Loading…' : 'Import'}
               </button>
             </div>
           </div>
