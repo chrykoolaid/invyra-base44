@@ -57,7 +57,10 @@ export default function Inventory() {
   return (
     <div className="p-6">
       {showStockHistory && (
-        <StockHistoryModal onClose={() => setShowStockHistory(false)} />
+        <StockHistoryModal
+          onClose={() => setShowStockHistory(false)}
+          selectedSkus={items.filter(i => selected.has(i.id)).map(i => i.sku)}
+        />
       )}
 
       {showTransfer && (

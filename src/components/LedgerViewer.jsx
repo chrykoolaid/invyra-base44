@@ -32,7 +32,7 @@ function formatDate(iso) {
   });
 }
 
-export default function LedgerViewer({ defaultSku = '' }) {
+export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('All');
@@ -52,7 +52,8 @@ export default function LedgerViewer({ defaultSku = '' }) {
   const filtered = movements.filter(m => {
     const matchType = typeFilter === 'All' || m.movement_type === typeFilter;
     const matchSku = !skuFilter.trim() || (m.sku || '').toLowerCase().includes(skuFilter.trim().toLowerCase()) || (m.item_name || '').toLowerCase().includes(skuFilter.trim().toLowerCase());
-    return matchType && matchSku;
+    const matchSelected = selectedSkus.length === 0 || selectedSkus.includes(m.sku);
+    return matchType && matchSku && matchSelected;
   });
 
   const totals = {
