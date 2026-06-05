@@ -5,6 +5,7 @@ import CostAnalysisReport from '@/components/CostAnalysisReport';
 import StockAgingReport from '@/components/StockAgingReport';
 import SupplierPerformanceReport from '@/components/SupplierPerformanceReport';
 import ComplianceReport from '@/components/ComplianceReport';
+import AuditSummaryDashboard from '@/components/AuditSummaryDashboard';
 
 export default function Reports() {
   const [activeTab, setActiveTab] = useState('cost');
@@ -14,7 +15,8 @@ export default function Reports() {
     { id: 'cost', label: 'Cost Analysis', icon: TrendingDown },
     { id: 'aging', label: 'Stock Aging', icon: BarChart3 },
     { id: 'supplier', label: 'Supplier Scorecards', icon: CheckCircle2 },
-    { id: 'compliance', label: 'Compliance', icon: AlertCircle },
+    { id: 'compliance', label: 'Compliance Overview', icon: AlertCircle },
+    { id: 'audit', label: 'Audit Summary', icon: BarChart3 },
   ];
 
   const handleExport = async () => {
@@ -73,11 +75,12 @@ export default function Reports() {
       </div>
 
       {/* Content */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card overflow-hidden p-6">
         {activeTab === 'cost' && <CostAnalysisReport />}
         {activeTab === 'aging' && <StockAgingReport />}
         {activeTab === 'supplier' && <SupplierPerformanceReport />}
         {activeTab === 'compliance' && <ComplianceReport />}
+        {activeTab === 'audit' && <AuditSummaryDashboard />}
       </div>
     </div>
   );
