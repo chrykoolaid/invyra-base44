@@ -6,14 +6,14 @@ import { base44 } from '@/api/base44Client';
 import ScanDataImportModal from '@/components/ScanDataImportModal';
 
 const scanData = [
-  { sku: 'CHM-001', name: 'Premium Detergent 20L', onHand: 4,   avgUse: 3.2, daysLeft: 1,  suggested: 20, risk: 'Critical', flag: 'Critical' },
-  { sku: 'MNT-001', name: 'Machine Descaler',      onHand: 3,   avgUse: 1.0, daysLeft: 3,  suggested: 10, risk: 'Critical', flag: 'Critical' },
-  { sku: 'CHM-003', name: 'Bleach 5L',             onHand: 12,  avgUse: 2.8, daysLeft: 4,  suggested: 18, risk: 'High',     flag: 'Watch'    },
-  { sku: 'CHM-004', name: 'Stain Remover 2L',      onHand: 8,   avgUse: 1.5, daysLeft: 5,  suggested: 12, risk: 'High',     flag: 'Watch'    },
-  { sku: 'CHM-002', name: 'Fabric Softener 20L',   onHand: 18,  avgUse: 2.1, daysLeft: 8,  suggested: 8,  risk: 'Medium',   flag: 'Watch'    },
-  { sku: 'PKG-002', name: 'Garment Tag Roll',       onHand: 5,   avgUse: 0.4, daysLeft: 12, suggested: 4,  risk: 'Low',      flag: 'OK'       },
-  { sku: 'OPS-001', name: 'Gloves Disposable',      onHand: 340, avgUse: 18,  daysLeft: 18, suggested: 0,  risk: 'Low',      flag: 'OK'       },
-  { sku: 'PKG-001', name: 'Packaging Bag Large',    onHand: 900, avgUse: 42,  daysLeft: 21, suggested: 0,  risk: 'None',     flag: 'OK'       },
+  { sku: 'CHM-001', name: 'Premium Detergent 20L', systemStock: 5,   onHand: 4,   avgUse: 3.2, daysLeft: 1,  suggested: 20, risk: 'Critical', flag: 'Critical' },
+  { sku: 'MNT-001', name: 'Machine Descaler',      systemStock: 3,   onHand: 3,   avgUse: 1.0, daysLeft: 3,  suggested: 10, risk: 'Critical', flag: 'Critical' },
+  { sku: 'CHM-003', name: 'Bleach 5L',             systemStock: 10,  onHand: 12,  avgUse: 2.8, daysLeft: 4,  suggested: 18, risk: 'High',     flag: 'Watch'    },
+  { sku: 'CHM-004', name: 'Stain Remover 2L',      systemStock: 8,   onHand: 8,   avgUse: 1.5, daysLeft: 5,  suggested: 12, risk: 'High',     flag: 'Watch'    },
+  { sku: 'CHM-002', name: 'Fabric Softener 20L',   systemStock: 18,  onHand: 18,  avgUse: 2.1, daysLeft: 8,  suggested: 8,  risk: 'Medium',   flag: 'Watch'    },
+  { sku: 'PKG-002', name: 'Garment Tag Roll',       systemStock: 5,   onHand: 5,   avgUse: 0.4, daysLeft: 12, suggested: 4,  risk: 'Low',      flag: 'OK'       },
+  { sku: 'OPS-001', name: 'Gloves Disposable',      systemStock: 350, onHand: 340, avgUse: 18,  daysLeft: 18, suggested: 0,  risk: 'Low',      flag: 'OK'       },
+  { sku: 'PKG-001', name: 'Packaging Bag Large',    systemStock: 900, onHand: 900, avgUse: 42,  daysLeft: 21, suggested: 0,  risk: 'None',     flag: 'OK'       },
 ];
 
 const flagStyle = {
@@ -269,67 +269,122 @@ export default function GapScan() {
           </div>
         </div>
       ) : (
-        <div className="border border-border rounded overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
-              <tr>
-                <th className="px-4 py-2.5 w-8">
-                  <input
-                    type="checkbox"
-                    checked={selected.size === results.length}
-                    onChange={toggleAll}
-                    className="cursor-pointer"
-                  />
-                </th>
-                {['SKU', 'Item', 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag'].map(h => (
-                  <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {results.map((row, i) => (
-                <tr
-                  key={row.sku}
-                  onClick={() => toggleRow(row.sku)}
-                  className={`border-t border-border cursor-pointer transition-all duration-150 ${
-                    highlightedRow === row.sku ? 'bg-primary/10 scale-98' :
-                    selected.has(row.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
-                  } hover:bg-accent/40`}
-                >
-                  <td className="px-4 py-2.5">
+        <>
+          {/* Side-by-side comparison view */}
+          <div className="mb-6 border border-border rounded bg-card p-5">
+            <h3 className="text-sm font-semibold text-foreground mb-4">System vs. Physical Scan Comparison</h3>
+            <div className="grid grid-cols-1 gap-4">
+              {results.map((row) => {
+                const discrepancy = Math.abs(row.systemStock - row.onHand);
+                const discrepancyPercent = row.systemStock > 0 ? Math.round((discrepancy / row.systemStock) * 100) : 0;
+                const hasDiscrepancy = discrepancy > 0;
+                
+                return (
+                  <div
+                    key={row.sku}
+                    className={`rounded-lg border px-4 py-3 transition-colors ${
+                      hasDiscrepancy
+                        ? 'border-red-200 bg-red-50/30'
+                        : 'border-green-200 bg-green-50/30'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="font-mono text-xs text-muted-foreground">{row.sku}</p>
+                        <p className="font-medium text-foreground">{row.name}</p>
+                      </div>
+                      {hasDiscrepancy && (
+                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+                          {discrepancyPercent}% variance
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center border-r border-border/20">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">System Stock</p>
+                        <p className="text-2xl font-bold text-foreground">{row.systemStock?.toLocaleString() ?? 'N/A'}</p>
+                      </div>
+                      <div className="text-center border-r border-border/20">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Physical Scan</p>
+                        <p className="text-2xl font-bold text-foreground">{row.onHand.toLocaleString()}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Difference</p>
+                        <p className={`text-2xl font-bold ${hasDiscrepancy ? 'text-red-600' : 'text-green-600'}`}>
+                          {hasDiscrepancy ? (row.systemStock > row.onHand ? '−' : '+') : ''}
+                          {discrepancy.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Original table */}
+          <div className="border border-border rounded overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
+                <tr>
+                  <th className="px-4 py-2.5 w-8">
                     <input
                       type="checkbox"
-                      checked={selected.has(row.sku)}
-                      onChange={() => toggleRow(row.sku)}
-                      onClick={e => e.stopPropagation()}
+                      checked={selected.size === results.length}
+                      onChange={toggleAll}
                       className="cursor-pointer"
                     />
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
-                  <td
-                    onClick={() => {
-                      setHighlightedRow(row.sku);
-                      setTimeout(() => navigate('/Inventory'), 200);
-                    }}
-                    className="px-4 py-2.5 font-medium text-primary hover:underline cursor-pointer transition-colors"
-                  >
-                    {row.name}
-                  </td>
-                  <td className="px-4 py-2.5">{row.onHand.toLocaleString()}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{row.avgUse}</td>
-                  <td className={`px-4 py-2.5 ${daysLeftStyle(row.daysLeft)}`}>{row.daysLeft}</td>
-                  <td className="px-4 py-2.5">{row.suggested > 0 ? row.suggested : '—'}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{row.risk}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${flagStyle[row.flag]}`}>
-                      {row.flag}
-                    </span>
-                  </td>
+                  </th>
+                  {['SKU', 'Item', 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag'].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {results.map((row, i) => (
+                  <tr
+                    key={row.sku}
+                    onClick={() => toggleRow(row.sku)}
+                    className={`border-t border-border cursor-pointer transition-all duration-150 ${
+                      highlightedRow === row.sku ? 'bg-primary/10 scale-98' :
+                      selected.has(row.sku) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
+                    } hover:bg-accent/40`}
+                  >
+                    <td className="px-4 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(row.sku)}
+                        onChange={() => toggleRow(row.sku)}
+                        onClick={e => e.stopPropagation()}
+                        className="cursor-pointer"
+                      />
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{row.sku}</td>
+                    <td
+                      onClick={() => {
+                        setHighlightedRow(row.sku);
+                        setTimeout(() => navigate('/Inventory'), 200);
+                      }}
+                      className="px-4 py-2.5 font-medium text-primary hover:underline cursor-pointer transition-colors"
+                    >
+                      {row.name}
+                    </td>
+                    <td className="px-4 py-2.5">{row.onHand.toLocaleString()}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{row.avgUse}</td>
+                    <td className={`px-4 py-2.5 ${daysLeftStyle(row.daysLeft)}`}>{row.daysLeft}</td>
+                    <td className="px-4 py-2.5">{row.suggested > 0 ? row.suggested : '—'}</td>
+                    <td className="px-4 py-2.5 text-muted-foreground">{row.risk}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${flagStyle[row.flag]}`}>
+                        {row.flag}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
