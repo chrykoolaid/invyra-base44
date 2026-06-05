@@ -150,7 +150,6 @@ export default function ReceivingWorkspace() {
            expected: row.expected,
            received: row.received,
            unit: row.unit,
-           supplier_stated_reason: discrepancy[row.item]?.supplierReason || '',
            discrepancy_reason: discrepancy[row.item]?.reason || '',
            discrepancy_note: discrepancy[row.item]?.note || '',
          })),
@@ -302,15 +301,22 @@ export default function ReceivingWorkspace() {
                 <tr className="border-t border-amber-100 bg-amber-50/40">
                   <td colSpan={5} className="px-5 py-3">
                     <div className="space-y-3">
-                      <div>
-                        <label className="text-xs text-amber-700 font-semibold mb-2 block">Supplier's stated reason:</label>
-                        <textarea
-                          placeholder="Enter the reason provided by the supplier for this discrepancy…"
-                          value={discrepancy[row.item]?.supplierReason || ''}
-                          onChange={e => setDiscrepancyField(row.item, 'supplierReason', e.target.value)}
-                          className="h-16 text-xs border border-border rounded px-3 py-2 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-full placeholder:text-muted-foreground/50 resize-none"
-                        />
-                      </div>
+                      {supplierDispatchNote && (
+                        <div>
+                          <p className="text-xs text-amber-700 font-semibold mb-2">Supplier's stated reason:</p>
+                          <div className="h-16 text-xs border border-amber-200 rounded px-3 py-2 bg-amber-50 text-amber-900 overflow-y-auto">
+                            {supplierDispatchNote}
+                          </div>
+                        </div>
+                      )}
+                      {!supplierDispatchNote && (
+                        <div>
+                          <p className="text-xs text-amber-700 font-semibold mb-2">Supplier's stated reason:</p>
+                          <div className="h-16 text-xs border border-border rounded px-3 py-2 bg-muted text-muted-foreground flex items-center italic">
+                            No supplier reason provided yet
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <p className="text-xs text-amber-700 font-semibold mb-2">Categorize the issue:</p>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
