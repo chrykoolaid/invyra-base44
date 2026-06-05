@@ -11,7 +11,7 @@
     "stock": {
       "type": "number",
       "default": 0,
-      "description": "Denormalized total stock across all sites \u2014 rebuildable from StockMovement ledger"
+      "description": "Denormalized total stock across all sites"
     },
     "unit": {
       "type": "string"
@@ -22,7 +22,7 @@
     },
     "stock_per_site": {
       "type": "object",
-      "description": "Denormalized per-site stock cache e.g. { 'site_abc': 12, 'site_xyz': 5 }"
+      "description": "Denormalized per-site stock cache e.g. { 'site_abc': 12 }"
     },
     "reorder_point": {
       "type": "number",
@@ -31,6 +31,14 @@
     "reorder_qty": {
       "type": "number",
       "description": "Suggested order quantity when reorder point is hit"
+    },
+    "cost_per_unit": {
+      "type": "number",
+      "description": "Landed cost per unit in local currency (\u20b1)"
+    },
+    "preferred_supplier": {
+      "type": "string",
+      "description": "Name of the preferred supplier for this item"
     },
     "is_active": {
       "type": "boolean",
