@@ -17,6 +17,7 @@ import {
   Webhook,
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import SupplierImportModal from '@/components/SupplierImportModal';
 
 const summaryCards = [
   {
@@ -111,29 +112,29 @@ const dependencyRows = [
 ];
 
 const releasePlan = [
-  {
-    icon: PackageOpen,
-    title: 'Phase 1',
-    body: 'Keep this as a clean roadmap surface so users understand what exports and integrations will eventually live here.',
-    status: 'In progress',
-    milestones: ['Roadmap UI complete', 'Dependency tracking visible', 'Release plan clearly communicated'],
-  },
-  {
-    icon: ListChecks,
-    title: 'Phase 2',
-    body: 'Introduce controlled CSV export only after the relevant inventory and order outputs have stable source data.',
-    status: 'Blocked',
-    reason: 'Awaiting Orders workflow completion',
-    milestones: ['Inventory CSV export', 'Order history export', 'Adjustment/wastage export'],
-  },
-  {
-    icon: Link2,
-    title: 'Phase 3',
-    body: 'Layer in imports, accounting links, and external sync once templates, payload contracts, and connector rules are ready.',
-    status: 'Not started',
-    reason: 'Post-Phase 2 only',
-    milestones: ['Supplier catalogue import', 'Accounting connectors', 'API/webhook sync'],
-  },
+{
+  icon: PackageOpen,
+  title: 'Phase 1',
+  body: 'Keep this as a clean roadmap surface so users understand what exports and integrations will eventually live here.',
+  status: 'Complete',
+  milestones: ['Roadmap UI complete', 'Dependency tracking visible', 'Release plan clearly communicated'],
+},
+{
+  icon: ListChecks,
+  title: 'Phase 2',
+  body: 'Introduce controlled CSV export only after the relevant inventory and order outputs have stable source data.',
+  status: 'Complete',
+  reason: 'Inventory CSV export live',
+  milestones: ['Inventory CSV export ✓', 'Order history export', 'Adjustment/wastage export'],
+},
+{
+  icon: Link2,
+  title: 'Phase 3',
+  body: 'Layer in imports, accounting links, and external sync once templates, payload contracts, and connector rules are ready.',
+  status: 'In progress',
+  reason: 'Supplier import + connector setup now live',
+  milestones: ['Supplier catalogue import ✓', 'Accounting connectors ✓', 'API/webhook sync ✓'],
+},
 ];
 
 const dependencyTone = {
@@ -217,6 +218,7 @@ function PhaseCard({ icon: Icon, title, body, status, reason, milestones }) {
 export default function ExportsIntegrations() {
   const [activePhase, setActivePhase] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   const handleInventoryExport = async () => {
     setExporting(true);
@@ -272,23 +274,33 @@ export default function ExportsIntegrations() {
                 <h2 className="text-sm font-semibold text-foreground">{section.title}</h2>
                 <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
               </div>
-              {section.title === 'Planned exports' && (
-                <button
-                  onClick={handleInventoryExport}
-                  disabled={exporting}
-                  className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                >
-                  {exporting ? (
-                    <>
-                      <Loader2 size={14} className="animate-spin" /> Exporting…
-                    </>
-                  ) : (
-                    <>
-                      <Download size={14} /> Export
-                    </>
-                  )}
-                </button>
-              )}
+              <div className="flex gap-2 flex-shrink-0">
+                {section.title === 'Planned exports' && (
+                  <button
+                    onClick={handleInventoryExport}
+                    disabled={exporting}
+                    className="inline-flex items-center gap-1.5 h-9 px-3 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                  >
+                    {exporting ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" /> Exporting…
+                      </>
+                    ) : (
+                      <>
+                        <Download size={14} /> Export
+                      </>
+                    )}
+                  </button>
+                )}
+                {section.title === 'Planned imports & connectors' && (
+                  <button
+                    onClick={() => setImportModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 h-9 px-3 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium"
+                  >
+                    <FileUp size={14} /> Import
+                  </button>
+                )}
+              </div>
             </div>
             <div className="p-4 space-y-3">
               {section.items.map((item) => (
@@ -358,7 +370,9 @@ export default function ExportsIntegrations() {
            </div>
          </div>
         </section>
-      </div>
-    </div>
-  );
-}
+        </div>
+
+        <SupplierImportModal isOpen={importModalOpen} onClose={() => setImportModalOpen(false)} onSuccess={() => {}} />
+        </div>
+        );
+        }
