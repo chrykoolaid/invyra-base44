@@ -1,0 +1,71 @@
+{
+  "name": "SyncPerformance",
+  "type": "object",
+  "properties": {
+    "sync_type": {
+      "type": "string",
+      "enum": [
+        "xero_inventory",
+        "webhook_inventory",
+        "webhook_order"
+      ],
+      "description": "Type of sync operation"
+    },
+    "external_system": {
+      "type": "string",
+      "description": "Target system (Xero, webhook endpoint)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed"
+      ],
+      "description": "Sync outcome"
+    },
+    "items_processed": {
+      "type": "number",
+      "description": "Number of items/records synced"
+    },
+    "items_failed": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of items that failed"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Time taken in milliseconds"
+    },
+    "response_code": {
+      "type": "number",
+      "description": "HTTP response code"
+    },
+    "error_category": {
+      "type": "string",
+      "enum": [
+        "network",
+        "auth",
+        "validation",
+        "rate_limit",
+        "timeout",
+        "none"
+      ],
+      "default": "none",
+      "description": "Type of error if failed"
+    },
+    "sync_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When sync occurred"
+    },
+    "triggered_by": {
+      "type": "string",
+      "description": "User or automation that triggered sync"
+    }
+  },
+  "required": [
+    "sync_type",
+    "external_system",
+    "status"
+  ]
+}

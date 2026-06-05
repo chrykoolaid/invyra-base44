@@ -16,11 +16,13 @@ import {
   ShieldEllipsis,
   Webhook,
   Settings,
+  TrendingUp,
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import SupplierImportModal from '@/components/SupplierImportModal';
 import AccountingConnectorPanel from '@/components/AccountingConnectorPanel';
 import SyncAuditViewer from '@/components/SyncAuditViewer';
+import SyncPerformanceMonitor from '@/components/SyncPerformanceMonitor';
 
 const summaryCards = [
   {
@@ -137,6 +139,14 @@ const releasePlan = [
   status: 'Complete',
   reason: 'Xero sync + webhook receiver endpoints live',
   milestones: ['Supplier catalogue import ✓', 'Accounting connectors ✓', 'API/webhook sync ✓'],
+},
+{
+  icon: TrendingUp,
+  title: 'Phase 4',
+  body: 'Performance monitoring and real-time sync health dashboards for operational visibility.',
+  status: 'Complete',
+  reason: 'Sync metrics + performance tracking live',
+  milestones: ['Sync performance entity ✓', 'Live monitoring dashboard ✓', 'Error analytics ✓'],
 },
 ];
 
@@ -373,6 +383,11 @@ export default function ExportsIntegrations() {
           <Settings size={16} /> Configure Connectors & Webhooks
         </button>
       )}
+
+      {/* Sync Performance Monitor */}
+      <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
+        <SyncPerformanceMonitor />
+      </section>
 
       {/* Sync Audit Log */}
       <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
