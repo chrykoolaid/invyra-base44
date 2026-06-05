@@ -138,21 +138,23 @@ export default function ReceivingWorkspace() {
       if (statuses.every(s => s === 'Completed')) recordStatus = 'Complete';
 
       // 3. Create receiving log record
-      await base44.entities.ReceivingRecord.create({
-        po_number: po,
-        supplier,
-        confirmed_at: new Date().toISOString(),
-        confirmed_by: postedBy,
-        status: recordStatus,
-        items: items.map(row => ({
-          item: row.item,
-          expected: row.expected,
-          received: row.received,
-          unit: row.unit,
-          discrepancy_reason: discrepancy[row.item]?.reason || '',
-          discrepancy_note: discrepancy[row.item]?.note || '',
-        })),
-      });
+       await base44.entities.ReceivingRecord.create({
+         po_number: po,
+         supplier,
+         confirmed_at: new Date().toISOString(),
+         confirmed_by: postedBy,
+         status: recordStatus,
+         supplier_stated_reason: supplierDispatchNote,
+         items: items.map(row => ({
+           item: row.item,
+           expected: row.expected,
+           received: row.received,
+           unit: row.unit,
+           supplier_stated_reason: discrepancy[row.item]?.supplierReason || '',
+           discrepancy_reason: discrepancy[row.item]?.reason || '',
+           discrepancy_note: discrepancy[row.item]?.note || '',
+         })),
+       });
 
       // 4. Update linked PurchaseOrder status
       const poOrders = await base44.entities.PurchaseOrder.filter({ order_number: po });
@@ -301,7 +303,16 @@ export default function ReceivingWorkspace() {
                   <td colSpan={5} className="px-5 py-3">
                     <div className="space-y-3">
                       <div>
-                        <p className="text-xs text-amber-700 font-semibold mb-2">Select supplier-related reason:</p>
+                        <label className="text-xs text-amber-700 font-semibold mb-2 block">Supplier's stated reason:</label>
+                        <textarea
+                          placeholder="Enter the reason provided by the supplier for this discrepancy…"
+                          value={discrepancy[row.item]?.supplierReason || ''}
+                          onChange={e => setDiscrepancyField(row.item, 'supplierReason', e.target.value)}
+                          className="h-16 text-xs border border-border rounded px-3 py-2 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-full placeholder:text-muted-foreground/50 resize-none"
+                        />
+                      </div>
+                      <div>
+                        <p className="text-xs text-amber-700 font-semibold mb-2">Categorize the issue:</p>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                           {discrepancyReasons.map(r => (
                             <button
