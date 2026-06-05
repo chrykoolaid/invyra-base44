@@ -218,6 +218,28 @@ export default function GapScan() {
         </div>
       )}
 
+      {/* Summary cards */}
+      {hasResults && (
+        <div className="mb-6 grid grid-cols-4 gap-4">
+          <div className="border border-border rounded-lg bg-card p-5">
+            <p className="text-xs text-muted-foreground font-semibold uppercase mb-2">Total processed</p>
+            <p className="text-4xl font-bold text-foreground">{results.length}</p>
+          </div>
+          <div className="border border-red-200 rounded-lg bg-red-50 p-5">
+            <p className="text-xs text-red-600 font-semibold uppercase mb-2">Critical</p>
+            <p className="text-4xl font-bold text-red-700">{results.filter(r => r.flag === 'Critical').length}</p>
+          </div>
+          <div className="border border-amber-200 rounded-lg bg-amber-50 p-5">
+            <p className="text-xs text-amber-600 font-semibold uppercase mb-2">Watch</p>
+            <p className="text-4xl font-bold text-amber-700">{results.filter(r => r.flag === 'Watch').length}</p>
+          </div>
+          <div className="border border-green-200 rounded-lg bg-green-50 p-5">
+            <p className="text-xs text-green-600 font-semibold uppercase mb-2">OK</p>
+            <p className="text-4xl font-bold text-green-700">{results.filter(r => r.flag === 'OK').length}</p>
+          </div>
+        </div>
+      )}
+
       {/* 30-day trend chart */}
       {hasResults && (
         <div className="mb-6 border border-border rounded bg-card p-5">
