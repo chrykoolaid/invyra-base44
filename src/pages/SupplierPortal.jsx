@@ -17,6 +17,7 @@ export default function SupplierPortal() {
   const token = urlParams.get('token');
 
   const [order, setOrder] = useState(null);
+  const [receivingRecords, setReceivingRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dispatchNote, setDispatchNote] = useState('');
@@ -26,9 +27,13 @@ export default function SupplierPortal() {
   useEffect(() => {
     if (!token) { setError('Invalid or missing access token.'); setLoading(false); return; }
     base44.entities.PurchaseOrder.filter({ supplier_token: token })
-      .then(rows => {
-        if (!rows || rows.length === 0) { setError('Order not found or link has expired.'); }
-        else { setOrder(rows[0]); }
+      .then(async rows => {
+        if (!rows || rows.length === 0) { setError('Order not found or link has expired.'); setLoading(false); return; }
+        setOrder(rows[0]);
+        
+        // Fetch receiving records for this supplier
+        const receiving = await base44.entities.ReceivingRecord.filter({ supplier: rows[0].supplier });
+        setReceivingRecords(receiving || []);
         setLoading(false);
       });
   }, [token]);
@@ -118,6 +123,55 @@ export default function SupplierPortal() {
             </div>
           )}
         </div>
+
+        {/* Discrepancy Summary */}
+        {receivingRecords.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Receiving History & Discrepancies</p>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="border-l-4 border-blue-400 pl-4 py-2">
+                <p className="text-2xl font-bold text-gray-900">{receivingRecords.length}</p>
+                <p className="text-xs text-gray-500 mt-1">Total Receiving Records</p>
+              </div>
+              <div className="border-l-4 border-amber-400 pl-4 py-2">
+                <p className="text-2xl font-bold text-gray-900">
+                  {receivingRecords.filter(r => r.status === 'Partial').length}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Partial Receipts</p>
+              </div>
+              <div className="border-l-4 border-red-400 pl-4 py-2">
+                <p className="text-2xl font-bold text-gray-900">
+                  {receivingRecords.filter(r => r.status === 'Discrepancy').length}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Discrepancy Reports</p>
+              </div>
+              <div className="border-l-4 border-green-400 pl-4 py-2">
+                <p className="text-2xl font-bold text-gray-900">
+                  {receivingRecords.filter(r => r.status === 'Complete').length}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Completed Orders</p>
+              </div>
+            </div>
+            
+            {receivingRecords.some(r => r.items?.some(item => item.supplier_stated_reason)) && (
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <p className="text-xs font-semibold text-gray-600 mb-3">Recent Supplier-Stated Reasons</p>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {receivingRecords.map(record =>
+                    record.items?.map(item =>
+                      item.supplier_stated_reason && (
+                        <div key={`${record.id}-${item.item}`} className="text-xs bg-amber-50 border border-amber-100 rounded px-3 py-2">
+                          <p className="font-medium text-amber-900">{item.item}</p>
+                          <p className="text-amber-700 mt-1">{item.supplier_stated_reason}</p>
+                        </div>
+                      )
+                    )
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Order lines */}
         {order.lines && order.lines.length > 0 && (
