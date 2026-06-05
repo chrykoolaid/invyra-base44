@@ -1,0 +1,54 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU for fast querying"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name"
+    },
+    "change_type": {
+      "type": "string",
+      "enum": [
+        "PRICE_UPDATE",
+        "THRESHOLD_UPDATE",
+        "SUPPLIER_UPDATE",
+        "QUANTITY_UPDATE"
+      ],
+      "description": "Type of change made"
+    },
+    "field_name": {
+      "type": "string",
+      "description": "Field that was changed (e.g., 'cost_per_unit', 'reorder_point')"
+    },
+    "old_value": {
+      "type": "string",
+      "description": "Previous value before the change"
+    },
+    "new_value": {
+      "type": "string",
+      "description": "New value after the change"
+    },
+    "changed_by": {
+      "type": "string",
+      "description": "User email or name at time of change"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional notes about the change"
+    }
+  },
+  "required": [
+    "item_id",
+    "sku",
+    "change_type",
+    "field_name"
+  ]
+}

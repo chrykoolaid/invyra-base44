@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   BarChart3,
   CircleAlert,
@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   TrendingUp,
 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 import LedgerViewer from '@/components/LedgerViewer';
 
 const overviewCards = [
@@ -156,10 +157,22 @@ function CapabilityCard({ icon: Icon, title, body, tag }) {
   );
 }
 
-const TABS = ['Ledger', 'Roadmap'];
+const TABS = ['Ledger', 'Audit Log', 'Roadmap'];
 
 export default function InventoryAdmin() {
   const [tab, setTab] = useState('Ledger');
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+
+  useEffect(() => {
+    if (tab === 'Audit Log') {
+      setAuditLoading(true);
+      base44.entities.AuditLog.list('-created_date', 100).then(data => {
+        setAuditLogs(data || []);
+        setAuditLoading(false);
+      });
+    }
+  }, [tab]);
 
   return (
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
@@ -184,6 +197,55 @@ export default function InventoryAdmin() {
       </div>
 
       {tab === 'Ledger' && <LedgerViewer />}
+
+      {tab === 'Audit Log' && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-border bg-muted/25">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Change History</p>
+              <h2 className="text-sm font-semibold text-foreground">All inventory item modifications</h2>
+              <p className="text-sm text-muted-foreground mt-1">Price updates, threshold changes, and configuration edits</p>
+            </div>
+            {auditLoading ? (
+              <div className="px-4 py-8 text-center text-muted-foreground text-sm">Loading audit log…</div>
+            ) : auditLogs.length === 0 ? (
+              <div className="px-4 py-8 text-center text-muted-foreground text-sm">No changes recorded yet</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[1000px]">
+                  <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    <tr>
+                      {['Timestamp', 'Item', 'Change Type', 'Field', 'Old Value', 'New Value', 'Changed By'].map(h => (
+                        <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((log, i) => (
+                      <tr key={log.id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
+                        <td className="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs">{log.created_date ? new Date(log.created_date).toLocaleString() : '—'}</td>
+                        <td className="px-4 py-3 font-medium">
+                          <div className="text-foreground">{log.item_name}</div>
+                          <div className="text-xs text-muted-foreground">{log.sku}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-primary/10 text-primary border border-primary/20">
+                            {log.change_type === 'PRICE_UPDATE' ? 'Price Update' : log.change_type === 'THRESHOLD_UPDATE' ? 'Threshold' : log.change_type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground text-sm">{log.field_name}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{log.old_value || '—'}</td>
+                        <td className="px-4 py-3 font-mono text-xs font-medium text-foreground">{log.new_value || '—'}</td>
+                        <td className="px-4 py-3 text-muted-foreground text-sm">{log.changed_by || 'System'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {tab === 'Roadmap' && <>
 

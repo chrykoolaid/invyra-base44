@@ -71,7 +71,23 @@ export default function Inventory() {
     const item = items.find(i => i.id === editingPrice);
     if (!item) return;
 
+    const user = await base44.auth.me();
+    const changedBy = user?.email || user?.full_name || 'unknown';
+
     await base44.entities.InventoryItem.update(editingPrice, { cost_per_unit: price });
+    
+    // Log the audit entry
+    await base44.entities.AuditLog.create({
+      item_id: editingPrice,
+      sku: item.sku,
+      item_name: item.name,
+      change_type: 'PRICE_UPDATE',
+      field_name: 'cost_per_unit',
+      old_value: String(item.cost_per_unit || ''),
+      new_value: String(price || ''),
+      changed_by: changedBy,
+    });
+
     setItems(prev => prev.map(i => i.id === editingPrice ? { ...i, cost_per_unit: price } : i));
     setEditingPrice(null);
     setPriceInput('');
