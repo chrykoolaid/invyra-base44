@@ -6,6 +6,8 @@ import StockAgingReport from '@/components/StockAgingReport';
 import SupplierPerformanceReport from '@/components/SupplierPerformanceReport';
 import ComplianceReport from '@/components/ComplianceReport';
 import AuditSummaryDashboard from '@/components/AuditSummaryDashboard';
+import InventoryValueBySite from '@/components/InventoryValueBySite';
+import ValuationHistory from '@/components/ValuationHistory';
 
 export default function Reports() {
   const [activeTab, setActiveTab] = useState('cost');
@@ -13,6 +15,8 @@ export default function Reports() {
 
   const tabs = [
     { id: 'cost', label: 'Cost Analysis', icon: TrendingDown },
+    { id: 'site-values', label: 'By Site', icon: BarChart3 },
+    { id: 'valuation', label: 'Valuation History', icon: TrendingDown },
     { id: 'aging', label: 'Stock Aging', icon: BarChart3 },
     { id: 'supplier', label: 'Supplier Scorecards', icon: CheckCircle2 },
     { id: 'compliance', label: 'Compliance Overview', icon: AlertCircle },
@@ -77,6 +81,8 @@ export default function Reports() {
       {/* Content */}
       <div className="rounded-2xl border border-border bg-card overflow-hidden p-6">
         {activeTab === 'cost' && <CostAnalysisReport />}
+        {activeTab === 'site-values' && <InventoryValueBySite />}
+        {activeTab === 'valuation' && <ValuationHistory />}
         {activeTab === 'aging' && <StockAgingReport />}
         {activeTab === 'supplier' && <SupplierPerformanceReport />}
         {activeTab === 'compliance' && <ComplianceReport />}
