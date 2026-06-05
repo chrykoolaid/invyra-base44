@@ -4,6 +4,17 @@ import { base44 } from '@/api/base44Client';
 import DraftOrderWorkspace from '@/components/DraftOrderWorkspace';
 import ActiveOrderWorkspace from '@/components/ActiveOrderWorkspace';
 
+// Supplier email lookup — matches the Suppliers page data
+const SUPPLIER_EMAILS = {
+  'ChemSupply Co':        'alan@chemsupply.com',
+  'CleanTex Distributors':'maria@cleantex.com',
+  'PackPro Solutions':    'james@packpro.com',
+  'SafetyFirst Supplies': 'donna@safetyfirst.com',
+  'HangerCo Wholesale':   'ben@hangerco.com',
+  'LaundryChem Direct':   'tracy@laundrychem.com',
+  'ProWash Ingredients':  'sam@prowash.com',
+};
+
 // Draft statuses — open in DraftOrderWorkspace modal
 const DRAFT_STATUSES = new Set(['Draft']);
 
@@ -134,6 +145,7 @@ export default function Orders() {
         supplier_confirmed_at: o.supplier_confirmed_at,
         supplier_dispatched_at: o.supplier_dispatched_at,
         supplier_dispatch_note: o.supplier_dispatch_note,
+        supplier_email: o.supplier_email || SUPPLIER_EMAILS[o.supplier] || '',
       }));
       setOrders(mapped);
     }
@@ -165,6 +177,7 @@ export default function Orders() {
       await base44.entities.PurchaseOrder.update(submittedOrder.id, {
         status: submittedOrder.status,
         submitted_at: new Date().toISOString(),
+        supplier_email: submittedOrder.supplier_email || SUPPLIER_EMAILS[submittedOrder.supplier] || '',
       });
     }
     setDraftOrder(null);

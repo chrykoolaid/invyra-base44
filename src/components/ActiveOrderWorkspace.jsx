@@ -136,21 +136,29 @@ export default function ActiveOrderWorkspace({ order, onBack, onCancelOrder }) {
     // Persist to DB if real record
     if (order.id && typeof order.id === 'string' && order.id.length >= 10) {
       const wasConfirmed = !!order.supplier_confirmed_at;
-      const updatePayload = {
+
+      // Always persist the new lines + amended_at
+      await base44.entities.PurchaseOrder.update(order.id, {
         lines: newLines,
         amended_at: new Date().toISOString(),
-      };
-      // If supplier already confirmed, invalidate their confirmation so a new link must be sent
+      });
+
       if (wasConfirmed) {
-        updatePayload.supplier_token = null;
-        updatePayload.supplier_confirmed_at = null;
-        updatePayload.supplier_dispatched_at = null;
-        updatePayload.supplier_dispatch_note = null;
-        updatePayload.status = 'Submitted';
+        // Reset confirmation state
+        await base44.entities.PurchaseOrder.update(order.id, {
+          supplier_token: null,
+          supplier_confirmed_at: null,
+          supplier_dispatched_at: null,
+          supplier_dispatch_note: null,
+          status: 'Submitted',
+        });
         setOrderStatus('Submitted');
         setPortalLink(null);
+
+        // Generate new token + notify supplier by email
+        const res = await base44.functions.invoke('notifySupplierAmendment', { order_id: order.id });
+        if (res.data?.portal_url) setPortalLink(res.data.portal_url);
       }
-      await base44.entities.PurchaseOrder.update(order.id, updatePayload);
     }
   };
 

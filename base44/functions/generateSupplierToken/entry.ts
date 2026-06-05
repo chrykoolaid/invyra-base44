@@ -18,6 +18,19 @@ Deno.serve(async (req) => {
     const origin = req.headers.get('origin') || 'https://app.base44.com';
     const portalUrl = `${origin}/SupplierPortal?token=${token}`;
 
+    // Fetch the order to get supplier email and order number
+    const orders = await base44.asServiceRole.entities.PurchaseOrder.filter({ id: order_id });
+    const order = orders?.[0];
+
+    if (order?.supplier_email) {
+      await base44.asServiceRole.integrations.Core.SendEmail({
+        to: order.supplier_email,
+        from_name: 'Invyra Procurement',
+        subject: `Purchase Order ${order.order_number} — Action Required`,
+        body: `Dear ${order.supplier},\n\nYou have received a new purchase order from Invyra.\n\nOrder: ${order.order_number}\nExpected Delivery: ${order.expected_date || 'TBD'}\n\nPlease review and confirm the order using the link below:\n${portalUrl}\n\nThis link is unique to your order. No login is required.\n\nThank you,\nInvyra Procurement`,
+      });
+    }
+
     return Response.json({ token, portal_url: portalUrl });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });

@@ -8,6 +8,10 @@
     "supplier": {
       "type": "string"
     },
+    "supplier_email": {
+      "type": "string",
+      "description": "Supplier contact email for portal notifications"
+    },
     "status": {
       "type": "string",
       "enum": [
