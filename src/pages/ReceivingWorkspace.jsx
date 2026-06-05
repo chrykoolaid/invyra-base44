@@ -76,31 +76,62 @@ export default function ReceivingWorkspace() {
   const handleConfirm = async () => {
     setActionStatus('confirming');
     try {
-      // 1. For each item with received > 0, find and update inventory stock
+      const user = await base44.auth.me();
+      const postedBy = user?.email || 'unknown';
+
+      // Load all sites once — use first active site as default
+      const sites = await base44.entities.Site.filter({ is_active: true });
+      const defaultSite = sites[0];
+
+      // 1. For each item with received > 0, update stock + post ledger movement
       for (const row of items) {
         if (row.received <= 0) continue;
+
         const existing = await base44.entities.InventoryItem.filter({ name: row.item });
-        if (existing && existing.length > 0) {
-          await base44.entities.InventoryItem.update(existing[0].id, {
-            stock: (existing[0].stock || 0) + row.received,
+        const invItem = existing?.[0];
+        const currentStock = invItem?.stock || 0;
+        const siteId = invItem?.site_id || defaultSite?.id || '';
+        const currentSiteStock = invItem?.stock_per_site?.[siteId] ?? currentStock;
+        const balanceAfter = currentSiteStock + row.received;
+
+        if (invItem) {
+          const updatedStockPerSite = { ...(invItem.stock_per_site || {}), [siteId]: balanceAfter };
+          await base44.entities.InventoryItem.update(invItem.id, {
+            stock: currentStock + row.received,
+            stock_per_site: updatedStockPerSite,
+          });
+
+          // Post RECEIVE movement to ledger
+          await base44.entities.StockMovement.create({
+            site_id: siteId,
+            item_id: invItem.id,
+            sku: invItem.sku || row.item,
+            item_name: invItem.name,
+            movement_type: 'RECEIVE',
+            direction: 'IN',
+            qty: row.received,
+            balance_after: balanceAfter,
+            source_ref: po,
+            source_type: 'RECEIVING',
+            notes: discrepancy[row.item]?.note || '',
+            status: 'POSTED',
+            posted_by: postedBy,
           });
         }
       }
 
-      // 2. Determine overall status
+      // 2. Determine overall receiving status
       const statuses = items.map(i => itemStatus(i));
       let recordStatus = 'Complete';
-      if (statuses.some(s => s === 'Partial' || s === 'Over-received')) recordStatus = 'Partial';
-      if (statuses.some(s => s === 'Awaiting')) recordStatus = 'Partial';
+      if (statuses.some(s => s === 'Partial' || s === 'Over-received' || s === 'Awaiting')) recordStatus = 'Partial';
       if (statuses.every(s => s === 'Completed')) recordStatus = 'Complete';
 
       // 3. Create receiving log record
-      const user = await base44.auth.me();
       await base44.entities.ReceivingRecord.create({
         po_number: po,
         supplier,
         confirmed_at: new Date().toISOString(),
-        confirmed_by: user?.email || 'unknown',
+        confirmed_by: postedBy,
         status: recordStatus,
         items: items.map(row => ({
           item: row.item,
