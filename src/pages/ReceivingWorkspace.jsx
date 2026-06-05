@@ -43,10 +43,10 @@ export default function ReceivingWorkspace() {
 
   const [received, setReceived] = useState(initialReceived);
   const [savedDraft, setSavedDraft] = useState(null);
-  const [actionStatus, setActionStatus] = useState(null); // 'draft_saved' | 'confirmed'
+  const [actionStatus, setActionStatus] = useState(null);
   const [supplierDispatchNote, setSupplierDispatchNote] = useState('');
+  const [expectedResolutionDate, setExpectedResolutionDate] = useState('');
 
-  // discrepancy: { [itemName]: { reason: '', note: '', open: false } }
   const [discrepancy, setDiscrepancy] = useState({});
 
   const setDiscrepancyField = (item, field, value) => {
@@ -138,7 +138,7 @@ export default function ReceivingWorkspace() {
       if (statuses.every(s => s === 'Completed')) recordStatus = 'Complete';
 
       // 3. Create receiving log record
-       await base44.entities.ReceivingRecord.create({
+       const recordData = {
          po_number: po,
          supplier,
          confirmed_at: new Date().toISOString(),
@@ -153,7 +153,15 @@ export default function ReceivingWorkspace() {
            discrepancy_reason: discrepancy[row.item]?.reason || '',
            discrepancy_note: discrepancy[row.item]?.note || '',
          })),
-       });
+       };
+
+       // Add expected resolution date if there's a discrepancy
+       if (recordStatus === 'Discrepancy' && expectedResolutionDate) {
+         recordData.discrepancy_status = 'Flagged';
+         recordData.expected_resolution_date = expectedResolutionDate;
+       }
+
+       await base44.entities.ReceivingRecord.create(recordData);
 
       // 4. Update linked PurchaseOrder status
       const poOrders = await base44.entities.PurchaseOrder.filter({ order_number: po });
@@ -232,6 +240,20 @@ export default function ReceivingWorkspace() {
           </p>
         </div>
       </div>
+
+      {/* Expected resolution date - if discrepancies detected */}
+      {items.some(i => itemStatus(i) === 'Partial') && (
+        <div className="bg-amber-50 border border-amber-200 rounded p-4 mb-6">
+          <label className="block text-xs font-semibold text-amber-700 mb-2">Expected Resolution Date (for discrepancies)</label>
+          <input
+            type="date"
+            value={expectedResolutionDate}
+            onChange={e => setExpectedResolutionDate(e.target.value)}
+            className="h-9 text-sm border border-amber-200 rounded px-3 bg-white focus:outline-none focus:ring-1 focus:ring-amber-300"
+          />
+          <p className="text-xs text-amber-600 mt-1">Set a target date for supplier response and resolution</p>
+        </div>
+      )}
 
       {/* Items table */}
       <div className="border border-border rounded overflow-hidden">

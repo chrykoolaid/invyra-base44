@@ -27,7 +27,27 @@ export default function ReceivingLog() {
   const [warehouseNote, setWarehouseNote] = useState({});
 
   useEffect(() => {
-    base44.entities.ReceivingRecord.list('-confirmed_at', 50).then(data => setRecords(data || []));
+    base44.entities.ReceivingRecord.list('-confirmed_at', 50).then(data => {
+      const sorted = (data || []).sort((a, b) => {
+        // Prioritize: Overdue → Due soon → Already resolved
+        const aDate = a.expected_resolution_date ? new Date(a.expected_resolution_date) : null;
+        const bDate = b.expected_resolution_date ? new Date(b.expected_resolution_date) : null;
+        const today = new Date().toDateString();
+
+        const aIsOpen = a.discrepancy_status && !['Resolved', 'Supplier Confirmed'].includes(a.discrepancy_status);
+        const bIsOpen = b.discrepancy_status && !['Resolved', 'Supplier Confirmed'].includes(b.discrepancy_status);
+
+        if (aIsOpen && !bIsOpen) return -1;
+        if (!aIsOpen && bIsOpen) return 1;
+
+        if (aIsOpen && bIsOpen && aDate && bDate) {
+          return new Date(aDate) - new Date(bDate);
+        }
+
+        return 0;
+      });
+      setRecords(sorted);
+    });
   }, []);
 
   const handleProposeResolution = async (recordId) => {
@@ -107,6 +127,25 @@ export default function ReceivingLog() {
 
               {expandedId === record.id && (
                 <div className="border-t border-border px-5 py-4 space-y-4 bg-background/50">
+                  {/* Expected resolution date - if set */}
+                  {record.expected_resolution_date && (
+                    <div className={`rounded p-3 ${
+                      new Date(record.expected_resolution_date) < new Date() && record.discrepancy_status && !['Resolved', 'Supplier Confirmed'].includes(record.discrepancy_status)
+                        ? 'bg-red-50 border border-red-200'
+                        : 'bg-blue-50 border border-blue-200'
+                    }`}>
+                      <p className={`text-xs font-semibold ${
+                        new Date(record.expected_resolution_date) < new Date() && record.discrepancy_status && !['Resolved', 'Supplier Confirmed'].includes(record.discrepancy_status)
+                          ? 'text-red-700'
+                          : 'text-blue-700'
+                      }`}>
+                        {new Date(record.expected_resolution_date) < new Date() && record.discrepancy_status && !['Resolved', 'Supplier Confirmed'].includes(record.discrepancy_status)
+                          ? '⚠ OVERDUE'
+                          : 'Due by'} {new Date(record.expected_resolution_date).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Items */}
                   <div>
                     <p className="text-xs font-semibold text-muted-foreground mb-2">Items</p>
