@@ -364,10 +364,13 @@ export default function Dashboard() {
       const totalGaps = missingThresholdItems.length + missingSupplierItems.length + missingCostItems.length;
       return { ...card, value: String(totalGaps), sub: 'items need master-data cleanup', helper: 'thresholds, suppliers & cost missing' };
     }
-    if (card.label === 'STOCK VALUE' && inventoryItems.length > 0 && totalStockValue > 0) {
-      const formatted = totalStockValue >= 1000 ? `₱${(totalStockValue / 1000).toFixed(1)}k` : `₱${totalStockValue.toFixed(0)}`;
-      const exposure = reorderExposureValue >= 1000 ? `₱${(reorderExposureValue / 1000).toFixed(1)}k` : `₱${reorderExposureValue.toFixed(0)}`;
-      return { ...card, value: formatted, sub: 'current inventory value', helper: `${exposure} reorder exposure` };
+    if (card.label === 'STOCK VALUE' && inventoryItems.length > 0) {
+      if (totalStockValue > 0) {
+        const formatted = totalStockValue >= 1000 ? `₱${(totalStockValue / 1000).toFixed(1)}k` : `₱${totalStockValue.toFixed(0)}`;
+        const exposure = reorderExposureValue >= 1000 ? `₱${(reorderExposureValue / 1000).toFixed(1)}k` : `₱${reorderExposureValue.toFixed(0)}`;
+        return { ...card, value: formatted, sub: 'current inventory value', helper: `${exposure} reorder exposure` };
+      }
+      return { ...card, value: '—', sub: 'cost per unit data incomplete', helper: `${missingCostItems.length} items missing prices` };
     }
     return card;
   }), [inventoryItems, lowStockItems, outOfStockItems, noThresholdItems, missingThresholdItems, missingSupplierItems, missingCostItems, totalStockValue, reorderExposureValue]);
