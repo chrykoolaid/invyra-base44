@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   BarChart3,
   CircleAlert,
@@ -8,6 +9,7 @@ import {
   SlidersHorizontal,
   TrendingUp,
 } from 'lucide-react';
+import LedgerViewer from '@/components/LedgerViewer';
 
 const overviewCards = [
   {
@@ -154,15 +156,38 @@ function CapabilityCard({ icon: Icon, title, body, tag }) {
   );
 }
 
+const TABS = ['Ledger', 'Roadmap'];
+
 export default function InventoryAdmin() {
+  const [tab, setTab] = useState('Ledger');
+
   return (
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Inventory Admin &amp; Reporting</h1>
-        <p className="text-sm text-muted-foreground">Reserved admin/reporting workspace with a cleaner rollout-hub presentation for this prototype.</p>
+        <p className="text-sm text-muted-foreground">Stock movement ledger and admin reporting hub.</p>
       </div>
 
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-border">
+        {TABS.map(t => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              tab === t ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'Ledger' && <LedgerViewer />}
+
+      {tab === 'Roadmap' && <>
+
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 mt-2">
         <div className="flex items-start gap-3">
           <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-white/70">
             <CircleAlert className="h-4 w-4 text-amber-700" strokeWidth={2} />
@@ -238,6 +263,7 @@ export default function InventoryAdmin() {
           </div>
         </section>
       </div>
+      </>}
     </div>
   );
 }
