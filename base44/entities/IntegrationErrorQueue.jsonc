@@ -1,0 +1,81 @@
+{
+  "name": "IntegrationErrorQueue",
+  "type": "object",
+  "properties": {
+    "sync_audit_log_id": {
+      "type": "string",
+      "description": "Reference to failed SyncAuditLog"
+    },
+    "sync_type": {
+      "type": "string",
+      "enum": [
+        "xero_inventory",
+        "webhook_inventory",
+        "webhook_order"
+      ],
+      "description": "Type of sync that failed"
+    },
+    "external_system": {
+      "type": "string"
+    },
+    "error_type": {
+      "type": "string",
+      "enum": [
+        "network",
+        "auth",
+        "validation",
+        "rate_limit",
+        "timeout",
+        "data_mismatch",
+        "unknown"
+      ]
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "source_entity_id": {
+      "type": "string"
+    },
+    "payload_snapshot": {
+      "type": "object",
+      "description": "Copy of payload that failed"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "retry_queued",
+        "manual_review",
+        "resolved",
+        "archived"
+      ],
+      "default": "pending"
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 0
+    },
+    "next_retry_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolution_notes": {
+      "type": "string",
+      "description": "Notes from manual intervention"
+    },
+    "resolved_by": {
+      "type": "string",
+      "description": "User who manually resolved"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "sync_type",
+    "external_system",
+    "error_type",
+    "error_message"
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "name": "WebhookEndpoint",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Friendly name for the endpoint"
+    },
+    "external_system": {
+      "type": "string",
+      "description": "e.g., 'Customer Portal', 'ERP System', 'Third-party API'"
+    },
+    "endpoint_url": {
+      "type": "string",
+      "description": "HTTPS URL where we send webhook events"
+    },
+    "secret_key": {
+      "type": "string",
+      "description": "Shared secret for signature verification"
+    },
+    "events_subscribed": {
+      "type": "array",
+      "description": "Event types this endpoint listens to",
+      "items": {
+        "type": "string",
+        "enum": [
+          "inventory.update",
+          "order.created",
+          "order.status_change",
+          "sync.completed",
+          "sync.failed"
+        ]
+      }
+    },
+    "retry_policy": {
+      "type": "object",
+      "properties": {
+        "max_retries": {
+          "type": "number",
+          "default": 3
+        },
+        "retry_delay_seconds": {
+          "type": "number",
+          "default": 60
+        },
+        "backoff_multiplier": {
+          "type": "number",
+          "default": 2
+        }
+      }
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_tested": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "test_result": {
+      "type": "string",
+      "enum": [
+        "success",
+        "failed",
+        "timeout"
+      ],
+      "description": "Result of most recent test"
+    },
+    "deliveries_total": {
+      "type": "number",
+      "default": 0
+    },
+    "deliveries_successful": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "name",
+    "external_system",
+    "endpoint_url",
+    "secret_key"
+  ]
+}

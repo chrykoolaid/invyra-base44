@@ -1,0 +1,78 @@
+{
+  "name": "IntegrationOrchestration",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Workflow name"
+    },
+    "description": {
+      "type": "string"
+    },
+    "connectors": {
+      "type": "array",
+      "description": "Ordered list of connectors to run",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "number",
+            "description": "Execution order (1, 2, 3...)"
+          },
+          "sync_type": {
+            "type": "string"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "description": "Sequence numbers this depends on"
+          },
+          "run_condition": {
+            "type": "string",
+            "enum": [
+              "always",
+              "if_previous_success",
+              "if_previous_failed"
+            ]
+          },
+          "rollback_on_failure": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      }
+    },
+    "batch_size": {
+      "type": "number",
+      "default": 100,
+      "description": "Items per batch when processing"
+    },
+    "timeout_minutes": {
+      "type": "number",
+      "default": 30
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "last_executed": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "partial",
+        "failed"
+      ],
+      "description": "Status of last execution"
+    }
+  },
+  "required": [
+    "name",
+    "connectors"
+  ]
+}

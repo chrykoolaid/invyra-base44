@@ -1,0 +1,93 @@
+{
+  "name": "DataTransformation",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Rule set name"
+    },
+    "sync_type": {
+      "type": "string",
+      "enum": [
+        "xero_inventory",
+        "webhook_inventory",
+        "webhook_order"
+      ],
+      "description": "Which sync this rule applies to"
+    },
+    "source_entity": {
+      "type": "string",
+      "description": "Source entity type (InventoryItem, StockMovement)"
+    },
+    "target_system": {
+      "type": "string",
+      "description": "Target system (Xero, webhook)"
+    },
+    "field_mappings": {
+      "type": "array",
+      "description": "Array of source\u2192target field mappings",
+      "items": {
+        "type": "object",
+        "properties": {
+          "source_field": {
+            "type": "string"
+          },
+          "target_field": {
+            "type": "string"
+          },
+          "transform_type": {
+            "type": "string",
+            "enum": [
+              "direct",
+              "format",
+              "calculated",
+              "lookup"
+            ]
+          },
+          "format_rule": {
+            "type": "string",
+            "description": "e.g., 'uppercase', 'round_2_decimals', 'date_YYYY-MM-DD'"
+          }
+        }
+      }
+    },
+    "validation_rules": {
+      "type": "array",
+      "description": "Rules that must pass before sync",
+      "items": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "rule_type": {
+            "type": "string",
+            "enum": [
+              "required",
+              "min_value",
+              "max_length",
+              "regex",
+              "enum_match"
+            ]
+          },
+          "rule_value": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name",
+    "sync_type",
+    "source_entity",
+    "target_system"
+  ]
+}

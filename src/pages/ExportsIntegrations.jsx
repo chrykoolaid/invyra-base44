@@ -24,6 +24,10 @@ import AccountingConnectorPanel from '@/components/AccountingConnectorPanel';
 import SyncAuditViewer from '@/components/SyncAuditViewer';
 import SyncPerformanceMonitor from '@/components/SyncPerformanceMonitor';
 import SyncHealthScorer from '@/components/SyncHealthScorer';
+import DataTransformationBuilder from '@/components/DataTransformationBuilder';
+import WebhookManagementUI from '@/components/WebhookManagementUI';
+import ErrorRecoveryManager from '@/components/ErrorRecoveryManager';
+import OrchestratorUI from '@/components/OrchestratorUI';
 
 const summaryCards = [
   {
@@ -399,6 +403,25 @@ export default function ExportsIntegrations() {
       <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
         <SyncAuditViewer />
       </section>
+
+      {/* Control & Configuration Layers */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
+          <DataTransformationBuilder />
+        </section>
+        <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
+          <WebhookManagementUI />
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
+          <ErrorRecoveryManager />
+        </section>
+        <section className="rounded-2xl border border-border bg-card overflow-hidden p-4">
+          <OrchestratorUI />
+        </section>
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.08fr_0.92fr] gap-4">
         <section className="rounded-2xl border border-border bg-card overflow-hidden">
