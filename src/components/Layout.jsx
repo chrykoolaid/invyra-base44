@@ -13,6 +13,7 @@ import {
   Users,
   Clock,
   BarChart2,
+  BarChart3,
   Share2,
   ClipboardCheck,
 } from 'lucide-react';
@@ -36,6 +37,7 @@ const operationsNav = [
 
 const adminNav = [
   { path: '/InventoryAdmin',      label: 'Inventory Admin & Reporting', icon: BarChart2 },
+  { path: '/Reports',             label: 'Advanced Reports',            icon: BarChart3 },
   { path: '/ExportsIntegrations', label: 'Exports & Integrations',      icon: Share2 },
 ];
 

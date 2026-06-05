@@ -9,6 +9,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
+import Reports from './pages/Reports';
 import Wastage from './pages/Wastage';
 import GapScan from './pages/GapScan';
 import Suppliers from './pages/Suppliers';
@@ -53,6 +54,7 @@ const AuthenticatedApp = () => {
         <Route path="/" element={<Navigate to="/Dashboard" replace />} />
         <Route path="/Dashboard" element={<Dashboard />} />
         <Route path="/Inventory" element={<Inventory />} />
+        <Route path="/Reports" element={<Reports />} />
         <Route path="/Wastage" element={<Wastage />} />
         <Route path="/GapScan" element={<GapScan />} />
         <Route path="/Suppliers" element={<Suppliers />} />
