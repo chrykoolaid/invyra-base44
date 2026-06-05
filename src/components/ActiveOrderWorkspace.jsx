@@ -126,11 +126,32 @@ export default function ActiveOrderWorkspace({ order, onBack, onCancelOrder }) {
 
   const cancelAmending = () => { setAmendSession(null); setAmendStep('edit'); };
 
-  const commitAmendment = () => {
-    setCommittedLines(projectedLines.map(l => ({ ...l })));
+  const commitAmendment = async () => {
+    const newLines = projectedLines.map(l => ({ ...l }));
+    setCommittedLines(newLines);
     setVersion(v => v + 1);
     setAmendSession(null);
     setAmendStep('edit');
+
+    // Persist to DB if real record
+    if (order.id && typeof order.id === 'string' && order.id.length >= 10) {
+      const wasConfirmed = !!order.supplier_confirmed_at;
+      const updatePayload = {
+        lines: newLines,
+        amended_at: new Date().toISOString(),
+      };
+      // If supplier already confirmed, invalidate their confirmation so a new link must be sent
+      if (wasConfirmed) {
+        updatePayload.supplier_token = null;
+        updatePayload.supplier_confirmed_at = null;
+        updatePayload.supplier_dispatched_at = null;
+        updatePayload.supplier_dispatch_note = null;
+        updatePayload.status = 'Submitted';
+        setOrderStatus('Submitted');
+        setPortalLink(null);
+      }
+      await base44.entities.PurchaseOrder.update(order.id, updatePayload);
+    }
   };
 
   const amendRemove = (line_id) => {

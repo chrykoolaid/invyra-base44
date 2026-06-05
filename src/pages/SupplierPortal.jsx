@@ -76,6 +76,10 @@ export default function SupplierPortal() {
   const canDispatch = order.status === 'Confirmed';
   const isTerminal = ['Awaiting Delivery', 'Partially Received', 'Received', 'Cancelled'].includes(order.status);
 
+  // Show amendment warning if order was amended after supplier confirmed
+  const wasAmended = order.amended_at && order.supplier_confirmed_at &&
+    new Date(order.amended_at) > new Date(order.supplier_confirmed_at);
+
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-2xl mx-auto space-y-5">
@@ -102,6 +106,16 @@ export default function SupplierPortal() {
 
           {order.notes && (
             <p className="mt-3 text-sm text-gray-500 border-t border-gray-100 pt-3">{order.notes}</p>
+          )}
+
+          {wasAmended && (
+            <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Order was amended</p>
+                <p className="text-xs text-amber-700 mt-0.5">The buyer updated the order lines after your confirmation. Please review the current lines below before dispatching.</p>
+              </div>
+            </div>
           )}
         </div>
 
