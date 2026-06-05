@@ -34,6 +34,7 @@ export default function ReceivingWorkspace() {
   const [received, setReceived] = useState(initialReceived);
   const [savedDraft, setSavedDraft] = useState(null);
   const [actionStatus, setActionStatus] = useState(null); // 'draft_saved' | 'confirmed'
+  const [supplierDispatchNote, setSupplierDispatchNote] = useState('');
 
   // discrepancy: { [itemName]: { reason: '', note: '', open: false } }
   const [discrepancy, setDiscrepancy] = useState({});
@@ -288,30 +289,38 @@ export default function ReceivingWorkspace() {
               {status === 'Partial' && discrepancy[row.item]?.open && (
                 <tr className="border-t border-amber-100 bg-amber-50/40">
                   <td colSpan={5} className="px-5 py-3">
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <span className="text-xs text-amber-700 font-medium">Discrepancy reason:</span>
-                      <div className="flex gap-1.5">
-                        {['Damaged', 'Missing', 'Supplier short'].map(r => (
-                          <button
-                            key={r}
-                            onClick={() => setDiscrepancyField(row.item, 'reason', discrepancy[row.item]?.reason === r ? '' : r)}
-                            className={`text-xs px-2.5 py-1 rounded border transition-colors ${
-                              discrepancy[row.item]?.reason === r
-                                ? 'bg-amber-100 border-amber-400 text-amber-800 font-medium'
-                                : 'bg-card border-border text-muted-foreground hover:bg-muted'
-                            }`}
-                          >
-                            {r}
-                          </button>
-                        ))}
+                    <div className="space-y-2">
+                      {supplierDispatchNote && (
+                        <div className="p-2.5 bg-amber-100 border border-amber-200 rounded text-xs text-amber-800">
+                          <p className="font-medium mb-1">Supplier dispatch note:</p>
+                          <p className="leading-relaxed">{supplierDispatchNote}</p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-xs text-amber-700 font-medium">{supplierDispatchNote ? 'Confirmed reason:' : 'Discrepancy reason:'}</span>
+                        <div className="flex gap-1.5">
+                          {['Damaged', 'Missing', 'Supplier short'].map(r => (
+                            <button
+                              key={r}
+                              onClick={() => setDiscrepancyField(row.item, 'reason', discrepancy[row.item]?.reason === r ? '' : r)}
+                              className={`text-xs px-2.5 py-1 rounded border transition-colors ${
+                                discrepancy[row.item]?.reason === r
+                                  ? 'bg-amber-100 border-amber-400 text-amber-800 font-medium'
+                                  : 'bg-card border-border text-muted-foreground hover:bg-muted'
+                              }`}
+                            >
+                              {r}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Add internal note…"
+                          value={discrepancy[row.item]?.note || ''}
+                          onChange={e => setDiscrepancyField(row.item, 'note', e.target.value)}
+                          className="h-7 text-xs border border-border rounded px-2 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-48 placeholder:text-muted-foreground/50"
+                        />
                       </div>
-                      <input
-                        type="text"
-                        placeholder="Optional note…"
-                        value={discrepancy[row.item]?.note || ''}
-                        onChange={e => setDiscrepancyField(row.item, 'note', e.target.value)}
-                        className="h-7 text-xs border border-border rounded px-2 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-48 placeholder:text-muted-foreground/50"
-                      />
                     </div>
                   </td>
                 </tr>
