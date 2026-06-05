@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
 import {
   AlertTriangle,
   ArrowRight,
@@ -14,6 +15,8 @@ import {
   ShoppingCart,
   Trash2,
   TriangleAlert,
+  BellRing,
+  X,
 } from 'lucide-react';
 
 const dashboardMeta = {
@@ -216,6 +219,52 @@ function Panel({ title, actionLabel, actionTo, children, className = '' }) {
 
 export default function Dashboard() {
   const [now, setNow] = useState(() => new Date());
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [alertDismissed, setAlertDismissed] = useState(false);
+
+  const loadInventory = useCallback(async () => {
+    const rows = await base44.entities.InventoryItem.filter({ is_active: true }, '-updated_date', 500);
+    setInventoryItems(rows || []);
+    setAlertDismissed(false); // re-show banner on refresh
+  }, []);
+
+  useEffect(() => { loadInventory(); }, [loadInventory]);
+
+  // Derive live low-stock & out-of-stock items
+  const lowStockItems = useMemo(() =>
+    inventoryItems.filter(i => i.reorder_point != null && (i.stock || 0) <= i.reorder_point && (i.stock || 0) > 0),
+    [inventoryItems]
+  );
+  const outOfStockItems = useMemo(() =>
+    inventoryItems.filter(i => (i.stock || 0) === 0),
+    [inventoryItems]
+  );
+  const noThresholdItems = useMemo(() =>
+    inventoryItems.filter(i => i.reorder_point == null),
+    [inventoryItems]
+  );
+
+  // Build live priority issues (low stock + out of stock, up to 8)
+  const livePriorityIssues = useMemo(() => {
+    const out = outOfStockItems.map(i => ({ sku: i.sku, item: i.name, onHand: i.stock || 0, status: 'Out', note: 'Active stockout' }));
+    const low = lowStockItems.map(i => ({ sku: i.sku, item: i.name, onHand: i.stock || 0, status: 'Reorder', note: `Below reorder point of ${i.reorder_point}` }));
+    const combined = [...out, ...low].slice(0, 8);
+    return combined.length > 0 ? combined : priorityIssues; // fall back to static if no live data yet
+  }, [outOfStockItems, lowStockItems]);
+
+  // Live KPI overrides
+  const liveKpiCards = useMemo(() => kpiCards.map(card => {
+    if (card.label === 'LOW STOCK' && inventoryItems.length > 0) {
+      return { ...card, value: String(lowStockItems.length), sub: 'items below reorder point', helper: `${outOfStockItems.length} hard stockout${outOfStockItems.length !== 1 ? 's' : ''}` };
+    }
+    if (card.label === 'OUT OF STOCK' && inventoryItems.length > 0) {
+      return { ...card, value: String(outOfStockItems.length), sub: 'items at zero on hand' };
+    }
+    if (card.label === 'SETUP GAPS' && inventoryItems.length > 0) {
+      return { ...card, value: String(noThresholdItems.length), sub: 'items missing reorder thresholds' };
+    }
+    return card;
+  }), [inventoryItems, lowStockItems, outOfStockItems, noThresholdItems]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 60000);
@@ -236,6 +285,28 @@ export default function Dashboard() {
 
   return (
     <div className="p-4 lg:p-5 space-y-4 max-w-[1380px]">
+
+      {/* Live low-stock alert banner */}
+      {!alertDismissed && (lowStockItems.length > 0 || outOfStockItems.length > 0) && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-950/30 px-4 py-3">
+          <BellRing size={16} className="text-amber-400 mt-0.5 flex-shrink-0 animate-pulse" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-300">
+              Stock Alert — {outOfStockItems.length > 0 ? `${outOfStockItems.length} item${outOfStockItems.length !== 1 ? 's' : ''} out of stock` : ''}{outOfStockItems.length > 0 && lowStockItems.length > 0 ? ' · ' : ''}{lowStockItems.length > 0 ? `${lowStockItems.length} item${lowStockItems.length !== 1 ? 's' : ''} below reorder point` : ''}
+            </p>
+            <p className="text-xs text-amber-400/70 mt-1">
+              {[...outOfStockItems, ...lowStockItems].slice(0, 5).map(i => i.name).join(', ')}{[...outOfStockItems, ...lowStockItems].length > 5 ? ` +${[...outOfStockItems, ...lowStockItems].length - 5} more` : ''}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Link to="/Inventory" className="text-xs text-amber-300 hover:text-amber-200 transition-colors underline underline-offset-2">View inventory</Link>
+            <button onClick={() => setAlertDismissed(true)} className="text-amber-500 hover:text-amber-300 transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-2.5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-foreground">{dashboardMeta.title}</h1>
@@ -256,7 +327,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-        {kpiCards.map(({ label, value, sub, helper, icon: Icon, iconColor }) => (
+        {liveKpiCards.map(({ label, value, sub, helper, icon: Icon, iconColor }) => (
           <div
             key={label}
             className="bg-slate-900 rounded-2xl border border-slate-700/60 px-4 pt-3.5 pb-3.5 flex flex-col gap-1.5 min-h-[128px]"
@@ -349,7 +420,9 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {priorityIssues.map((row, index) => (
+              {livePriorityIssues.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-6 text-center text-xs text-slate-500">No priority issues detected — all items above reorder points.</td></tr>
+              ) : livePriorityIssues.map((row, index) => (
                 <tr
                   key={row.sku}
                   className={`border-b border-slate-800/80 last:border-0 ${index % 2 === 0 ? '' : 'bg-slate-800/20'}`}
