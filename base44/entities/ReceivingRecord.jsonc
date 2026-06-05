@@ -30,6 +30,8 @@
         "Flagged",
         "Awaiting Supplier Response",
         "Supplier Responded",
+        "Resolution Proposed",
+        "Supplier Confirmed",
         "Resolved"
       ],
       "description": "Status of discrepancy resolution flow"
@@ -79,14 +81,31 @@
         }
       }
     },
-    "resolution_note": {
+    "warehouse_decision": {
       "type": "string",
-      "description": "Warehouse's internal note on how discrepancy was resolved"
+      "description": "Warehouse proposal: e.g., 'Accept explanation', 'Credit memo issued', 'Replacement shipment requested'"
+    },
+    "warehouse_decision_note": {
+      "type": "string",
+      "description": "Detailed warehouse reasoning"
+    },
+    "warehouse_decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "supplier_confirmed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Supplier has confirmed agreement with warehouse decision"
+    },
+    "supplier_confirmed_at": {
+      "type": "string",
+      "format": "date-time"
     },
     "resolved_at": {
       "type": "string",
       "format": "date-time",
-      "description": "When discrepancy was marked resolved"
+      "description": "When both parties agreed and issue was fully resolved"
     }
   },
   "required": [

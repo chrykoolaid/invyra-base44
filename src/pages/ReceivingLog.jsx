@@ -13,6 +13,8 @@ const discrepancyStatusStyle = {
   'Flagged': 'bg-red-100 text-red-700',
   'Awaiting Supplier Response': 'bg-amber-100 text-amber-700',
   'Supplier Responded': 'bg-blue-100 text-blue-700',
+  'Resolution Proposed': 'bg-purple-100 text-purple-700',
+  'Supplier Confirmed': 'bg-emerald-100 text-emerald-700',
   'Resolved': 'bg-green-100 text-green-700',
 };
 
@@ -20,31 +22,42 @@ export default function ReceivingLog() {
   const navigate = useNavigate();
   const [records, setRecords] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
-  const [resolving, setResolving] = useState(null);
-  const [resolutionNote, setResolutionNote] = useState({});
+  const [proposing, setProposing] = useState(null);
+  const [warehouseDecision, setWarehouseDecision] = useState({});
+  const [warehouseNote, setWarehouseNote] = useState({});
 
   useEffect(() => {
     base44.entities.ReceivingRecord.list('-confirmed_at', 50).then(data => setRecords(data || []));
   }, []);
 
-  const handleResolve = async (recordId) => {
-    setResolving(recordId);
-    await base44.entities.ReceivingRecord.update(recordId, {
-      discrepancy_status: 'Resolved',
-      resolution_note: resolutionNote[recordId] || '',
-      resolved_at: new Date().toISOString(),
-    });
-    setRecords(prev => prev.map(r => r.id === recordId ? { ...r, discrepancy_status: 'Resolved', resolved_at: new Date().toISOString() } : r));
+  const handleProposeResolution = async (recordId) => {
+    if (!warehouseDecision[recordId]?.trim()) return;
+    setProposing(recordId);
     
-    // Notify supplier
+    await base44.entities.ReceivingRecord.update(recordId, {
+      discrepancy_status: 'Resolution Proposed',
+      warehouse_decision: warehouseDecision[recordId],
+      warehouse_decision_note: warehouseNote[recordId] || '',
+      warehouse_decided_at: new Date().toISOString(),
+    });
+    
+    setRecords(prev => prev.map(r => r.id === recordId ? {
+      ...r,
+      discrepancy_status: 'Resolution Proposed',
+      warehouse_decision: warehouseDecision[recordId],
+      warehouse_decided_at: new Date().toISOString(),
+    } : r));
+    
+    // Notify supplier of warehouse decision
     try {
-      await base44.functions.invoke('notifyDiscrepancyResolved', { recordId });
+      await base44.functions.invoke('notifyWarehouseDecision', { recordId });
     } catch (err) {
       console.error('Failed to notify supplier:', err);
     }
     
-    setResolving(null);
-    setResolutionNote(prev => ({ ...prev, [recordId]: '' }));
+    setProposing(null);
+    setWarehouseDecision(prev => ({ ...prev, [recordId]: '' }));
+    setWarehouseNote(prev => ({ ...prev, [recordId]: '' }));
   };
 
   return (
@@ -134,32 +147,61 @@ export default function ReceivingLog() {
                     </div>
                   )}
 
-                  {/* Resolution controls */}
-                  {record.status === 'Discrepancy' && record.discrepancy_status !== 'Resolved' && (
-                    <div className="bg-amber-50 border border-amber-200 rounded p-3 space-y-2">
-                      <p className="text-xs font-semibold text-amber-700">Resolve Discrepancy</p>
+                  {/* Warehouse decision stage */}
+                  {record.status === 'Discrepancy' && record.discrepancy_status === 'Supplier Responded' && (
+                    <div className="bg-purple-50 border border-purple-200 rounded p-3 space-y-2">
+                      <p className="text-xs font-semibold text-purple-700">Warehouse Decision Required</p>
+                      <input
+                        type="text"
+                        placeholder="e.g., 'Accept explanation', 'Credit memo issued', 'Replacement shipment requested'"
+                        value={warehouseDecision[record.id] || ''}
+                        onChange={e => setWarehouseDecision(prev => ({ ...prev, [record.id]: e.target.value }))}
+                        className="w-full text-xs border border-purple-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-purple-300"
+                      />
                       <textarea
-                        placeholder="Internal resolution note (e.g., 'Accepted supplier explanation', 'Credit memo issued')..."
-                        value={resolutionNote[record.id] || ''}
-                        onChange={e => setResolutionNote(prev => ({ ...prev, [record.id]: e.target.value }))}
+                        placeholder="Additional reasoning for supplier..."
+                        value={warehouseNote[record.id] || ''}
+                        onChange={e => setWarehouseNote(prev => ({ ...prev, [record.id]: e.target.value }))}
                         rows={2}
-                        className="w-full text-xs border border-amber-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-300 resize-none"
+                        className="w-full text-xs border border-purple-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-purple-300 resize-none"
                       />
                       <button
-                        onClick={() => handleResolve(record.id)}
-                        disabled={resolving === record.id}
-                        className="text-xs px-3 py-1.5 rounded bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50"
+                        onClick={() => handleProposeResolution(record.id)}
+                        disabled={proposing === record.id || !warehouseDecision[record.id]?.trim()}
+                        className="text-xs px-3 py-1.5 rounded bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:opacity-50"
                       >
-                        {resolving === record.id ? 'Marking resolved…' : 'Mark Resolved'}
+                        {proposing === record.id ? 'Proposing…' : 'Propose Resolution'}
                       </button>
                     </div>
                   )}
 
+                  {/* Resolution proposed - awaiting supplier confirmation */}
+                  {record.discrepancy_status === 'Resolution Proposed' && (
+                    <div className="bg-purple-50 border border-purple-200 rounded p-3 space-y-2">
+                      <p className="text-xs font-semibold text-purple-700">Resolution Proposed to Supplier</p>
+                      <div className="text-xs text-purple-700 bg-white rounded p-2">
+                        <p className="font-medium">{record.warehouse_decision}</p>
+                        {record.warehouse_decision_note && <p className="mt-1 text-purple-600">{record.warehouse_decision_note}</p>}
+                      </div>
+                      <p className="text-xs text-purple-600">Awaiting supplier confirmation on portal…</p>
+                    </div>
+                  )}
+
+                  {/* Supplier confirmed */}
+                  {record.discrepancy_status === 'Supplier Confirmed' && (
+                    <div className="bg-emerald-50 border border-emerald-200 rounded p-3">
+                      <p className="text-xs font-semibold text-emerald-700 mb-1">✓ Supplier Confirmed</p>
+                      <p className="text-xs text-emerald-700">{record.warehouse_decision}</p>
+                      <p className="text-xs text-emerald-600 mt-1">Confirmed on {new Date(record.supplier_confirmed_at).toLocaleString()}</p>
+                    </div>
+                  )}
+
+                  {/* Fully resolved */}
                   {record.discrepancy_status === 'Resolved' && (
                     <div className="bg-green-50 border border-green-200 rounded p-3">
-                      <p className="text-xs font-semibold text-green-700 mb-1">✓ Resolved</p>
-                      {record.resolution_note && <p className="text-xs text-green-700">{record.resolution_note}</p>}
-                      <p className="text-xs text-green-600 mt-1">{new Date(record.resolved_at).toLocaleString()}</p>
+                      <p className="text-xs font-semibold text-green-700 mb-1">✓ Fully Resolved</p>
+                      <p className="text-xs text-green-700">{record.warehouse_decision}</p>
+                      <p className="text-xs text-green-600 mt-1">Resolution finalized on {new Date(record.resolved_at).toLocaleString()}</p>
                     </div>
                   )}
                 </div>

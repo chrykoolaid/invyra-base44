@@ -24,7 +24,7 @@ export default function SupplierPortal() {
   const [acting, setActing] = useState(false);
   const [done, setDone] = useState('');
   const [responseText, setResponseText] = useState({});
-  const [expandedRecord, setExpandedRecord] = useState(null);
+  const [confirming, setConfirming] = useState(null);
 
   useEffect(() => {
     if (!token) { setError('Invalid or missing access token.'); setLoading(false); return; }
@@ -79,6 +79,26 @@ export default function SupplierPortal() {
     setReceivingRecords(prev => prev.map(r => r.id === recordId ? { ...r, supplier_responses: newResponses, discrepancy_status: 'Supplier Responded' } : r));
     setResponseText(prev => ({ ...prev, [recordId]: '' }));
     setActing(false);
+  };
+
+  const handleConfirmResolution = async (recordId) => {
+    setConfirming(recordId);
+    await base44.entities.ReceivingRecord.update(recordId, {
+      discrepancy_status: 'Supplier Confirmed',
+      supplier_confirmed: true,
+      supplier_confirmed_at: new Date().toISOString(),
+      resolved_at: new Date().toISOString(),
+    });
+
+    setReceivingRecords(prev => prev.map(r => r.id === recordId ? {
+      ...r,
+      discrepancy_status: 'Supplier Confirmed',
+      supplier_confirmed: true,
+      supplier_confirmed_at: new Date().toISOString(),
+      resolved_at: new Date().toISOString(),
+    } : r));
+
+    setConfirming(null);
   };
 
   if (loading) return (
@@ -147,7 +167,7 @@ export default function SupplierPortal() {
         {/* Flagged Discrepancies for Response */}
         {receivingRecords.filter(r => r.status === 'Discrepancy').length > 0 && (
           <div className="bg-white border border-red-200 rounded-2xl p-6 shadow-sm">
-            <p className="text-xs font-semibold text-red-600 uppercase tracking-widest mb-4">Flagged Discrepancies Requiring Your Response</p>
+            <p className="text-xs font-semibold text-red-600 uppercase tracking-widest mb-4">Discrepancy Resolution</p>
             <div className="space-y-3">
               {receivingRecords.filter(r => r.status === 'Discrepancy').map((record) => (
                 <div key={record.id} className="border border-red-100 rounded-xl p-4 bg-red-50/30">
@@ -157,8 +177,9 @@ export default function SupplierPortal() {
                       <p className="text-xs text-gray-500 mt-1">{record.items?.map(i => i.item).join(', ')}</p>
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                      record.discrepancy_status === 'Supplier Responded' ? 'bg-green-100 text-green-700' :
-                      record.discrepancy_status === 'Awaiting Supplier Response' ? 'bg-amber-100 text-amber-700' :
+                      record.discrepancy_status === 'Resolution Proposed' ? 'bg-purple-100 text-purple-700' :
+                      record.discrepancy_status === 'Supplier Confirmed' || record.discrepancy_status === 'Resolved' ? 'bg-green-100 text-green-700' :
+                      record.discrepancy_status === 'Supplier Responded' ? 'bg-blue-100 text-blue-700' :
                       'bg-red-100 text-red-700'
                     }`}>
                       {record.discrepancy_status || 'Flagged'}
@@ -177,24 +198,49 @@ export default function SupplierPortal() {
                     </div>
                   )}
 
-                  {/* Add response */}
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-gray-700">Your response:</label>
-                    <textarea
-                      value={responseText[record.id] || ''}
-                      onChange={e => setResponseText(prev => ({ ...prev, [record.id]: e.target.value }))}
-                      placeholder="Explain the situation from your side..."
-                      rows={3}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-red-300"
-                    />
-                    <button
-                      onClick={() => handleSubmitResponse(record.id)}
-                      disabled={acting || !responseText[record.id]?.trim()}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
-                    >
-                      {acting ? 'Sending…' : 'Submit Response'}
-                    </button>
-                  </div>
+                  {/* Your response - shown if waiting for supplier response */}
+                  {record.discrepancy_status === 'Awaiting Supplier Response' || (record.discrepancy_status === 'Supplier Responded' && !record.warehouse_decision) && (
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-gray-700">Your response:</label>
+                      <textarea
+                        value={responseText[record.id] || ''}
+                        onChange={e => setResponseText(prev => ({ ...prev, [record.id]: e.target.value }))}
+                        placeholder="Explain the situation from your side..."
+                        rows={3}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-red-300"
+                      />
+                      <button
+                        onClick={() => handleSubmitResponse(record.id)}
+                        disabled={acting || !responseText[record.id]?.trim()}
+                        className="text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {acting ? 'Sending…' : 'Submit Response'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Warehouse decision - requires confirmation */}
+                  {(record.discrepancy_status === 'Resolution Proposed' || record.discrepancy_status === 'Supplier Confirmed') && record.warehouse_decision && (
+                    <div className="mt-4 bg-purple-50 border border-purple-200 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-purple-700">Warehouse Decision</p>
+                      <div className="text-xs text-purple-700 bg-white rounded p-2">
+                        <p className="font-medium">{record.warehouse_decision}</p>
+                        {record.warehouse_decision_note && <p className="mt-1 text-purple-600">{record.warehouse_decision_note}</p>}
+                      </div>
+                      {record.discrepancy_status === 'Resolution Proposed' && (
+                        <button
+                          onClick={() => handleConfirmResolution(record.id)}
+                          disabled={confirming === record.id}
+                          className="text-xs w-full px-3 py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors disabled:opacity-50"
+                        >
+                          {confirming === record.id ? 'Confirming…' : 'Confirm Agreement'}
+                        </button>
+                      )}
+                      {record.discrepancy_status === 'Supplier Confirmed' && (
+                        <p className="text-xs text-green-700 font-medium">✓ You confirmed this resolution</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
