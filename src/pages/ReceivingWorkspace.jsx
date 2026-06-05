@@ -21,6 +21,16 @@ const statusStyle = {
   'Over-received':'bg-purple-50 text-purple-700 border border-purple-200',
 };
 
+const discrepancyReasons = [
+  { id: 'damaged', label: 'Damaged goods', desc: 'Items received damaged or defective' },
+  { id: 'missing', label: 'Missing items', desc: 'Items missing from delivery' },
+  { id: 'supplier_short', label: 'Supplier short', desc: 'Supplier unable to fulfill full quantity' },
+  { id: 'quality_issue', label: 'Quality issue', desc: 'Items do not meet quality standards' },
+  { id: 'wrong_sku', label: 'Wrong SKU', desc: 'Incorrect product shipped' },
+  { id: 'packaging_damaged', label: 'Packaging damaged', desc: 'Packaging compromised in transit' },
+  { id: 'other', label: 'Other', desc: 'Different supplier-related issue' },
+];
+
 export default function ReceivingWorkspace() {
   const navigate = useNavigate();
   const params = new URLSearchParams(window.location.search);
@@ -289,38 +299,34 @@ export default function ReceivingWorkspace() {
               {status === 'Partial' && discrepancy[row.item]?.open && (
                 <tr className="border-t border-amber-100 bg-amber-50/40">
                   <td colSpan={5} className="px-5 py-3">
-                    <div className="space-y-2">
-                      {supplierDispatchNote && (
-                        <div className="p-2.5 bg-amber-100 border border-amber-200 rounded text-xs text-amber-800">
-                          <p className="font-medium mb-1">Supplier dispatch note:</p>
-                          <p className="leading-relaxed">{supplierDispatchNote}</p>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <span className="text-xs text-amber-700 font-medium">{supplierDispatchNote ? 'Confirmed reason:' : 'Discrepancy reason:'}</span>
-                        <div className="flex gap-1.5">
-                          {['Damaged', 'Missing', 'Supplier short'].map(r => (
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-amber-700 font-semibold mb-2">Select supplier-related reason:</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {discrepancyReasons.map(r => (
                             <button
-                              key={r}
-                              onClick={() => setDiscrepancyField(row.item, 'reason', discrepancy[row.item]?.reason === r ? '' : r)}
-                              className={`text-xs px-2.5 py-1 rounded border transition-colors ${
-                                discrepancy[row.item]?.reason === r
+                              key={r.id}
+                              onClick={() => setDiscrepancyField(row.item, 'reason', discrepancy[row.item]?.reason === r.id ? '' : r.id)}
+                              className={`text-left text-xs p-2 rounded border transition-colors ${
+                                discrepancy[row.item]?.reason === r.id
                                   ? 'bg-amber-100 border-amber-400 text-amber-800 font-medium'
                                   : 'bg-card border-border text-muted-foreground hover:bg-muted'
                               }`}
+                              title={r.desc}
                             >
-                              {r}
+                              <p className="font-medium">{r.label}</p>
+                              <p className="text-[10px] opacity-70 leading-tight">{r.desc}</p>
                             </button>
                           ))}
                         </div>
-                        <input
-                          type="text"
-                          placeholder="Add internal note…"
-                          value={discrepancy[row.item]?.note || ''}
-                          onChange={e => setDiscrepancyField(row.item, 'note', e.target.value)}
-                          className="h-7 text-xs border border-border rounded px-2 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-48 placeholder:text-muted-foreground/50"
-                        />
                       </div>
+                      <input
+                        type="text"
+                        placeholder="Add internal note…"
+                        value={discrepancy[row.item]?.note || ''}
+                        onChange={e => setDiscrepancyField(row.item, 'note', e.target.value)}
+                        className="h-8 text-xs border border-border rounded px-3 bg-card focus:outline-none focus:ring-1 focus:ring-ring w-full placeholder:text-muted-foreground/50"
+                      />
                     </div>
                   </td>
                 </tr>
