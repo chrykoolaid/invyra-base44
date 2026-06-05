@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import {
   ArrowUpFromLine,
+  CheckCircle2,
   CircleAlert,
+  Clock3,
   FileSpreadsheet,
   FileUp,
   Link2,
@@ -109,16 +112,24 @@ const releasePlan = [
     icon: PackageOpen,
     title: 'Phase 1',
     body: 'Keep this as a clean roadmap surface so users understand what exports and integrations will eventually live here.',
+    status: 'In progress',
+    milestones: ['Roadmap UI complete', 'Dependency tracking visible', 'Release plan clearly communicated'],
   },
   {
     icon: ListChecks,
     title: 'Phase 2',
     body: 'Introduce controlled CSV export only after the relevant inventory and order outputs have stable source data.',
+    status: 'Blocked',
+    reason: 'Awaiting Orders workflow completion',
+    milestones: ['Inventory CSV export', 'Order history export', 'Adjustment/wastage export'],
   },
   {
     icon: Link2,
     title: 'Phase 3',
     body: 'Layer in imports, accounting links, and external sync once templates, payload contracts, and connector rules are ready.',
+    status: 'Not started',
+    reason: 'Post-Phase 2 only',
+    milestones: ['Supplier catalogue import', 'Accounting connectors', 'API/webhook sync'],
   },
 ];
 
@@ -157,7 +168,52 @@ function CapabilityCard({ icon: Icon, title, body, tag }) {
   );
 }
 
+function PhaseCard({ icon: Icon, title, body, status, reason, milestones }) {
+  const statusConfig = {
+    'In progress': { icon: Clock3, color: 'bg-sky-50 border-sky-200 text-sky-700' },
+    'Blocked': { icon: CircleAlert, color: 'bg-amber-50 border-amber-200 text-amber-700' },
+    'Not started': { icon: CircleAlert, color: 'bg-slate-50 border-slate-200 text-slate-700' },
+    'Complete': { icon: CheckCircle2, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+  };
+  const config = statusConfig[status];
+  const StatusIcon = config.icon;
+
+  return (
+    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+      <div className="px-4 py-3.5 border-b border-border bg-muted/25 flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <Icon className="h-5 w-5 text-foreground" strokeWidth={1.9} />
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        </div>
+        <div className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${config.color}`}>
+          <StatusIcon className="h-3 w-3" strokeWidth={2} />
+          <span>{status}</span>
+        </div>
+      </div>
+      <div className="p-4 space-y-3">
+        <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
+        {reason && <p className="text-xs text-muted-foreground italic">⚠ {reason}</p>}
+        {milestones && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-2">Milestones</p>
+            <ul className="space-y-1.5">
+              {milestones.map(m => (
+                <li key={m} className="text-xs text-muted-foreground flex items-start gap-2">
+                  <span className="text-primary mt-1 flex-shrink-0">•</span>
+                  <span>{m}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ExportsIntegrations() {
+  const [activePhase, setActivePhase] = useState(null);
+
   return (
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
       <div className="space-y-1">
@@ -224,33 +280,42 @@ export default function ExportsIntegrations() {
         </section>
 
         <section className="rounded-2xl border border-border bg-card overflow-hidden">
-          <div className="px-4 py-3 border-b border-border bg-muted/25">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Release path</p>
-            <h2 className="text-sm font-semibold text-foreground">How this module should grow</h2>
-          </div>
-          <div className="p-4 space-y-3">
-            {releasePlan.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="rounded-2xl border border-border bg-background px-4 py-3.5">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.8} />
-                  <p className="text-sm font-semibold text-foreground">{title}</p>
-                </div>
-                <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
-              </div>
-            ))}
+         <div className="px-4 py-3 border-b border-border bg-muted/25">
+           <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Release roadmap</p>
+           <h2 className="text-sm font-semibold text-foreground">Phased implementation plan</h2>
+         </div>
+         <div className="p-4 space-y-3">
+           {releasePlan.map(({ icon: Icon, title, body, status, reason, milestones }) => (
+             <div key={title} className="rounded-2xl border border-border bg-background px-4 py-3.5">
+               <div className="flex items-start justify-between gap-2 mb-2">
+                 <div className="flex items-center gap-2">
+                   <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.8} />
+                   <p className="text-sm font-semibold text-foreground">{title}</p>
+                 </div>
+                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap ${
+                   status === 'In progress' ? 'bg-sky-100 text-sky-700' :
+                   status === 'Blocked' ? 'bg-amber-100 text-amber-700' :
+                   'bg-slate-100 text-slate-700'
+                 }`}>
+                   {status}
+                 </span>
+               </div>
+               <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
+             </div>
+           ))}
 
-            <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-3.5">
-              <div className="flex items-start gap-2.5">
-                <ShieldEllipsis className="h-4 w-4 text-muted-foreground mt-0.5" strokeWidth={1.8} />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Connector rule</p>
-                  <p className="text-sm leading-relaxed text-muted-foreground mt-1">
-                    Do not imply live connector infrastructure, payload guarantees, or accounting sync until a dedicated post-core implementation stage exists.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+           <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-3.5">
+             <div className="flex items-start gap-2.5">
+               <ShieldEllipsis className="h-4 w-4 text-muted-foreground mt-0.5" strokeWidth={1.8} />
+               <div>
+                 <p className="text-sm font-semibold text-foreground">Governance principle</p>
+                 <p className="text-sm leading-relaxed text-muted-foreground mt-1">
+                   Each phase waits for its blocking dependencies to be stable. No exports without clean source data. No connectors until contracts and templates are finalized.
+                 </p>
+               </div>
+             </div>
+           </div>
+         </div>
         </section>
       </div>
     </div>
