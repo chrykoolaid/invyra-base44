@@ -3,11 +3,14 @@ import {
   BarChart3,
   CircleAlert,
   ClipboardList,
+  DollarSign,
   FileClock,
   FileSpreadsheet,
+  Save,
   ShieldCheck,
   SlidersHorizontal,
   TrendingUp,
+  X,
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import LedgerViewer from '@/components/LedgerViewer';
@@ -157,15 +160,26 @@ function CapabilityCard({ icon: Icon, title, body, tag }) {
   );
 }
 
-const TABS = ['Ledger', 'Audit Log', 'Roadmap'];
+const TABS = ['Unit Pricing', 'Ledger', 'Audit Log', 'Roadmap'];
 
 export default function InventoryAdmin() {
-  const [tab, setTab] = useState('Ledger');
+  const [tab, setTab] = useState('Unit Pricing');
   const [auditLogs, setAuditLogs] = useState([]);
   const [auditLoading, setAuditLoading] = useState(false);
+  const [items, setItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [editingPrice, setEditingPrice] = useState(null);
+  const [priceInput, setPriceInput] = useState('');
+  const [savingPrice, setSavingPrice] = useState(false);
 
   useEffect(() => {
-    if (tab === 'Audit Log') {
+    if (tab === 'Unit Pricing') {
+      setItemsLoading(true);
+      base44.entities.InventoryItem.filter({ is_active: true }, 'name', 500).then(data => {
+        setItems(data || []);
+        setItemsLoading(false);
+      });
+    } else if (tab === 'Audit Log') {
       setAuditLoading(true);
       base44.entities.AuditLog.list('-created_date', 100).then(data => {
         setAuditLogs(data || []);
@@ -173,6 +187,37 @@ export default function InventoryAdmin() {
       });
     }
   }, [tab]);
+
+  const handlePriceSave = async (itemId, item) => {
+    if (!priceInput.trim()) {
+      setEditingPrice(null);
+      setPriceInput('');
+      return;
+    }
+    const price = parseFloat(priceInput);
+    if (isNaN(price)) return;
+
+    setSavingPrice(true);
+    const user = await base44.auth.me();
+    const changedBy = user?.email || user?.full_name || 'unknown';
+
+    await base44.entities.InventoryItem.update(itemId, { cost_per_unit: price });
+    await base44.entities.AuditLog.create({
+      item_id: itemId,
+      sku: item.sku,
+      item_name: item.name,
+      change_type: 'PRICE_UPDATE',
+      field_name: 'cost_per_unit',
+      old_value: String(item.cost_per_unit || ''),
+      new_value: String(price),
+      changed_by: changedBy,
+    });
+
+    setItems(prev => prev.map(i => i.id === itemId ? { ...i, cost_per_unit: price } : i));
+    setEditingPrice(null);
+    setPriceInput('');
+    setSavingPrice(false);
+  };
 
   return (
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
@@ -195,6 +240,95 @@ export default function InventoryAdmin() {
           </button>
         ))}
       </div>
+
+      {tab === 'Unit Pricing' && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-border bg-muted/25">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Price Configuration</p>
+                  <h2 className="text-sm font-semibold text-foreground">Unit pricing for stock valuation</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Set landed cost per unit to calculate accurate total inventory value</p>
+                </div>
+                <DollarSign className="h-5 w-5 text-primary flex-shrink-0" />
+              </div>
+            </div>
+            {itemsLoading ? (
+              <div className="px-4 py-8 text-center text-muted-foreground text-sm">Loading inventory items…</div>
+            ) : items.length === 0 ? (
+              <div className="px-4 py-8 text-center text-muted-foreground text-sm">No active inventory items found</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[900px]">
+                  <thead className="bg-muted/15 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+                    <tr>
+                      {['SKU', 'Item Name', 'Unit', 'On Hand', 'Unit Price (₱)', 'Total Value', 'Action'].map(h => (
+                        <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, i) => (
+                      <tr key={item.id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background/40'}`}>
+                        <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{item.sku}</td>
+                        <td className="px-4 py-3 font-medium text-foreground">{item.name}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{item.unit || '—'}</td>
+                        <td className="px-4 py-3 text-foreground font-mono">{item.stock || 0}</td>
+                        <td className="px-4 py-3">
+                          {editingPrice === item.id ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                value={priceInput}
+                                onChange={e => setPriceInput(e.target.value)}
+                                placeholder="0.00"
+                                className="w-24 h-8 px-2 text-sm border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => handlePriceSave(item.id, item)}
+                                disabled={savingPrice}
+                                className="inline-flex items-center gap-1 h-8 px-2 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                              >
+                                <Save size={12} /> Save
+                              </button>
+                              <button
+                                onClick={() => { setEditingPrice(null); setPriceInput(''); }}
+                                className="inline-flex items-center h-8 px-2 text-xs rounded border border-border hover:bg-muted"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono text-foreground">{item.cost_per_unit ? item.cost_per_unit.toFixed(2) : '—'}</span>
+                              <button
+                                onClick={() => { setEditingPrice(item.id); setPriceInput(String(item.cost_per_unit || '')); }}
+                                className="text-xs text-primary hover:text-primary/80 underline underline-offset-2"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-sm text-foreground">
+                          {item.cost_per_unit ? `₱${((item.stock || 0) * item.cost_per_unit).toFixed(2)}` : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {!item.cost_per_unit && (
+                            <span className="inline-flex text-[10px] px-2 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-medium">Missing</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {tab === 'Ledger' && <LedgerViewer />}
 
