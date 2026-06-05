@@ -32,11 +32,11 @@ function formatDate(iso) {
   });
 }
 
-export default function LedgerViewer() {
+export default function LedgerViewer({ defaultSku = '' }) {
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('All');
-  const [skuFilter, setSkuFilter] = useState('');
+  const [skuFilter, setSkuFilter] = useState(defaultSku);
   const [lastRefresh, setLastRefresh] = useState(null);
 
   const load = async () => {

@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import BulkStockUpload from '@/components/BulkStockUpload';
 import TransferModal from '@/components/TransferModal';
+import StockHistoryModal from '@/components/StockHistoryModal';
 
 const actions = [
   { label: 'Add / Update Item', icon: Plus },
@@ -24,6 +25,7 @@ export default function Inventory() {
   const [selected, setSelected] = useState(new Set());
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [showStockHistory, setShowStockHistory] = useState(false);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -54,6 +56,10 @@ export default function Inventory() {
 
   return (
     <div className="p-6">
+      {showStockHistory && (
+        <StockHistoryModal onClose={() => setShowStockHistory(false)} />
+      )}
+
       {showTransfer && (
         <TransferModal
           allItems={items}
@@ -113,6 +119,7 @@ export default function Inventory() {
             onClick={
               label === 'Reload' ? loadItems :
               label === 'Transfer' ? () => setShowTransfer(true) :
+              label === 'Stock History' ? () => setShowStockHistory(true) :
               undefined
             }
             className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
