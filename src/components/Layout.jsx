@@ -14,6 +14,7 @@ import {
   Clock,
   BarChart2,
   Share2,
+  ClipboardCheck,
 } from 'lucide-react';
 
 const primaryNav = [
@@ -29,6 +30,7 @@ const operationsNav = [
   { path: '/ReorderReview',  label: 'Reorder Review',  icon: ClipboardList },
   { path: '/Orders',         label: 'Orders',          icon: ShoppingCart },
   { path: '/Receiving',      label: 'Receiving',       icon: PackageCheck },
+  { path: '/Stocktake',      label: 'Stocktake',       icon: ClipboardCheck },
   { path: '/DeliveryPortal', label: 'Delivery Portal', icon: Truck },
 ];
 

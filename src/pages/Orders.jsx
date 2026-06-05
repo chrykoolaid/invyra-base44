@@ -3,6 +3,7 @@ import { Plus, Search, ChevronDown, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import DraftOrderWorkspace from '@/components/DraftOrderWorkspace';
 import ActiveOrderWorkspace from '@/components/ActiveOrderWorkspace';
+import NewOrderModal from '@/components/NewOrderModal';
 
 // Supplier email lookup — matches the Suppliers page data
 const SUPPLIER_EMAILS = {
@@ -119,6 +120,7 @@ export default function Orders() {
   const [draftOrder, setDraftOrder]   = useState(null);
   const [activeOrder, setActiveOrder] = useState(null);
   const [showBanner, setShowBanner]   = useState(false);
+  const [showNewOrder, setShowNewOrder] = useState(false);
 
   // Load live DB orders and merge/override static list
   const loadDbOrders = useCallback(async () => {
@@ -254,7 +256,7 @@ export default function Orders() {
             {ALL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-        <button className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity ml-auto">
+        <button onClick={() => setShowNewOrder(true)} className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity ml-auto">
           <Plus size={13} /> New Order
         </button>
       </div>
@@ -298,6 +300,16 @@ export default function Orders() {
       </div>
 
       <p className="text-xs text-muted-foreground">{filtered.length} order{filtered.length !== 1 ? 's' : ''}</p>
+
+      {showNewOrder && (
+        <NewOrderModal
+          onClose={() => setShowNewOrder(false)}
+          onCreated={(record, asDraft) => {
+            setShowNewOrder(false);
+            loadDbOrders();
+          }}
+        />
+      )}
     </div>
   );
 }

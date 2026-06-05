@@ -25,6 +25,7 @@ import WastageWorkspace from './pages/WastageWorkspace';
 import ReceivingLog from './pages/ReceivingLog';
 import ExportsIntegrations from './pages/ExportsIntegrations';
 import SupplierPortal from './pages/SupplierPortal';
+import Stocktake from './pages/Stocktake';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -68,6 +69,7 @@ const AuthenticatedApp = () => {
         <Route path="/InventoryAdmin" element={<InventoryAdmin />} />
         <Route path="/ExportsIntegrations" element={<ExportsIntegrations />} />
         <Route path="/SupplierPortal" element={<SupplierPortal />} />
+        <Route path="/Stocktake" element={<Stocktake />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
