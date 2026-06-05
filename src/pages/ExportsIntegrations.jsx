@@ -4,16 +4,19 @@ import {
   CheckCircle2,
   CircleAlert,
   Clock3,
+  Download,
   FileSpreadsheet,
   FileUp,
   Link2,
   ListChecks,
+  Loader2,
   PackageOpen,
   PlugZap,
   ReceiptText,
   ShieldEllipsis,
   Webhook,
 } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
 
 const summaryCards = [
   {
@@ -213,6 +216,25 @@ function PhaseCard({ icon: Icon, title, body, status, reason, milestones }) {
 
 export default function ExportsIntegrations() {
   const [activePhase, setActivePhase] = useState(null);
+  const [exporting, setExporting] = useState(false);
+
+  const handleInventoryExport = async () => {
+    setExporting(true);
+    try {
+      const response = await base44.functions.invoke('exportInventoryCSV', {});
+      const blob = new Blob([response.data], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `inventory-export-${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
@@ -244,10 +266,29 @@ export default function ExportsIntegrations() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {sections.map((section) => (
           <section key={section.title} className="rounded-2xl border border-border bg-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-border bg-muted/25">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Planned capabilities</p>
-              <h2 className="text-sm font-semibold text-foreground">{section.title}</h2>
-              <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
+            <div className="px-4 py-3 border-b border-border bg-muted/25 flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Planned capabilities</p>
+                <h2 className="text-sm font-semibold text-foreground">{section.title}</h2>
+                <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
+              </div>
+              {section.title === 'Planned exports' && (
+                <button
+                  onClick={handleInventoryExport}
+                  disabled={exporting}
+                  className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                >
+                  {exporting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Exporting…
+                    </>
+                  ) : (
+                    <>
+                      <Download size={14} /> Export
+                    </>
+                  )}
+                </button>
+              )}
             </div>
             <div className="p-4 space-y-3">
               {section.items.map((item) => (
