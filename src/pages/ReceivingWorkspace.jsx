@@ -143,6 +143,17 @@ export default function ReceivingWorkspace() {
         })),
       });
 
+      // 4. Update linked PurchaseOrder status
+      const poOrders = await base44.entities.PurchaseOrder.filter({ order_number: po });
+      if (poOrders && poOrders.length > 0) {
+        const poRecord = poOrders[0];
+        const newPoStatus = recordStatus === 'Complete' ? 'Received' : 'Partially Received';
+        await base44.entities.PurchaseOrder.update(poRecord.id, {
+          status: newPoStatus,
+          received_at: new Date().toISOString(),
+        });
+      }
+
       setActionStatus('confirmed');
     } catch (err) {
       console.error('Confirm failed', err);
