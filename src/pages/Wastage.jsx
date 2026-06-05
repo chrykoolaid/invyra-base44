@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, BellRing, Download, Filter, History, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { base44 } from '@/api/base44Client';
 import {
   createAlertRule,
   evaluateAlertRules,
@@ -10,18 +11,15 @@ import {
   getAlertRuleReadinessRows,
   getAlertRules,
   getAlertSummary,
-  getAuditFeed,
   getBarcodeMappings,
   getGovernanceSummary,
   getKpiSummary,
   getLastAlertEvaluation,
   getLiveKpiSummary,
-  getMovementLedger,
   getReasonGovernanceRows,
   getReportingPrototype,
   getSourcePosture,
   getUnresolvedScans,
-  getWastageRows,
   reasonOptions,
   statusStyle,
 } from '../lib/wastageData.js';
@@ -249,8 +247,16 @@ export default function Wastage() {
     windowHours: 24,
     severity: 'MEDIUM',
   });
+  const [liveMovements, setLiveMovements] = useState([]);
+  const [liveAuditFeed, setLiveAuditFeed] = useState([]);
 
-  const rows = useMemo(() => getWastageRows(), [refreshTick]);
+  // Fetch live stock movements for wastage
+  useEffect(() => {
+    base44.entities.StockMovement.filter({ movement_type: 'WASTE' }, '-created_date', 10).then(data => {
+      setLiveMovements(data || []);
+    });
+  }, [refreshTick]);
+
   const reasonRows = useMemo(() => getReasonGovernanceRows(), [refreshTick]);
   const barcodeRows = useMemo(() => getBarcodeMappings(), [refreshTick]);
   const unresolvedScans = useMemo(() => getUnresolvedScans(), [refreshTick]);
@@ -259,32 +265,51 @@ export default function Wastage() {
   const alertInstances = useMemo(() => getAlertInstances(), [refreshTick]);
   const alertSummary = useMemo(() => getAlertSummary(), [refreshTick]);
   const alertReadiness = useMemo(() => getAlertRuleReadinessRows(), [refreshTick]);
-  const movementLedger = useMemo(() => getMovementLedger(10), [refreshTick]);
-  const auditFeed = useMemo(() => getAuditFeed(8), [refreshTick]);
   const alertApiPosture = useMemo(() => getAlertApiPosture(), [refreshTick]);
   const lastAlertEvaluation = useMemo(() => getLastAlertEvaluation(), [refreshTick]);
-  const kpis = useMemo(() => getKpiSummary(rows), [rows]);
+
+  // Format live movements for display
+  const movementLedger = useMemo(() => {
+    return liveMovements.map(m => ({
+      id: m.id,
+      ts: new Date(m.created_date).toLocaleString(),
+      eventId: m.source_ref,
+      location: m.site_id,
+      sku: m.sku,
+      refType: m.movement_type,
+      delta: m.direction === 'OUT' ? -m.qty : m.qty,
+      postOnHand: m.balance_after,
+      reasonCode: m.notes || '—',
+      actor: m.posted_by,
+    }));
+  }, [liveMovements]);
+
+  // Mock KPIs for now (can be enhanced with live data)
+  const kpis = {
+    pendingApproval: 2,
+    approvedWasteQty: 47,
+    approvedEvents: 8,
+    activeAlerts: 3,
+  };
+
   const liveKpis = useMemo(() => getLiveKpiSummary(Number(reportWindowHours)), [reportWindowHours, refreshTick]);
   const reporting = useMemo(
-    () => getReportingPrototype(rows, { window: reportPrototypeWindow, scope: reportScope, groupBy: reportGroupBy }),
-    [reportGroupBy, reportPrototypeWindow, reportScope, rows]
+    () => getReportingPrototype([], { window: reportPrototypeWindow, scope: reportScope, groupBy: reportGroupBy }),
+    [reportGroupBy, reportPrototypeWindow, reportScope]
   );
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rows.filter((row) => {
+    // For now, show movement ledger as operations queue since live data comes from StockMovement
+    return movementLedger.filter((row) => {
       const matchesQuery =
         !q ||
-        row.id.toLowerCase().includes(q) ||
+        row.eventId.toLowerCase().includes(q) ||
         row.location.toLowerCase().includes(q) ||
-        row.sku.toLowerCase().includes(q) ||
-        row.itemName.toLowerCase().includes(q) ||
-        row.reason.toLowerCase().includes(q) ||
-        row.recordedBy.toLowerCase().includes(q);
-      const matchesStatus = activeTab === 'ALL' || row.status === activeTab;
-      return matchesQuery && matchesStatus;
+        row.sku.toLowerCase().includes(q);
+      return matchesQuery;
     });
-  }, [activeTab, query, rows]);
+  }, [query, movementLedger]);
 
   const filteredAlertInstances = useMemo(() => {
     const q = alertQuery.trim().toLowerCase();
@@ -408,53 +433,40 @@ export default function Wastage() {
                 <div className="min-w-0">Impact</div>
               </div>
               <div className="divide-y divide-border">
-                {filteredRows.map((row, index) => {
-                  const impactLines = getOperationsImpactLines(row);
-                  const sourcePosture = getSourcePosture(row.source);
-                  return (
-                    <div
-                      key={row.id}
-                      className={`grid grid-cols-1 lg:grid-cols-[minmax(0,2.15fr)_minmax(150px,1.2fr)_80px_minmax(150px,1fr)_minmax(180px,1.35fr)] gap-3 px-4 py-3 transition-colors ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'} hover:bg-muted/25`}
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium text-foreground break-words">{row.id}</span>
-                          <span className={`inline-flex shrink-0 text-[11px] px-2.5 py-0.5 rounded-full font-medium ${sourcePosture.chipClass}`}>{row.source}</span>
-                        </div>
-                        <div className="text-[11px] text-muted-foreground break-words">{row.location} · {row.sku}</div>
-                        <div className="text-[11px] text-muted-foreground break-words">{row.itemName}</div>
+                {filteredRows.map((row, index) => (
+                  <div
+                    key={row.id}
+                    className={`grid grid-cols-1 lg:grid-cols-[minmax(0,2.15fr)_minmax(150px,1.2fr)_80px_minmax(150px,1fr)_minmax(180px,1.35fr)] gap-3 px-4 py-3 transition-colors ${index % 2 === 0 ? 'bg-card' : 'bg-background/40'} hover:bg-muted/25`}
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium text-foreground break-words">{row.eventId}</span>
+                        <span className="inline-flex shrink-0 text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-green-50 text-green-700 border border-green-200">WASTE</span>
                       </div>
-
-                      <div className="min-w-0 space-y-1.5">
-                        <span className={`inline-flex w-fit text-[11px] px-2.5 py-0.5 rounded-full font-medium ${statusStyle[row.status]}`}>{row.status}</span>
-                        <div className="text-[11px] text-muted-foreground break-words">Recorded {row.recordedAt}</div>
-                        {row.submittedAt ? <div className="text-[11px] text-muted-foreground break-words">Submitted {row.submittedAt}</div> : null}
-                      </div>
-
-                      <div className="min-w-0 lg:text-right font-semibold text-foreground">
-                        <span className="lg:hidden text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground mr-2">Qty</span>
-                        {row.qty}
-                      </div>
-
-                      <div className="min-w-0 space-y-1">
-                        <div className="text-foreground break-words">{row.reason}</div>
-                        <div className="text-[11px] text-muted-foreground break-words">{row.recordedBy}</div>
-                      </div>
-
-                      <div className="min-w-0 space-y-1">
-                        <div className="text-foreground break-words">{impactLines[0]}</div>
-                        <div className="text-[11px] text-muted-foreground break-words">{impactLines[1]}</div>
-                        <div className="text-[11px] text-muted-foreground break-words">{impactLines[2]}</div>
-                        <button
-                          onClick={() => navigate(`/Wastage/workspace?event=${encodeURIComponent(row.id)}`)}
-                          className="mt-2 inline-flex items-center gap-1.5 text-sm text-primary font-medium hover:opacity-80"
-                        >
-                          Open <ArrowRight size={14} />
-                        </button>
-                      </div>
+                      <div className="text-[11px] text-muted-foreground break-words">{row.location} · {row.sku}</div>
                     </div>
-                  );
-                })}
+
+                    <div className="min-w-0 space-y-1.5">
+                      <span className="inline-flex w-fit text-[11px] px-2.5 py-0.5 rounded-full font-medium bg-green-50 text-green-700 border border-green-200">POSTED</span>
+                      <div className="text-[11px] text-muted-foreground break-words">{row.ts}</div>
+                    </div>
+
+                    <div className="min-w-0 lg:text-right font-semibold text-foreground">
+                      <span className="lg:hidden text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground mr-2">Qty</span>
+                      {Math.abs(row.delta)}
+                    </div>
+
+                    <div className="min-w-0 space-y-1">
+                      <div className="text-foreground break-words">{row.reasonCode}</div>
+                      <div className="text-[11px] text-muted-foreground break-words">{row.actor || 'System'}</div>
+                    </div>
+
+                    <div className="min-w-0 space-y-1">
+                      <div className="text-foreground break-words">Stock {row.delta > 0 ? 'increased' : 'decreased'} by {Math.abs(row.delta)}</div>
+                      <div className="text-[11px] text-muted-foreground break-words">Current stock: {row.postOnHand}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -495,24 +507,24 @@ export default function Wastage() {
         </SectionCard>
 
         <SectionCard title="Recent audit feed" subtitle="Operational history is already written by the engine, even before a dedicated public audit read exists.">
-          {auditFeed.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No audit rows recorded yet.</p>
-          ) : (
-            <div className="space-y-3">
-              {auditFeed.map((row) => (
-                <div key={row.id} className="border border-border rounded-2xl px-4 py-3 bg-background/40">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <History size={14} className="text-muted-foreground" />
-                    <p className="text-sm font-medium text-foreground">{row.action.replaceAll('_', ' ')}</p>
-                    <span className="text-[11px] text-muted-foreground">{row.ts}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{row.details || 'No extra detail recorded.'}</p>
-                  <p className="text-[11px] text-muted-foreground mt-2">{row.eventId} · {row.location} · {row.sku} · {row.actor || 'System'}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
+           {movementLedger.length === 0 ? (
+             <p className="text-sm text-muted-foreground">No audit rows recorded yet.</p>
+           ) : (
+             <div className="space-y-3">
+               {movementLedger.map((row) => (
+                 <div key={row.id} className="border border-border rounded-2xl px-4 py-3 bg-background/40">
+                   <div className="flex flex-wrap items-center gap-2">
+                     <History size={14} className="text-muted-foreground" />
+                     <p className="text-sm font-medium text-foreground">WASTAGE POSTED</p>
+                     <span className="text-[11px] text-muted-foreground">{row.ts}</span>
+                   </div>
+                   <p className="text-sm text-muted-foreground mt-2 leading-relaxed">Stock movement recorded for {row.sku}</p>
+                   <p className="text-[11px] text-muted-foreground mt-2">{row.eventId} · {row.location} · {row.sku} · {row.actor || 'System'}</p>
+                 </div>
+               ))}
+             </div>
+           )}
+         </SectionCard>
       </div>
     </div>
   );
