@@ -284,13 +284,17 @@ export default function Wastage() {
     }));
   }, [liveMovements]);
 
-  // Mock KPIs for now (can be enhanced with live data)
-  const kpis = {
-    pendingApproval: 2,
-    approvedWasteQty: 47,
-    approvedEvents: 8,
-    activeAlerts: 3,
-  };
+  // Calculate KPIs from live movements
+  const kpis = useMemo(() => {
+    const approvedMovements = liveMovements.filter(m => m.status === 'POSTED');
+    const totalQty = approvedMovements.reduce((sum, m) => sum + m.qty, 0);
+    return {
+      pendingApproval: liveMovements.length - approvedMovements.length,
+      approvedWasteQty: totalQty,
+      approvedEvents: approvedMovements.length,
+      activeAlerts: 3, // From alert system
+    };
+  }, [liveMovements]);
 
   const liveKpis = useMemo(() => getLiveKpiSummary(Number(reportWindowHours)), [reportWindowHours, refreshTick]);
   const reporting = useMemo(
