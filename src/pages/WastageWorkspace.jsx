@@ -265,10 +265,24 @@ export default function WastageWorkspace() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const eventId = searchParams.get('event');
+  const prefillSku = searchParams.get('sku') || '';
   const mode = eventId ? 'review' : 'create';
   const selectedEvent = useMemo(() => (eventId ? getEventById(eventId) : null), [eventId]);
   const [rows, setRows] = useState(() => getWastageRows());
-  const [formState, setFormState] = useState(() => buildFormStateFromEvent(selectedEvent));
+  const [formState, setFormState] = useState(() => {
+    const base = buildFormStateFromEvent(selectedEvent);
+    if (!eventId && prefillSku) {
+      const match = getWastageRows().find(r => r.sku.toLowerCase() === prefillSku.toLowerCase());
+      return {
+        ...base,
+        sku: prefillSku,
+        itemName: match?.itemName || '',
+        currentOnHand: match?.currentOnHand ?? '—',
+        location: match?.location || base.location,
+      };
+    }
+    return base;
+  });
   const [captureMode, setCaptureMode] = useState(selectedEvent?.source === 'SCANNER' ? 'SCANNER' : 'MANUAL');
   const [scanInput, setScanInput] = useState(selectedEvent?.scanValue || '');
   const [scanState, setScanState] = useState({ status: 'idle', helper: 'Scan an item code or type it here to fill the SKU field.' });

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import {
   Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History, Upload
@@ -18,6 +19,7 @@ const actions = [
 ];
 
 export default function Inventory() {
+  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -122,6 +124,13 @@ export default function Inventory() {
             onClick={
               label === 'Reload' ? loadItems :
               label === 'Transfer' ? () => setShowTransfer(true) :
+              label === 'Wastage' ? () => {
+                const selectedItems = items.filter(i => selected.has(i.id));
+                const params = selectedItems.length === 1
+                  ? `?sku=${encodeURIComponent(selectedItems[0].sku)}`
+                  : '';
+                navigate(`/Wastage/workspace${params}`);
+              } :
               label === 'Stock History' ? () => setShowStockHistory(true) :
               undefined
             }
