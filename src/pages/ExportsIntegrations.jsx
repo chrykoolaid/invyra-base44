@@ -15,9 +15,11 @@ import {
   ReceiptText,
   ShieldEllipsis,
   Webhook,
+  Settings,
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import SupplierImportModal from '@/components/SupplierImportModal';
+import AccountingConnectorPanel from '@/components/AccountingConnectorPanel';
 
 const summaryCards = [
   {
@@ -75,14 +77,14 @@ const sections = [
       {
         icon: PlugZap,
         title: 'Accounting connectors',
-        body: 'Later integration surface for stock valuation, purchasing, and accounting sync after connector design is chosen.',
-        tag: 'Not started',
+        body: 'Xero integration for inventory sync and stock valuation reporting.',
+        tag: 'Live',
       },
       {
         icon: Webhook,
         title: 'API / webhook sync',
-        body: 'Reserved for future machine-to-machine exchange once core inventory contracts and payload design are settled.',
-        tag: 'Design later',
+        body: 'Machine-to-machine endpoints for external systems to push inventory and order data.',
+        tag: 'Live',
       },
     ],
   },
@@ -130,9 +132,9 @@ const releasePlan = [
 {
   icon: Link2,
   title: 'Phase 3',
-  body: 'Layer in imports, accounting links, and external sync once templates, payload contracts, and connector rules are ready.',
-  status: 'In progress',
-  reason: 'Supplier import + connector setup now live',
+  body: 'Accounting integration and webhook endpoints for external system sync now active.',
+  status: 'Complete',
+  reason: 'Xero sync + webhook receiver endpoints live',
   milestones: ['Supplier catalogue import ✓', 'Accounting connectors ✓', 'API/webhook sync ✓'],
 },
 ];
@@ -219,6 +221,7 @@ export default function ExportsIntegrations() {
   const [activePhase, setActivePhase] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [showConnectorPanel, setShowConnectorPanel] = useState(false);
 
   const handleExport = async (functionName, fileName) => {
     setExporting(true);
@@ -342,6 +345,33 @@ export default function ExportsIntegrations() {
           </section>
         ))}
       </div>
+
+      {/* Active Connectors & Webhooks */}
+      {showConnectorPanel && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Settings className="h-5 w-5" /> Connector Configuration
+            </h2>
+            <button
+              onClick={() => setShowConnectorPanel(false)}
+              className="text-xs px-2 py-1 rounded border border-border hover:bg-muted"
+            >
+              Hide
+            </button>
+          </div>
+          <AccountingConnectorPanel />
+        </div>
+      )}
+
+      {!showConnectorPanel && (
+        <button
+          onClick={() => setShowConnectorPanel(true)}
+          className="flex items-center gap-2 h-10 px-4 text-sm rounded-xl bg-primary/10 text-primary hover:bg-primary/15 transition-colors border border-primary/20 font-medium"
+        >
+          <Settings size={16} /> Configure Connectors & Webhooks
+        </button>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.08fr_0.92fr] gap-4">
         <section className="rounded-2xl border border-border bg-card overflow-hidden">
