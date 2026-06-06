@@ -27,6 +27,10 @@ import ReceivingLog from './pages/ReceivingLog';
 import ExportsIntegrations from './pages/ExportsIntegrations';
 import SupplierPortal from './pages/SupplierPortal';
 import Stocktake from './pages/Stocktake';
+import Transfers from './pages/Transfers';
+import Adjustments from './pages/Adjustments';
+import Movements from './pages/Movements';
+import Exceptions from './pages/Exceptions';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -72,6 +76,10 @@ const AuthenticatedApp = () => {
         <Route path="/ExportsIntegrations" element={<ExportsIntegrations />} />
         <Route path="/SupplierPortal" element={<SupplierPortal />} />
         <Route path="/Stocktake" element={<Stocktake />} />
+        <Route path="/Transfers" element={<Transfers />} />
+        <Route path="/Adjustments" element={<Adjustments />} />
+        <Route path="/Movements" element={<Movements />} />
+        <Route path="/Exceptions" element={<Exceptions />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

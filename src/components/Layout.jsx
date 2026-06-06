@@ -16,6 +16,10 @@ import {
   BarChart3,
   Share2,
   ClipboardCheck,
+  ArrowLeftRight,
+  SlidersHorizontal,
+  ScrollText,
+  AlertTriangle,
 } from 'lucide-react';
 
 const primaryNav = [
@@ -32,6 +36,10 @@ const operationsNav = [
   { path: '/Orders',         label: 'Orders',          icon: ShoppingCart },
   { path: '/Receiving',      label: 'Receiving',       icon: PackageCheck },
   { path: '/Stocktake',      label: 'Stocktake',       icon: ClipboardCheck },
+  { path: '/Transfers',      label: 'Transfers',       icon: ArrowLeftRight },
+  { path: '/Adjustments',    label: 'Adjustments',     icon: SlidersHorizontal },
+  { path: '/Movements',      label: 'Movements',       icon: ScrollText },
+  { path: '/Exceptions',     label: 'Exceptions',      icon: AlertTriangle },
   { path: '/DeliveryPortal', label: 'Delivery Portal', icon: Truck },
 ];
 
