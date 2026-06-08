@@ -12,6 +12,7 @@ import Inventory from './pages/Inventory';
 import Reports from './pages/Reports';
 import Wastage from './pages/Wastage';
 import GapScan from './pages/GapScan';
+import GapScanFloor from './pages/GapScanFloor';
 import Suppliers from './pages/Suppliers';
 import ReorderReview from './pages/ReorderReview';
 import Orders from './pages/Orders';
@@ -61,6 +62,7 @@ const AuthenticatedApp = () => {
         <Route path="/Reports" element={<Reports />} />
         <Route path="/Wastage" element={<Wastage />} />
         <Route path="/GapScan" element={<GapScan />} />
+        <Route path="/GapScan/floor" element={<GapScanFloor />} />
         <Route path="/Suppliers" element={<Suppliers />} />
         <Route path="/ReorderReview" element={<ReorderReview />} />
         <Route path="/Orders" element={<Orders />} />

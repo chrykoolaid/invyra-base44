@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Play, Download, Lightbulb, Upload, AlertCircle } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Play, Download, Lightbulb, Upload, AlertCircle, ScanLine } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import ScanDataImportModal from '@/components/ScanDataImportModal';
@@ -135,7 +135,15 @@ export default function GapScan() {
         />
       )}
       {/* Title */}
-      <h1 className="text-xl font-semibold text-foreground mb-4">Gap Scan</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold text-foreground">Gap Scan</h1>
+        <Link
+          to="/GapScan/floor"
+          className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 font-medium"
+        >
+          <ScanLine size={15} /> Floor Scan Mode
+        </Link>
+      </div>
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
