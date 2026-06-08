@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertTriangle, RefreshCw, TrendingDown, AlertCircle, Clock, PackageX } from 'lucide-react';
+import { AlertTriangle, RefreshCw, AlertCircle, Clock, Bell, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Exceptions() {
   const [loading, setLoading] = useState(true);
   const [exceptions, setExceptions] = useState([]);
+  const [alertHistory, setAlertHistory] = useState([]);
+  const [sendingAlert, setSendingAlert] = useState(false);
+  const [alertResult, setAlertResult] = useState(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -94,7 +97,24 @@ export default function Exceptions() {
     setLoading(false);
   };
 
-  useEffect(() => { loadData(); }, []);
+  const loadAlertHistory = async () => {
+    const history = await base44.entities.StockAlert.list('-created_date', 20);
+    setAlertHistory(history || []);
+  };
+
+  const sendManualAlert = async () => {
+    setSendingAlert(true);
+    setAlertResult(null);
+    const res = await base44.functions.invoke('checkReorderAlerts', {});
+    setAlertResult(res.data);
+    setSendingAlert(false);
+    loadAlertHistory();
+  };
+
+  useEffect(() => {
+    loadData();
+    loadAlertHistory();
+  }, []);
 
   const severityConfig = {
     critical: { color: 'border-red-200 bg-red-50', badge: 'bg-red-100 text-red-700', icon: AlertCircle, iconColor: 'text-red-600' },
@@ -135,6 +155,50 @@ export default function Exceptions() {
           <p className="text-2xl font-bold text-blue-700">{counts.medium}</p>
           <p className="text-xs font-semibold text-blue-600 mt-1">Medium</p>
         </div>
+      </div>
+
+      {/* Alert Controls */}
+      <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground flex items-center gap-2"><Bell size={15} /> Reorder Alerts</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Emails all admin users when items are below reorder point. Runs automatically every 4 hours.</p>
+          </div>
+          <button
+            onClick={sendManualAlert}
+            disabled={sendingAlert}
+            className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 font-medium flex-shrink-0"
+          >
+            <Bell size={14} className={sendingAlert ? 'animate-pulse' : ''} />
+            {sendingAlert ? 'Sending…' : 'Send Now'}
+          </button>
+        </div>
+
+        {alertResult && (
+          <div className={`rounded-lg border px-3 py-2.5 text-sm flex items-start gap-2 ${alertResult.error ? 'border-red-200 bg-red-50 text-red-700' : 'border-green-200 bg-green-50 text-green-800'}`}>
+            {alertResult.error ? <AlertCircle size={15} className="flex-shrink-0 mt-0.5" /> : <CheckCircle2 size={15} className="flex-shrink-0 mt-0.5" />}
+            <div>
+              <p className="font-medium">{alertResult.error || alertResult.message}</p>
+              {alertResult.items?.length > 0 && (
+                <p className="text-xs mt-0.5 opacity-80">Items: {alertResult.items.join(', ')}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {alertHistory.length > 0 && (
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Recent Alerts Sent</p>
+            <div className="space-y-1">
+              {alertHistory.slice(0, 5).map(a => (
+                <div key={a.id} className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-0">
+                  <span className="text-foreground font-medium">{a.item_name} <span className="font-mono text-muted-foreground">({a.sku})</span></span>
+                  <span className="text-muted-foreground">{a.stock_at_alert} on hand → {new Date(a.created_date).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Exception List */}

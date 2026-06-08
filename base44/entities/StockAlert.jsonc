@@ -1,0 +1,33 @@
+{
+  "name": "StockAlert",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "item_name": {
+      "type": "string"
+    },
+    "sku": {
+      "type": "string"
+    },
+    "stock_at_alert": {
+      "type": "number",
+      "description": "Stock level when alert was triggered"
+    },
+    "reorder_point": {
+      "type": "number",
+      "description": "Reorder threshold at time of alert"
+    },
+    "alert_sent_to": {
+      "type": "string",
+      "description": "Comma-separated list of emails notified"
+    }
+  },
+  "required": [
+    "item_id",
+    "item_name",
+    "sku"
+  ]
+}
