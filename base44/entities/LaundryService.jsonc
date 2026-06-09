@@ -1,0 +1,39 @@
+{
+  "name": "LaundryService",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Service name shown on POS"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Wash & Dry",
+        "Dry Clean",
+        "Pressing",
+        "Specialty"
+      ],
+      "default": "Wash & Dry"
+    },
+    "base_price": {
+      "type": "number",
+      "description": "Base price in PHP"
+    },
+    "pos_item_id": {
+      "type": "string",
+      "description": "Unique mapping code from the POS terminal"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "base_price"
+  ]
+}

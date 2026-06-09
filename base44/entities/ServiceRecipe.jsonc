@@ -1,0 +1,39 @@
+{
+  "name": "ServiceRecipe",
+  "type": "object",
+  "properties": {
+    "service_id": {
+      "type": "string",
+      "description": "Reference to LaundryService.id"
+    },
+    "service_name": {
+      "type": "string",
+      "description": "Denormalized service name"
+    },
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU"
+    },
+    "qty_consumed": {
+      "type": "number",
+      "description": "Quantity consumed per single service run"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measure (e.g. L, ml, pcs)"
+    }
+  },
+  "required": [
+    "service_id",
+    "item_id",
+    "qty_consumed"
+  ]
+}
