@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import Layout from './components/Layout';
+import RoleGuard from './components/RoleGuard';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Reports from './pages/Reports';
@@ -57,31 +58,31 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/Dashboard" replace />} />
-        <Route path="/Dashboard" element={<Dashboard />} />
-        <Route path="/Inventory" element={<Inventory />} />
-        <Route path="/Reports" element={<Reports />} />
-        <Route path="/Wastage" element={<Wastage />} />
-        <Route path="/GapScan" element={<GapScan />} />
-        <Route path="/GapScan/floor" element={<GapScanFloor />} />
-        <Route path="/Suppliers" element={<Suppliers />} />
-        <Route path="/ReorderReview" element={<ReorderReview />} />
-        <Route path="/Orders" element={<Orders />} />
-        <Route path="/Receiving" element={<Receiving />} />
-        <Route path="/Wastage/workspace" element={<WastageWorkspace />} />
-        <Route path="/Receiving/workspace" element={<ReceivingWorkspace />} />
-        <Route path="/Receiving/log" element={<ReceivingLog />} />
-        <Route path="/DeliveryPortal" element={<DeliveryPortal />} />
-        <Route path="/POSMode" element={<POSMode />} />
-        <Route path="/Payroll" element={<Payroll />} />
-        <Route path="/TimeTracking" element={<TimeTracking />} />
-        <Route path="/InventoryAdmin" element={<InventoryAdmin />} />
-        <Route path="/ExportsIntegrations" element={<ExportsIntegrations />} />
-        <Route path="/SupplierPortal" element={<SupplierPortal />} />
-        <Route path="/Stocktake" element={<Stocktake />} />
-        <Route path="/Transfers" element={<Transfers />} />
-        <Route path="/Adjustments" element={<Adjustments />} />
-        <Route path="/Movements" element={<Movements />} />
-        <Route path="/Exceptions" element={<Exceptions />} />
+        <Route path="/Dashboard"             element={<RoleGuard><Dashboard /></RoleGuard>} />
+        <Route path="/Inventory"             element={<RoleGuard><Inventory /></RoleGuard>} />
+        <Route path="/Reports"               element={<RoleGuard><Reports /></RoleGuard>} />
+        <Route path="/Wastage"               element={<RoleGuard><Wastage /></RoleGuard>} />
+        <Route path="/GapScan"               element={<RoleGuard><GapScan /></RoleGuard>} />
+        <Route path="/GapScan/floor"         element={<RoleGuard><GapScanFloor /></RoleGuard>} />
+        <Route path="/Suppliers"             element={<RoleGuard><Suppliers /></RoleGuard>} />
+        <Route path="/ReorderReview"         element={<RoleGuard><ReorderReview /></RoleGuard>} />
+        <Route path="/Orders"                element={<RoleGuard><Orders /></RoleGuard>} />
+        <Route path="/Receiving"             element={<RoleGuard><Receiving /></RoleGuard>} />
+        <Route path="/Wastage/workspace"     element={<RoleGuard><WastageWorkspace /></RoleGuard>} />
+        <Route path="/Receiving/workspace"   element={<RoleGuard><ReceivingWorkspace /></RoleGuard>} />
+        <Route path="/Receiving/log"         element={<RoleGuard><ReceivingLog /></RoleGuard>} />
+        <Route path="/DeliveryPortal"        element={<RoleGuard><DeliveryPortal /></RoleGuard>} />
+        <Route path="/POSMode"               element={<RoleGuard><POSMode /></RoleGuard>} />
+        <Route path="/Payroll"               element={<RoleGuard><Payroll /></RoleGuard>} />
+        <Route path="/TimeTracking"          element={<RoleGuard><TimeTracking /></RoleGuard>} />
+        <Route path="/InventoryAdmin"        element={<RoleGuard><InventoryAdmin /></RoleGuard>} />
+        <Route path="/ExportsIntegrations"   element={<RoleGuard><ExportsIntegrations /></RoleGuard>} />
+        <Route path="/SupplierPortal"        element={<RoleGuard><SupplierPortal /></RoleGuard>} />
+        <Route path="/Stocktake"             element={<RoleGuard><Stocktake /></RoleGuard>} />
+        <Route path="/Transfers"             element={<RoleGuard><Transfers /></RoleGuard>} />
+        <Route path="/Adjustments"           element={<RoleGuard><Adjustments /></RoleGuard>} />
+        <Route path="/Movements"             element={<RoleGuard><Movements /></RoleGuard>} />
+        <Route path="/Exceptions"            element={<RoleGuard><Exceptions /></RoleGuard>} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
