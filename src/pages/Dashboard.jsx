@@ -225,17 +225,20 @@ export default function Dashboard() {
   const [now, setNow] = useState(() => new Date());
   const [inventoryItems, setInventoryItems] = useState([]);
   const [receivingRecords, setReceivingRecords] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [stockMovements, setStockMovements] = useState([]);
   const [alertDismissed, setAlertDismissed] = useState(false);
 
   const loadData = useCallback(async () => {
-    const [invRows, recRows, movRows] = await Promise.all([
+    const [invRows, recRows, poRows, movRows] = await Promise.all([
       base44.entities.InventoryItem.filter({ is_active: true }, '-updated_date', 500),
       base44.entities.ReceivingRecord.list('-created_date', 20),
+      base44.entities.PurchaseOrder.filter({ status: ['Draft', 'Submitted', 'Confirmed', 'Awaiting Delivery', 'Partially Received'] }, '-created_date', 20),
       base44.entities.StockMovement.list('-created_date', 30),
     ]);
     setInventoryItems(invRows || []);
     setReceivingRecords(recRows || []);
+    setPurchaseOrders(poRows || []);
     setStockMovements(movRows || []);
     setAlertDismissed(false);
   }, []);
@@ -335,15 +338,20 @@ export default function Dashboard() {
     });
   }, [stockMovements]);
 
-  // --- Live: Pending Orders (from ReceivingRecord) ---
+  // --- Live: Pending Orders (from PurchaseOrder) ---
   const livePendingOrders = useMemo(() => {
-    return receivingRecords.slice(0, 5).map(r => ({
-      po: r.po_number,
-      supplier: r.supplier,
-      status: r.status === 'Complete' ? 'Received' : r.status === 'Partial' ? 'Partial' : r.status || 'Complete',
-      urgency: r.status === 'Discrepancy' ? 'high' : r.status === 'Partial' ? 'medium' : 'low',
+    const urgencyMap = { high: 'high', medium: 'medium', low: 'low' };
+    const statusUrgency = {
+      'Draft': 'low', 'Submitted': 'medium', 'Confirmed': 'medium',
+      'Awaiting Delivery': 'high', 'Partially Received': 'high',
+    };
+    return purchaseOrders.slice(0, 6).map(po => ({
+      po: po.order_number,
+      supplier: po.supplier,
+      status: po.status,
+      urgency: urgencyMap[po.urgency] || statusUrgency[po.status] || 'low',
     }));
-  }, [receivingRecords]);
+  }, [purchaseOrders]);
 
   // Build live priority issues (low stock + out of stock, up to 8)
   const livePriorityIssues = useMemo(() => {
@@ -351,6 +359,51 @@ export default function Dashboard() {
     const low = lowStockItems.map(i => ({ sku: i.sku, item: i.name, onHand: i.stock || 0, status: 'Reorder', note: `Below reorder point of ${i.reorder_point}` }));
     return [...out, ...low].slice(0, 8);
   }, [outOfStockItems, lowStockItems]);
+
+  // --- Live: Action Queue ---
+  const liveActionQueue = useMemo(() => {
+    const actions = [];
+    if (outOfStockItems.length > 0) {
+      actions.push({
+        title: `Submit reorder for ${outOfStockItems.length} out-of-stock item${outOfStockItems.length !== 1 ? 's' : ''}`,
+        reason: `${outOfStockItems.map(i => i.name).slice(0, 2).join(', ')}${outOfStockItems.length > 2 ? ` +${outOfStockItems.length - 2} more` : ''} — active stockout affecting services.`,
+        to: '/ReorderReview',
+      });
+    }
+    if (lowStockItems.length > 0) {
+      actions.push({
+        title: `Review ${lowStockItems.length} item${lowStockItems.length !== 1 ? 's' : ''} below reorder point`,
+        reason: `${lowStockItems.map(i => i.name).slice(0, 2).join(', ')}${lowStockItems.length > 2 ? ` +${lowStockItems.length - 2} more` : ''} — schedule restocking soon.`,
+        to: '/ReorderReview',
+      });
+    }
+    const discrepancies = receivingRecords.filter(r => r.status === 'Discrepancy');
+    if (discrepancies.length > 0) {
+      actions.push({
+        title: `Resolve ${discrepancies.length} receiving discrepanc${discrepancies.length !== 1 ? 'ies' : 'y'}`,
+        reason: discrepancies.slice(0, 2).map(r => `${r.po_number} · ${r.supplier}`).join(' · '),
+        to: '/Receiving/log',
+      });
+    }
+    if (missingThresholdItems.length > 0) {
+      actions.push({
+        title: `Set reorder thresholds for ${missingThresholdItems.length} item${missingThresholdItems.length !== 1 ? 's' : ''}`,
+        reason: `${missingThresholdItems.slice(0, 3).map(i => i.name).join(', ')} cannot trigger alerts without thresholds.`,
+        to: '/InventoryAdmin',
+      });
+    }
+    if (missingCostItems.length > 0) {
+      actions.push({
+        title: `Add cost data for ${missingCostItems.length} item${missingCostItems.length !== 1 ? 's' : ''}`,
+        reason: `${missingCostItems.slice(0, 2).map(i => i.name).join(', ')} — inventory valuation incomplete.`,
+        to: '/InventoryAdmin',
+      });
+    }
+    if (actions.length === 0) {
+      actions.push({ title: 'All clear — no urgent actions', reason: 'Stock levels, thresholds, and receiving records look healthy.', to: '/Inventory' });
+    }
+    return actions.slice(0, 5);
+  }, [outOfStockItems, lowStockItems, receivingRecords, missingThresholdItems, missingCostItems]);
 
   // Live KPI overrides
   const liveKpiCards = useMemo(() => kpiCards.map(card => {
@@ -471,7 +524,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
         <Panel title="Needs Action Now" actionLabel="Open work queue" actionTo="/ReorderReview">
           <div className="divide-y divide-slate-800/80">
-            {actionQueue.map((item) => (
+            {liveActionQueue.map((item) => (
               <Link
                 key={item.title}
                 to={item.to}
@@ -620,21 +673,45 @@ export default function Dashboard() {
             <PackageCheck size={16} className="text-emerald-500" />
             <span className="font-medium">Receiving health</span>
           </div>
-          <p className="text-xs text-slate-500 mt-1.5">1 delivery overdue · 1 due today · 1 partially received order needs review.</p>
+          <p className="text-xs text-slate-500 mt-1.5">
+            {receivingRecords.filter(r => r.status === 'Discrepancy').length > 0
+              ? `${receivingRecords.filter(r => r.status === 'Discrepancy').length} discrepancy · `
+              : ''}
+            {receivingRecords.filter(r => r.status === 'Partial').length > 0
+              ? `${receivingRecords.filter(r => r.status === 'Partial').length} partially received · `
+              : ''}
+            {purchaseOrders.filter(p => p.status === 'Awaiting Delivery').length > 0
+              ? `${purchaseOrders.filter(p => p.status === 'Awaiting Delivery').length} awaiting delivery`
+              : receivingRecords.length === 0 ? 'No recent receiving activity' : 'All deliveries up to date'}
+          </p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-slate-700">
             <Trash2 size={16} className="text-red-500" />
             <span className="font-medium">Waste watch</span>
           </div>
-          <p className="text-xs text-slate-500 mt-1.5">Three waste exceptions this week, led by softener and stain remover lines.</p>
+          {(() => {
+            const weekAgo = Date.now() - 7 * 86400000;
+            const wasteMovements = stockMovements.filter(m => m.movement_type === 'WASTE' && new Date(m.created_date).getTime() > weekAgo);
+            return (
+              <p className="text-xs text-slate-500 mt-1.5">
+                {wasteMovements.length === 0
+                  ? 'No waste events recorded this week.'
+                  : `${wasteMovements.length} waste event${wasteMovements.length !== 1 ? 's' : ''} this week · ${[...new Set(wasteMovements.map(m => m.item_name))].slice(0, 3).join(', ')}`}
+              </p>
+            );
+          })()}
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
           <div className="flex items-center gap-2 text-sm text-slate-700">
             <DollarSign size={16} className="text-sky-500" />
             <span className="font-medium">Value at risk</span>
           </div>
-          <p className="text-xs text-slate-500 mt-1.5">₱12.4k of stock exposure is tied to items already below preferred cover.</p>
+          <p className="text-xs text-slate-500 mt-1.5">
+            {reorderExposureValue > 0
+              ? `${reorderExposureValue >= 1000 ? `₱${(reorderExposureValue / 1000).toFixed(1)}k` : `₱${reorderExposureValue.toFixed(0)}`} exposure tied to ${outOfStockItems.length + lowStockItems.length} item${outOfStockItems.length + lowStockItems.length !== 1 ? 's' : ''} below cover.`
+              : 'No reorder exposure — all items above reorder points.'}
+          </p>
         </div>
       </div>
     </div>
