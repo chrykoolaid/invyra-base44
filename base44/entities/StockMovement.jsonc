@@ -44,9 +44,13 @@
       "type": "number",
       "description": "Quantity \u2014 always positive"
     },
+    "balance_before": {
+      "type": "number",
+      "description": "Running stock balance BEFORE this movement"
+    },
     "balance_after": {
       "type": "number",
-      "description": "Running stock balance at this site after this movement posted"
+      "description": "Running stock balance AFTER this movement"
     },
     "source_ref": {
       "type": "string",
@@ -82,6 +86,20 @@
     "posted_by": {
       "type": "string",
       "description": "User email or name at time of posting"
+    },
+    "actor_role": {
+      "type": "string",
+      "description": "Role of the user who posted this movement (staff/supervisor/manager/admin)"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE",
+      "description": "Environment partition this movement belongs to"
     }
   },
   "required": [

@@ -99,6 +99,16 @@
     "received_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE",
+      "description": "Environment partition: LIVE (production), TRAINING (sandboxed training), TEST (automated tests)"
     }
   },
   "required": [

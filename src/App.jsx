@@ -87,10 +87,10 @@ const AuthenticatedApp = () => {
         <Route path="/Adjustments"           element={<RoleGuard><Adjustments /></RoleGuard>} />
         <Route path="/Movements"             element={<RoleGuard><Movements /></RoleGuard>} />
         <Route path="/Exceptions"            element={<RoleGuard><Exceptions /></RoleGuard>} />
-        {/* Training routes — each wraps its own TrainingProvider so sessions are isolated */}
-        <Route path="/Training/Staff"      element={<TrainingProvider><TrainingStaff /></TrainingProvider>} />
-        <Route path="/Training/Supervisor" element={<TrainingProvider><TrainingSupervisor /></TrainingProvider>} />
-        <Route path="/Training/Manager"    element={<TrainingProvider><TrainingManager /></TrainingProvider>} />
+        {/* Training routes — RoleGuard enforces RBAC; TrainingProvider scopes DB to environment:"TRAINING" */}
+        <Route path="/Training/Staff"      element={<RoleGuard><TrainingProvider><TrainingStaff /></TrainingProvider></RoleGuard>} />
+        <Route path="/Training/Supervisor" element={<RoleGuard><TrainingProvider><TrainingSupervisor /></TrainingProvider></RoleGuard>} />
+        <Route path="/Training/Manager"    element={<RoleGuard><TrainingProvider><TrainingManager /></TrainingProvider></RoleGuard>} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

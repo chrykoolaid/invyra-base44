@@ -40,9 +40,31 @@
       "type": "string",
       "description": "User email or name at time of change"
     },
+    "actor_role": {
+      "type": "string",
+      "description": "Role of the user who made the change"
+    },
+    "source_module": {
+      "type": "string",
+      "description": "Module that triggered this audit entry (e.g. POSMode, Wastage, Stocktake, Training)"
+    },
+    "linked_movement_id": {
+      "type": "string",
+      "description": "Reference to the StockMovement.id that caused this audit entry"
+    },
     "notes": {
       "type": "string",
       "description": "Optional notes about the change"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE",
+      "description": "Environment partition this audit entry belongs to"
     }
   },
   "required": [

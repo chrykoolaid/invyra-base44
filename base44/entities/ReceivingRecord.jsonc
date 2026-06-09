@@ -82,12 +82,10 @@
       }
     },
     "warehouse_decision": {
-      "type": "string",
-      "description": "Warehouse proposal: e.g., 'Accept explanation', 'Credit memo issued', 'Replacement shipment requested'"
+      "type": "string"
     },
     "warehouse_decision_note": {
-      "type": "string",
-      "description": "Detailed warehouse reasoning"
+      "type": "string"
     },
     "warehouse_decided_at": {
       "type": "string",
@@ -95,8 +93,7 @@
     },
     "supplier_confirmed": {
       "type": "boolean",
-      "default": false,
-      "description": "Supplier has confirmed agreement with warehouse decision"
+      "default": false
     },
     "supplier_confirmed_at": {
       "type": "string",
@@ -104,13 +101,21 @@
     },
     "resolved_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "When both parties agreed and issue was fully resolved"
+      "format": "date-time"
     },
     "expected_resolution_date": {
       "type": "string",
-      "format": "date",
-      "description": "Target date for resolving this discrepancy"
+      "format": "date"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE",
+      "description": "Environment partition this receiving record belongs to"
     }
   },
   "required": [
