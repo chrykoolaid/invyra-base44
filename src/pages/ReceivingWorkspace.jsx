@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Minus, CheckCircle2, Save, X } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { envFilter, ENV_LIVE } from '@/lib/envFilter';
+import { postInventoryMovement } from '@/lib/inventoryMovement';
 
 const receivingRows = [
   { po: 'PO-2026-001', supplier: 'ChemSupply Co',         item: 'Premium Detergent 20L', expected: 20,  received: 0,   unit: 'drum',   status: 'Awaiting'  },
@@ -88,50 +90,13 @@ export default function ReceivingWorkspace() {
     setActionStatus('confirming');
     try {
       const user = await base44.auth.me();
-      const postedBy = user?.email || 'unknown';
+      const postedBy = user?.email || user?.full_name || 'unknown';
 
       // Load all sites once — use first active site as default
       const sites = await base44.entities.Site.filter({ is_active: true });
       const defaultSite = sites[0];
 
-      // 1. For each item with received > 0, update stock + post ledger movement
-      for (const row of items) {
-        if (row.received <= 0) continue;
-
-        const existing = await base44.entities.InventoryItem.filter({ name: row.item });
-        const invItem = existing?.[0];
-        const currentStock = invItem?.stock || 0;
-        const siteId = invItem?.site_id || defaultSite?.id || '';
-        const currentSiteStock = invItem?.stock_per_site?.[siteId] ?? currentStock;
-        const balanceAfter = currentSiteStock + row.received;
-
-        if (invItem) {
-          const updatedStockPerSite = { ...(invItem.stock_per_site || {}), [siteId]: balanceAfter };
-          await base44.entities.InventoryItem.update(invItem.id, {
-            stock: currentStock + row.received,
-            stock_per_site: updatedStockPerSite,
-          });
-
-          // Post RECEIVE movement to ledger
-          await base44.entities.StockMovement.create({
-            site_id: siteId,
-            item_id: invItem.id,
-            sku: invItem.sku || row.item,
-            item_name: invItem.name,
-            movement_type: 'RECEIVE',
-            direction: 'IN',
-            qty: row.received,
-            balance_after: balanceAfter,
-            source_ref: po,
-            source_type: 'RECEIVING',
-            notes: discrepancy[row.item]?.note || '',
-            status: 'POSTED',
-            posted_by: postedBy,
-          });
-        }
-      }
-
-      // 2. Determine overall receiving status
+      // 1. Determine overall receiving status before posting movements
       const statuses = items.map(i => itemStatus(i));
       let recordStatus = 'Complete';
       if (statuses.some(s => s === 'Partial' || s === 'Over-received' || s === 'Awaiting')) recordStatus = 'Partial';
@@ -161,16 +126,42 @@ export default function ReceivingWorkspace() {
          recordData.expected_resolution_date = expectedResolutionDate;
        }
 
-       await base44.entities.ReceivingRecord.create(recordData);
+       recordData.environment = ENV_LIVE;
+       const receivingRecord = await base44.entities.ReceivingRecord.create(recordData);
 
-      // 4. Update linked PurchaseOrder status
-      const poOrders = await base44.entities.PurchaseOrder.filter({ order_number: po });
+      // 4. For each item with received > 0, update stock + post ledger movement + audit proof
+      for (const row of items) {
+        if (row.received <= 0) continue;
+
+        const existing = await base44.entities.InventoryItem.filter({ ...envFilter(), name: row.item });
+        const invItem = existing?.[0];
+        if (!invItem) continue;
+
+        await postInventoryMovement({
+          item: invItem,
+          movementType: 'RECEIVE',
+          direction: 'IN',
+          qty: row.received,
+          sourceType: 'RECEIVING',
+          sourceRef: po,
+          sourceModule: 'Receiving',
+          notes: discrepancy[row.item]?.note || '',
+          siteId: invItem.site_id || defaultSite?.id || '',
+          environment: ENV_LIVE,
+          user,
+          sourceRecordId: receivingRecord?.id || po,
+        });
+      }
+
+      // 5. Update linked PurchaseOrder status inside LIVE partition only
+      const poOrders = await base44.entities.PurchaseOrder.filter({ ...envFilter(), order_number: po });
       if (poOrders && poOrders.length > 0) {
         const poRecord = poOrders[0];
         const newPoStatus = recordStatus === 'Complete' ? 'Received' : 'Partially Received';
         await base44.entities.PurchaseOrder.update(poRecord.id, {
           status: newPoStatus,
           received_at: new Date().toISOString(),
+          environment: ENV_LIVE,
         });
       }
 

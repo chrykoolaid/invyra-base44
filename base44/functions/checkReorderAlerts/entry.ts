@@ -5,9 +5,9 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
 
     const [items, adminUsers, recentAlerts] = await Promise.all([
-      base44.asServiceRole.entities.InventoryItem.list('', 500),
+      base44.asServiceRole.entities.InventoryItem.filter({ environment: 'LIVE' }, '', 500),
       base44.asServiceRole.entities.User.filter({ role: 'admin' }),
-      base44.asServiceRole.entities.StockAlert.list('-created_date', 500),
+      base44.asServiceRole.entities.StockAlert.filter({ environment: 'LIVE' }, '-created_date', 500),
     ]);
 
     // Items at or below reorder point (with a reorder point set, and active)
@@ -81,6 +81,7 @@ Alerts are sent once per item per 24-hour window.`;
         stock_at_alert: item.stock ?? 0,
         reorder_point: item.reorder_point,
         alert_sent_to: adminEmails.join(', '),
+        environment: 'LIVE',
       });
     }
 

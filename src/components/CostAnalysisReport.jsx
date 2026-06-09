@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, TrendingDown } from 'lucide-react';
+import { envFilter } from '@/lib/envFilter';
+import { RefreshCw } from 'lucide-react';
 
 export default function CostAnalysisReport() {
   const [data, setData] = useState(null);
@@ -8,7 +9,7 @@ export default function CostAnalysisReport() {
 
   const loadData = async () => {
     setLoading(true);
-    const items = await base44.entities.InventoryItem.list('-cost_per_unit', 500);
+    const items = await base44.entities.InventoryItem.filter(envFilter(), '-cost_per_unit', 500);
     
     const analysis = items.reduce((acc, item) => {
       const inventory_value = (item.stock || 0) * (item.cost_per_unit || 0);

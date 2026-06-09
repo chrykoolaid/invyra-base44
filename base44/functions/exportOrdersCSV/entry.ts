@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const orders = await base44.entities.PurchaseOrder.list('-created_date', 500);
+    const orders = await base44.entities.PurchaseOrder.filter({ environment: 'LIVE' }, '-created_date', 500);
 
     const rows = [['Order Number', 'Supplier', 'Status', 'Urgency', 'Expected Date', 'Submitted', 'Total Items', 'Notes']];
 

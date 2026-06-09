@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { envFilter, ENV_LIVE } from '@/lib/envFilter';
 import LedgerViewer from '@/components/LedgerViewer';
 
 const overviewCards = [
@@ -175,13 +176,13 @@ export default function InventoryAdmin() {
   useEffect(() => {
     if (tab === 'Unit Pricing') {
       setItemsLoading(true);
-      base44.entities.InventoryItem.filter({ is_active: true }, 'name', 500).then(data => {
+      base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500).then(data => {
         setItems(data || []);
         setItemsLoading(false);
       });
     } else if (tab === 'Audit Log') {
       setAuditLoading(true);
-      base44.entities.AuditLog.list('-created_date', 100).then(data => {
+      base44.entities.AuditLog.filter(envFilter(), '-created_date', 100).then(data => {
         setAuditLogs(data || []);
         setAuditLoading(false);
       });
@@ -201,7 +202,7 @@ export default function InventoryAdmin() {
     const user = await base44.auth.me();
     const changedBy = user?.email || user?.full_name || 'unknown';
 
-    await base44.entities.InventoryItem.update(itemId, { cost_per_unit: price });
+    await base44.entities.InventoryItem.update(itemId, { cost_per_unit: price, environment: ENV_LIVE });
     await base44.entities.AuditLog.create({
       item_id: itemId,
       sku: item.sku,
@@ -211,6 +212,11 @@ export default function InventoryAdmin() {
       old_value: String(item.cost_per_unit || ''),
       new_value: String(price),
       changed_by: changedBy,
+      actor_role: user?.role || user?.app_role || 'unknown',
+      source_module: 'Inventory Admin',
+      action_type: 'PRICE_UPDATE',
+      linked_source_record: itemId,
+      environment: ENV_LIVE,
     });
 
     setItems(prev => prev.map(i => i.id === itemId ? { ...i, cost_per_unit: price } : i));

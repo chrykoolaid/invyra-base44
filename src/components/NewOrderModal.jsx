@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { ENV_LIVE } from '@/lib/envFilter';
 
 const SUPPLIERS = [
   'ChemSupply Co', 'CleanTex Distributors', 'PackPro Solutions',
@@ -63,6 +64,7 @@ export default function NewOrderModal({ onClose, onCreated }) {
       urgency: form.urgency,
       lines: lines.filter(l => l.name || l.sku),
       submitted_at: asDraft ? null : new Date().toISOString(),
+      environment: ENV_LIVE,
     });
     setSaving(false);
     onCreated(record, asDraft);

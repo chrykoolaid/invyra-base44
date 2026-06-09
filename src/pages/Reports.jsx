@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { BarChart3, TrendingDown, AlertCircle, CheckCircle2, Download } from 'lucide-react';
 import CostAnalysisReport from '@/components/CostAnalysisReport';

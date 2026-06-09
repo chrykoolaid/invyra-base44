@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch all active inventory items
-    const items = await base44.entities.InventoryItem.filter({ is_active: true }, '-updated_date', 500);
+    const items = await base44.entities.InventoryItem.filter({ environment: 'LIVE', is_active: true }, '-updated_date', 500);
 
     // Build CSV header
     const headers = ['SKU', 'Item Name', 'Unit', 'On Hand Stock', 'Reorder Point', 'Reorder Qty', 'Cost per Unit', 'Preferred Supplier', 'Stock Value'];

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 
 export default function ValuationHistory() {
@@ -10,9 +11,9 @@ export default function ValuationHistory() {
   const loadData = async () => {
     setLoading(true);
     const [items, movements, auditLogs] = await Promise.all([
-      base44.entities.InventoryItem.list('', 500),
-      base44.entities.StockMovement.list('-created_date', 1000),
-      base44.entities.AuditLog.list('-created_date', 500),
+      base44.entities.InventoryItem.filter(envFilter(), '', 500),
+      base44.entities.StockMovement.filter(envFilter(), '-created_date', 1000),
+      base44.entities.AuditLog.filter(envFilter(), '-created_date', 500),
     ]);
 
     const days = parseInt(timeline);

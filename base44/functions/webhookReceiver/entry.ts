@@ -28,17 +28,21 @@ Deno.serve(async (req) => {
       }
 
       // Find inventory item by SKU
-      const items = await base44.asServiceRole.entities.InventoryItem.filter({ sku });
+      const items = await base44.asServiceRole.entities.InventoryItem.filter({ sku, environment: 'LIVE' });
       if (!items || items.length === 0) {
         return Response.json({ error: 'SKU not found' }, { status: 404 });
       }
 
       const item = items[0];
       const currentStock = item.stock || 0;
-      const newStock = direction === 'IN' ? currentStock + qty : Math.max(0, currentStock - qty);
+      const movementQty = Number(qty || 0);
+      if (direction === 'OUT' && movementQty > currentStock) {
+        return Response.json({ error: 'Insufficient stock', sku, on_hand: currentStock, required: movementQty }, { status: 409 });
+      }
+      const newStock = direction === 'IN' ? currentStock + movementQty : currentStock - movementQty;
 
       // Update stock
-      await base44.asServiceRole.entities.InventoryItem.update(item.id, { stock: newStock });
+      
 
       // Log movement
       await base44.asServiceRole.entities.StockMovement.create({
@@ -48,14 +52,36 @@ Deno.serve(async (req) => {
         item_name: item.name,
         movement_type: direction === 'IN' ? 'RECEIVE' : 'SALE',
         direction,
-        qty,
+        qty: movementQty,
+        balance_before: currentStock,
         balance_after: newStock,
         source_ref: source_ref || 'external-webhook',
         source_type: 'MANUAL',
         notes: 'Synced via webhook',
         status: 'POSTED',
         posted_by: 'webhook-system',
+        actor_role: 'system',
+        environment: 'LIVE',
       });
+
+      await base44.asServiceRole.entities.AuditLog.create({
+        item_id: item.id,
+        sku: item.sku,
+        item_name: item.name,
+        change_type: direction === 'IN' ? 'STOCK_RECEIVE' : 'STOCK_SALE',
+        action_type: direction === 'IN' ? 'RECEIVE' : 'SALE',
+        field_name: 'stock',
+        old_value: String(currentStock),
+        new_value: String(newStock),
+        changed_by: 'webhook-system',
+        actor_role: 'system',
+        source_module: 'Webhook Receiver',
+        linked_source_record: source_ref || 'external-webhook',
+        notes: 'Synced via webhook',
+        environment: 'LIVE',
+      });
+
+      await base44.asServiceRole.entities.InventoryItem.update(item.id, { stock: newStock, environment: 'LIVE' });
 
       return Response.json({ status: 'success', new_stock: newStock });
     }
@@ -87,6 +113,7 @@ Deno.serve(async (req) => {
           supplier,
         })),
         submitted_at: new Date().toISOString(),
+        environment: 'LIVE',
       });
 
       return Response.json({ status: 'success', order_number: orderNumber });

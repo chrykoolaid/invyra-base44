@@ -1,4 +1,4 @@
-import { Plus, Zap } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 const CATEGORY_COLORS = {
   'Wash & Dry':  'bg-blue-50 text-blue-700 border-blue-200',

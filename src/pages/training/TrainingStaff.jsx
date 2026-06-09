@@ -3,7 +3,7 @@
  * Covers: POS auto-deduction, Wastage entry, Gap Scan awareness
  * v2: async adjustStock, over-deduction error display, loading states
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import TrainingShell from '@/components/training/TrainingShell';
 import TrainingInventoryTable from '@/components/training/TrainingInventoryTable';
 import { useTraining } from '@/lib/TrainingContext';
@@ -86,6 +86,12 @@ function WasteTask() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState(null);
   const item = items.find(i => i.id === selectedId);
+
+  useEffect(() => {
+    if (!selectedId && items.length > 0) {
+      setSelectedId(items.find(i => i.sku === 'CHM-003')?.id ?? items[0].id);
+    }
+  }, [items, selectedId]);
 
   const handlePost = async () => {
     setError(null);

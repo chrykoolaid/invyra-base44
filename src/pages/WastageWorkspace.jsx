@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { envFilter, ENV_LIVE } from '@/lib/envFilter';
+import { postInventoryMovement } from '@/lib/inventoryMovement';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -443,48 +445,35 @@ export default function WastageWorkspace() {
 
   const handleApprove = async () => {
     if (!liveEvent) return;
-    // 1. Update in-memory engine
-    approveEvent(liveEvent.id, 'Current User');
-    setRows(getWastageRows());
-    setActionStatus('approved');
-
-    // 2. Post WASTE movement to ledger + update InventoryItem
+    // Post WASTE movement to ledger + audit + InventoryItem first.
+    // Only mark the workflow approved after the operational posting succeeds.
     try {
       const user = await base44.auth.me();
-      const postedBy = user?.email || 'Current User';
-      const existing = await base44.entities.InventoryItem.filter({ sku: liveEvent.sku });
+      const existing = await base44.entities.InventoryItem.filter({ ...envFilter(), sku: liveEvent.sku });
       const invItem = existing?.[0];
       if (invItem) {
         const sites = await base44.entities.Site.filter({ is_active: true });
         const siteId = invItem.site_id || sites?.[0]?.id || '';
-        const currentSiteStock = invItem.stock_per_site?.[siteId] ?? (invItem.stock || 0);
-        const balanceAfter = currentSiteStock - liveEvent.qty;
-        const updatedStockPerSite = { ...(invItem.stock_per_site || {}), [siteId]: balanceAfter };
-
-        await Promise.all([
-          base44.entities.InventoryItem.update(invItem.id, {
-            stock: (invItem.stock || 0) - liveEvent.qty,
-            stock_per_site: updatedStockPerSite,
-          }),
-          base44.entities.StockMovement.create({
-            site_id: siteId,
-            item_id: invItem.id,
-            sku: liveEvent.sku,
-            item_name: liveEvent.itemName,
-            movement_type: 'WASTE',
-            direction: 'OUT',
-            qty: liveEvent.qty,
-            balance_after: balanceAfter,
-            source_ref: liveEvent.id,
-            source_type: 'WASTAGE',
-            notes: liveEvent.notes || '',
-            status: 'POSTED',
-            posted_by: postedBy,
-          }),
-        ]);
+        await postInventoryMovement({
+          item: invItem,
+          movementType: 'WASTE',
+          direction: 'OUT',
+          qty: liveEvent.qty,
+          sourceType: 'WASTAGE',
+          sourceRef: liveEvent.id,
+          sourceModule: 'Wastage',
+          notes: liveEvent.notes || liveEvent.reason || '',
+          siteId,
+          environment: ENV_LIVE,
+          user,
+        });
       }
+      approveEvent(liveEvent.id, 'Current User');
+      setRows(getWastageRows());
+      setActionStatus('approved');
     } catch (err) {
-      console.error('Ledger post failed', err);
+      console.error('Wastage approval ledger post failed', err);
+      setActionStatus(null);
     }
   };
 
@@ -499,58 +488,45 @@ export default function WastageWorkspace() {
 
   const handleReverse = async () => {
     if (!liveEvent || !reverseReason.trim()) return;
-    // 1. Update in-memory engine
-    reverseEvent(liveEvent.id, reverseReason.trim(), 'Current User');
-    setRows(getWastageRows());
-    setReverseOpen(false);
-    setReverseReason('');
-    setActionStatus('reversed');
-
-    // 2. Post counter-entry REVERSAL movement + restore InventoryItem stock
+    // Post counter-entry REVERSAL movement + audit + restore InventoryItem stock first.
+    // Only mark the workflow reversed after the operational posting succeeds.
     try {
       const user = await base44.auth.me();
-      const postedBy = user?.email || 'Current User';
-      const existing = await base44.entities.InventoryItem.filter({ sku: liveEvent.sku });
+      const existing = await base44.entities.InventoryItem.filter({ ...envFilter(), sku: liveEvent.sku });
       const invItem = existing?.[0];
       if (invItem) {
         const sites = await base44.entities.Site.filter({ is_active: true });
         const siteId = invItem.site_id || sites?.[0]?.id || '';
-        const currentSiteStock = invItem.stock_per_site?.[siteId] ?? (invItem.stock || 0);
-        const balanceAfter = currentSiteStock + liveEvent.qty;
-        const updatedStockPerSite = { ...(invItem.stock_per_site || {}), [siteId]: balanceAfter };
-
-        // Find the original WASTE movement to link the reversal
         const originalMovements = await base44.entities.StockMovement.filter({
+          ...envFilter(),
           source_ref: liveEvent.id,
           movement_type: 'WASTE',
         });
         const originalMovementId = originalMovements?.[0]?.id || '';
 
-        await Promise.all([
-          base44.entities.InventoryItem.update(invItem.id, {
-            stock: (invItem.stock || 0) + liveEvent.qty,
-            stock_per_site: updatedStockPerSite,
-          }),
-          base44.entities.StockMovement.create({
-            site_id: siteId,
-            item_id: invItem.id,
-            sku: liveEvent.sku,
-            item_name: liveEvent.itemName,
-            movement_type: 'REVERSAL',
-            direction: 'IN',
-            qty: liveEvent.qty,
-            balance_after: balanceAfter,
-            source_ref: liveEvent.id,
-            source_type: 'WASTAGE',
-            reversal_of: originalMovementId,
-            notes: reverseReason.trim(),
-            status: 'POSTED',
-            posted_by: postedBy,
-          }),
-        ]);
+        await postInventoryMovement({
+          item: invItem,
+          movementType: 'REVERSAL',
+          direction: 'IN',
+          qty: liveEvent.qty,
+          sourceType: 'WASTAGE',
+          sourceRef: liveEvent.id,
+          sourceModule: 'Wastage',
+          notes: reverseReason.trim(),
+          siteId,
+          environment: ENV_LIVE,
+          user,
+          reversalOf: originalMovementId,
+        });
       }
+      reverseEvent(liveEvent.id, reverseReason.trim(), 'Current User');
+      setRows(getWastageRows());
+      setReverseOpen(false);
+      setReverseReason('');
+      setActionStatus('reversed');
     } catch (err) {
-      console.error('Reversal ledger post failed', err);
+      console.error('Wastage reversal ledger post failed', err);
+      setActionStatus(null);
     }
   };
 

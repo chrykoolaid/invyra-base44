@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Copy, Trash2, Save, RefreshCw, Send, Check, X } from 'lucide-react';
+import { Trash2, Save, RefreshCw, Send } from 'lucide-react';
 
 export default function WebhookManagementUI() {
   const [endpoints, setEndpoints] = useState([]);

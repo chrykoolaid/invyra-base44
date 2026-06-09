@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ClipboardCheck, Search, CheckCircle2, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
+import { envFilter, ENV_LIVE } from '@/lib/envFilter';
+import { postInventoryMovement } from '@/lib/inventoryMovement';
+import { ClipboardCheck, Search, CheckCircle2 } from 'lucide-react';
 
 const statusStyle = {
   matched:    'bg-green-50 text-green-700 border border-green-200',
@@ -29,7 +31,7 @@ export default function Stocktake() {
   const [showOnlyVariances, setShowOnlyVariances] = useState(false);
 
   useEffect(() => {
-    base44.entities.InventoryItem.filter({ is_active: true }, 'name', 500)
+    base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500)
       .then(rows => { setItems(rows || []); setLoading(false); });
   }, []);
 
@@ -66,30 +68,35 @@ export default function Stocktake() {
     if (toUpdate.length === 0) return;
     setSubmitting(true);
 
-    await Promise.all(toUpdate.map(async (item) => {
-      const newStock = Number(counts[item.id]);
-      const diff = newStock - (item.stock || 0);
-      const direction = diff >= 0 ? 'IN' : 'OUT';
+    const user = await base44.auth.me();
+    const sourceRef = `STKTK-${Date.now().toString(36).toUpperCase()}`;
 
-      // Update inventory item stock
-      await base44.entities.InventoryItem.update(item.id, { stock: newStock });
+    try {
+      for (const item of toUpdate) {
+        const newStock = Number(counts[item.id]);
+        const diff = newStock - (item.stock || 0);
+        if (diff === 0) continue;
+        const direction = diff >= 0 ? 'IN' : 'OUT';
 
-      // Post a STOCKTAKE movement to ledger
-      await base44.entities.StockMovement.create({
-        site_id: item.site_id || 'default',
-        item_id: item.id,
-        sku: item.sku || '',
-        item_name: item.name,
-        movement_type: 'STOCKTAKE',
-        direction,
-        qty: Math.abs(diff),
-        balance_after: newStock,
-        source_ref: `STKTK-${new Date().toISOString().slice(0, 10)}`,
-        source_type: 'STOCKTAKE',
-        notes: `Stocktake adjustment: ${diff >= 0 ? '+' : ''}${diff}`,
-        status: 'POSTED',
-      });
-    }));
+        await postInventoryMovement({
+          item,
+          movementType: 'STOCKTAKE',
+          direction,
+          qty: Math.abs(diff),
+          sourceType: 'STOCKTAKE',
+          sourceRef,
+          sourceModule: 'Stocktake',
+          notes: `Stocktake adjustment: ${diff >= 0 ? '+' : ''}${diff}`,
+          siteId: item.site_id || '',
+          environment: ENV_LIVE,
+          user,
+        });
+      }
+    } catch (error) {
+      console.error('Stocktake commit failed', error);
+      setSubmitting(false);
+      return;
+    }
 
     setSubmitted(true);
     setSubmitting(false);

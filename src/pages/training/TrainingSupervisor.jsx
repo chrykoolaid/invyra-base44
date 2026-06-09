@@ -3,7 +3,7 @@
  * Covers: Receiving stock-up, Stocktake variance, Site Transfer balance preservation, Adjustments
  * v2: async adjustStock, over-deduction blocking, TRANSFER-001 balance snapshot fix
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import TrainingShell from '@/components/training/TrainingShell';
 import TrainingInventoryTable from '@/components/training/TrainingInventoryTable';
 import { useTraining } from '@/lib/TrainingContext';
@@ -26,6 +26,15 @@ function ReceiveTask() {
   const [done, setDone] = useState(false);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (items.length === 0) return;
+    setLines(prev => prev.map((line, index) => {
+      if (line.itemId) return line;
+      const fallbackSku = index === 0 ? 'CHM-001' : 'CHM-004';
+      return { ...line, itemId: items.find(i => i.sku === fallbackSku)?.id ?? items[index]?.id ?? '' };
+    }));
+  }, [items]);
 
   const handleReceive = async () => {
     setError(null);
@@ -171,6 +180,12 @@ function TransferTask() {
 
   const item = items.find(i => i.id === itemId);
 
+  useEffect(() => {
+    if (!itemId && items.length > 0) {
+      setItemId(items.find(i => i.sku === 'OPS-001')?.id ?? items[0].id);
+    }
+  }, [items, itemId]);
+
   const handlePost = async () => {
     if (!item) return;
     if (qty > item.stock) {
@@ -261,6 +276,12 @@ function AdjustTask() {
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState(null);
   const item = items.find(i => i.id === itemId);
+
+  useEffect(() => {
+    if (!itemId && items.length > 0) {
+      setItemId(items.find(i => i.sku === 'CHM-002')?.id ?? items[0].id);
+    }
+  }, [items, itemId]);
 
   const handlePost = async () => {
     setError(null);

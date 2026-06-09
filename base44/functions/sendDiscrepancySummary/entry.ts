@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch the receiving record
-    const record = await base44.asServiceRole.entities.ReceivingRecord.list();
+    const record = await base44.asServiceRole.entities.ReceivingRecord.filter({ environment: 'LIVE' });
     const receivingRecord = record.find(r => r.id === event.entity_id);
 
     if (!receivingRecord || receivingRecord.status !== 'Discrepancy') {
@@ -26,7 +26,8 @@ Deno.serve(async (req) => {
 
     // Fetch supplier email from PurchaseOrder
     const poRecords = await base44.asServiceRole.entities.PurchaseOrder.filter({
-      order_number: receivingRecord.po_number
+      order_number: receivingRecord.po_number,
+      environment: 'LIVE'
     });
     const po = poRecords?.[0];
 

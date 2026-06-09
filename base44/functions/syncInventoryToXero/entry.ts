@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch all active inventory items
-    const items = await base44.asServiceRole.entities.InventoryItem.filter({ is_active: true }, '', 500);
+    const items = await base44.asServiceRole.entities.InventoryItem.filter({ environment: 'LIVE', is_active: true }, '', 500);
 
     // Build Xero inventory items payload
     const xeroItems = items.map(item => ({

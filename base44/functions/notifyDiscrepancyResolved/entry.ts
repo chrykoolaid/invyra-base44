@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     }
 
     // Fetch PO for supplier email
-    const pos = await base44.asServiceRole.entities.PurchaseOrder.filter({ order_number: record.po_number });
+    const pos = await base44.asServiceRole.entities.PurchaseOrder.filter({ order_number: record.po_number, environment: 'LIVE' });
     const po = pos?.[0];
     if (!po?.supplier_email) {
       return Response.json({ error: 'Supplier email not found' }, { status: 404 });

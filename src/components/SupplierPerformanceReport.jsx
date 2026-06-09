@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
+import { envFilter } from '@/lib/envFilter';
+import { RefreshCw } from 'lucide-react';
 
 export default function SupplierPerformanceReport() {
   const [data, setData] = useState(null);
@@ -8,8 +9,8 @@ export default function SupplierPerformanceReport() {
 
   const loadData = async () => {
     setLoading(true);
-    const orders = await base44.entities.PurchaseOrder.list('-submitted_at', 500);
-    const receiving = await base44.entities.ReceivingRecord.list('-confirmed_at', 500);
+    const orders = await base44.entities.PurchaseOrder.filter(envFilter(), '-submitted_at', 500);
+    const receiving = await base44.entities.ReceivingRecord.filter(envFilter(), '-confirmed_at', 500);
 
     const now = new Date();
     const supplierMetrics = orders.reduce((acc, order) => {

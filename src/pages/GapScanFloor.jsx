@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter, ENV_LIVE } from '@/lib/envFilter';
+import { postInventoryMovement } from '@/lib/inventoryMovement';
 import { ChevronLeft, CheckCircle2, RotateCcw, Send, Search, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -30,7 +32,7 @@ export default function GapScanFloor() {
 
   const loadItems = async () => {
     setLoading(true);
-    const data = await base44.entities.InventoryItem.filter({ is_active: true }, 'name', 200);
+    const data = await base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 200);
     setItems((data || []).map(item => ({ ...item, count: null, dirty: false })));
     setLoading(false);
   };
@@ -68,8 +70,6 @@ export default function GapScanFloor() {
     setSubmitting(true);
 
     const user = await base44.auth.me();
-    const postedBy = user?.email || user?.full_name || 'Staff';
-
     for (const item of dirtyItems) {
       const systemStock = item.stock ?? 0;
       const newCount = item.count;
@@ -80,22 +80,25 @@ export default function GapScanFloor() {
       const ref = `GS-${Date.now().toString(36).toUpperCase()}`;
       const direction = diff > 0 ? 'IN' : 'OUT';
 
-      await base44.entities.InventoryItem.update(item.id, { stock: newCount });
-      await base44.entities.StockMovement.create({
-        site_id: item.site_id || '',
-        item_id: item.id,
-        sku: item.sku,
-        item_name: item.name,
-        movement_type: 'ADJUST',
-        direction,
-        qty: Math.abs(diff),
-        balance_after: newCount,
-        source_ref: ref,
-        source_type: 'MANUAL',
-        notes: `Gap scan floor count`,
-        status: 'POSTED',
-        posted_by: postedBy,
-      });
+      try {
+        await postInventoryMovement({
+          item,
+          movementType: 'ADJUST',
+          direction,
+          qty: Math.abs(diff),
+          sourceType: 'MANUAL',
+          sourceRef: ref,
+          sourceModule: 'Gap Scan Floor',
+          notes: `Gap scan floor count`,
+          siteId: item.site_id || '',
+          environment: ENV_LIVE,
+          user,
+        });
+      } catch (error) {
+        console.error('Gap scan floor count post failed', error);
+        setSubmitting(false);
+        return;
+      }
     }
 
     setSavedCount(dirtyItems.length);

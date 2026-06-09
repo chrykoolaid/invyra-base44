@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { AlertCircle, CheckCircle2, AlertTriangle, TrendingDown, Gauge } from 'lucide-react';
+import { AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 
 const healthConfig = {
   healthy: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700', icon: CheckCircle2 },

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter, ENV_LIVE } from '@/lib/envFilter';
 import { CheckCircle2, Truck, Package, AlertTriangle, FileText, Clock } from 'lucide-react';
 
 const statusStyle = {
@@ -28,13 +29,13 @@ export default function SupplierPortal() {
 
   useEffect(() => {
     if (!token) { setError('Invalid or missing access token.'); setLoading(false); return; }
-    base44.entities.PurchaseOrder.filter({ supplier_token: token })
+    base44.entities.PurchaseOrder.filter({ ...envFilter(), supplier_token: token })
       .then(async rows => {
         if (!rows || rows.length === 0) { setError('Order not found or link has expired.'); setLoading(false); return; }
         setOrder(rows[0]);
         
         // Fetch receiving records for this supplier
-        const receiving = await base44.entities.ReceivingRecord.filter({ supplier: rows[0].supplier });
+        const receiving = await base44.entities.ReceivingRecord.filter({ ...envFilter(), supplier: rows[0].supplier });
         setReceivingRecords(receiving || []);
         setLoading(false);
       });
@@ -45,6 +46,7 @@ export default function SupplierPortal() {
     await base44.entities.PurchaseOrder.update(order.id, {
       status: 'Confirmed',
       supplier_confirmed_at: new Date().toISOString(),
+      environment: ENV_LIVE,
     });
     setOrder(prev => ({ ...prev, status: 'Confirmed', supplier_confirmed_at: new Date().toISOString() }));
     setDone('confirmed');
@@ -57,6 +59,7 @@ export default function SupplierPortal() {
       status: 'Awaiting Delivery',
       supplier_dispatched_at: new Date().toISOString(),
       supplier_dispatch_note: dispatchNote.trim() || null,
+      environment: ENV_LIVE,
     });
     setOrder(prev => ({ ...prev, status: 'Awaiting Delivery', supplier_dispatched_at: new Date().toISOString() }));
     setDone('dispatched');
@@ -74,6 +77,7 @@ export default function SupplierPortal() {
     await base44.entities.ReceivingRecord.update(recordId, {
       supplier_responses: newResponses,
       discrepancy_status: 'Supplier Responded',
+      environment: ENV_LIVE,
     });
 
     setReceivingRecords(prev => prev.map(r => r.id === recordId ? { ...r, supplier_responses: newResponses, discrepancy_status: 'Supplier Responded' } : r));
@@ -88,6 +92,7 @@ export default function SupplierPortal() {
       supplier_confirmed: true,
       supplier_confirmed_at: new Date().toISOString(),
       resolved_at: new Date().toISOString(),
+      environment: ENV_LIVE,
     });
 
     setReceivingRecords(prev => prev.map(r => r.id === recordId ? {

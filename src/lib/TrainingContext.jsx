@@ -34,6 +34,20 @@ export const TRAINING_SITES = [
 
 const TrainingContext = createContext(null);
 
+function trainingAuditChangeType(movementType) {
+  switch (movementType) {
+    case 'RECEIVE': return 'STOCK_RECEIVE';
+    case 'WASTE': return 'STOCK_WASTE';
+    case 'ADJUST': return 'STOCK_ADJUST';
+    case 'SALE': return 'STOCK_SALE';
+    case 'TRANSFER_IN':
+    case 'TRANSFER_OUT': return 'STOCK_TRANSFER';
+    case 'STOCKTAKE': return 'STOCKTAKE_COMMIT';
+    case 'REVERSAL': return 'REVERSAL';
+    default: return 'QUANTITY_UPDATE';
+  }
+}
+
 export function TrainingProvider({ children }) {
   const [items, setItems]       = useState([]);
   const [movements, setMovements] = useState([]);
@@ -118,7 +132,8 @@ export function TrainingProvider({ children }) {
       item_id: itemId,
       sku: item.sku,
       item_name: item.name,
-      change_type: 'QUANTITY_UPDATE',
+      change_type: trainingAuditChangeType(movementType),
+      action_type: movementType,
       field_name: 'stock',
       old_value: String(balanceBefore),
       new_value: String(balanceAfter),
@@ -126,12 +141,13 @@ export function TrainingProvider({ children }) {
       actor_role: actorRole,
       source_module: `Training/${movementType}`,
       linked_movement_id: movement.id,
+      linked_source_record: ref,
       notes: `[TRAINING] ${notes}`,
       environment: ENV,
     });
 
     // Update TRAINING inventory item stock in DB
-    await base44.entities.InventoryItem.update(itemId, { stock: balanceAfter });
+    await base44.entities.InventoryItem.update(itemId, { stock: balanceAfter, environment: ENV });
 
     // Update local state
     setItems(prev => prev.map(i => i.id === itemId ? { ...i, stock: balanceAfter } : i));
@@ -172,7 +188,7 @@ export function TrainingProvider({ children }) {
   }, [actor, actorRole, addLog]);
 
   const updateOrderStatus = useCallback(async (orderId, status) => {
-    await base44.entities.PurchaseOrder.update(orderId, { status });
+    await base44.entities.PurchaseOrder.update(orderId, { status, environment: ENV });
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status } : o));
     const o = orders.find(x => x.id === orderId);
     addLog(`[ORDER] ${o?.order_number} → ${status}`, {
@@ -188,20 +204,21 @@ export function TrainingProvider({ children }) {
   // Blocker 8: includes AuditLog and ReceivingRecord clearing.
   const reset = useCallback(async () => {
     setLoading(true);
-    // Fetch all TRAINING-scoped records across every relevant entity
-    const [existingItems, existingMovements, existingOrders, existingAudit, existingReceiving] = await Promise.all([
-      base44.entities.InventoryItem.filter({ environment: ENV }, '', 500),
-      base44.entities.StockMovement.filter({ environment: ENV }, '', 500),
-      base44.entities.PurchaseOrder.filter({ environment: ENV }, '', 500),
-      base44.entities.AuditLog.filter({ environment: ENV }, '', 500),
-      base44.entities.ReceivingRecord.filter({ environment: ENV }, '', 500),
-    ]);
+    async function deleteAllTraining(entity) {
+      let batch = await entity.filter({ environment: ENV }, '', 500);
+      while (batch && batch.length > 0) {
+        await Promise.all(batch.map(record => entity.delete(record.id)));
+        if (batch.length < 500) break;
+        batch = await entity.filter({ environment: ENV }, '', 500);
+      }
+    }
+
     await Promise.all([
-      ...existingItems.map(i => base44.entities.InventoryItem.delete(i.id)),
-      ...existingMovements.map(m => base44.entities.StockMovement.delete(m.id)),
-      ...existingOrders.map(o => base44.entities.PurchaseOrder.delete(o.id)),
-      ...existingAudit.map(a => base44.entities.AuditLog.delete(a.id)),
-      ...existingReceiving.map(r => base44.entities.ReceivingRecord.delete(r.id)),
+      deleteAllTraining(base44.entities.InventoryItem),
+      deleteAllTraining(base44.entities.StockMovement),
+      deleteAllTraining(base44.entities.PurchaseOrder),
+      deleteAllTraining(base44.entities.AuditLog),
+      deleteAllTraining(base44.entities.ReceivingRecord),
     ]);
     // Re-seed fresh items
     const seeded = await base44.entities.InventoryItem.bulkCreate(TRAINING_SEED_DATA);

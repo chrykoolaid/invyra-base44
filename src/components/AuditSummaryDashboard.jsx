@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, Download, Filter, CheckCircle2, AlertCircle } from 'lucide-react';
+import { envFilter } from '@/lib/envFilter';
+import { RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 
 const complianceChecklist = [
   { id: 1, item: 'All inventory changes logged with user attribution', standard: 'ISO 9001:2015' },
@@ -22,8 +23,8 @@ export default function AuditSummaryDashboard() {
   const loadData = async () => {
     setLoading(true);
     const [logs, moves] = await Promise.all([
-      base44.entities.AuditLog.list('-created_date', 500),
-      base44.entities.StockMovement.list('-created_date', 500),
+      base44.entities.AuditLog.filter(envFilter(), '-created_date', 500),
+      base44.entities.StockMovement.filter(envFilter(), '-created_date', 500),
     ]);
 
     setAuditLogs(logs || []);

@@ -20,7 +20,15 @@
         "PRICE_UPDATE",
         "THRESHOLD_UPDATE",
         "SUPPLIER_UPDATE",
-        "QUANTITY_UPDATE"
+        "QUANTITY_UPDATE",
+        "STOCK_RECEIVE",
+        "STOCK_WASTE",
+        "STOCK_ADJUST",
+        "STOCK_SALE",
+        "STOCK_TRANSFER",
+        "STOCKTAKE_COMMIT",
+        "REVERSAL",
+        "ENVIRONMENT_BLOCKED"
       ],
       "description": "Type of change made"
     },
@@ -65,6 +73,18 @@
       ],
       "default": "LIVE",
       "description": "Environment partition this audit entry belongs to"
+    },
+    "action_type": {
+      "type": "string",
+      "description": "Specific workflow action that created the audit entry"
+    },
+    "linked_source_record": {
+      "type": "string",
+      "description": "Linked source workflow record or human-readable source reference"
+    },
+    "source_record_id": {
+      "type": "string",
+      "description": "Optional source entity id where available"
     }
   },
   "required": [

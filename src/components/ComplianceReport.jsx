@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function ComplianceReport() {
@@ -9,9 +10,9 @@ export default function ComplianceReport() {
   const loadData = async () => {
     setLoading(true);
     const [auditLogs, movements, receiving] = await Promise.all([
-      base44.entities.AuditLog.list('-created_date', 500),
-      base44.entities.StockMovement.list('-created_date', 500),
-      base44.entities.ReceivingRecord.list('-confirmed_at', 500),
+      base44.entities.AuditLog.filter(envFilter(), '-created_date', 500),
+      base44.entities.StockMovement.filter(envFilter(), '-created_date', 500),
+      base44.entities.ReceivingRecord.filter(envFilter(), '-confirmed_at', 500),
     ]);
 
     const compliance = {

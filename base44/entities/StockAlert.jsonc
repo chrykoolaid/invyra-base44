@@ -23,6 +23,16 @@
     "alert_sent_to": {
       "type": "string",
       "description": "Comma-separated list of emails notified"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE",
+      "description": "Environment partition this alert belongs to"
     }
   },
   "required": [

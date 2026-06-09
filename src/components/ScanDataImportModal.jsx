@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Upload, AlertCircle, Check } from 'lucide-react';
+import { X, AlertCircle, Check } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function ScanDataImportModal({ onClose, onImportSuccess }) {

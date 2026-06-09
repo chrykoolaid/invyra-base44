@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, AlertCircle, CheckCircle2, Clock, XCircle, Filter } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle2, Clock, XCircle } from 'lucide-react';
 
 const statusConfig = {
   success: { icon: CheckCircle2, color: 'bg-green-50 border-green-200 text-green-700' },

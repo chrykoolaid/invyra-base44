@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { RefreshCw } from 'lucide-react';
 
 export default function StockAgingReport() {
@@ -8,8 +9,8 @@ export default function StockAgingReport() {
 
   const loadData = async () => {
     setLoading(true);
-    const items = await base44.entities.InventoryItem.list('-created_date', 500);
-    const movements = await base44.entities.StockMovement.list('-created_date', 1000);
+    const items = await base44.entities.InventoryItem.filter(envFilter(), '-created_date', 500);
+    const movements = await base44.entities.StockMovement.filter(envFilter(), '-created_date', 1000);
 
     const now = new Date();
     const aging = items.map(item => {

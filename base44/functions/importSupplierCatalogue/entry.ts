@@ -31,12 +31,12 @@ Deno.serve(async (req) => {
 
       try {
         // Find existing item by SKU
-        const existing = await base44.entities.InventoryItem.filter({ sku });
+        const existing = await base44.entities.InventoryItem.filter({ sku, environment: 'LIVE' });
         const item = existing && existing.length > 0 ? existing[0] : null;
 
         if (item) {
           // Update existing item
-          const updates = {};
+          const updates = { environment: 'LIVE' };
           if (supplier) updates.preferred_supplier = supplier;
           if (unit_cost) {
             updates.cost_per_unit = parseFloat(unit_cost);
@@ -51,6 +51,11 @@ Deno.serve(async (req) => {
               new_value: String(unit_cost),
               changed_by: changedBy,
               notes: `Imported from supplier catalogue`,
+              actor_role: user?.role || user?.app_role || 'unknown',
+              source_module: 'Import Supplier Catalogue',
+              action_type: 'PRICE_UPDATE',
+              linked_source_record: item.id,
+              environment: 'LIVE',
             });
           }
           if (supplier && !item.preferred_supplier) {
@@ -65,6 +70,11 @@ Deno.serve(async (req) => {
               new_value: supplier,
               changed_by: changedBy,
               notes: `Imported from supplier catalogue`,
+              actor_role: user?.role || user?.app_role || 'unknown',
+              source_module: 'Import Supplier Catalogue',
+              action_type: 'SUPPLIER_UPDATE',
+              linked_source_record: item.id,
+              environment: 'LIVE',
             });
           }
 
@@ -80,6 +90,7 @@ Deno.serve(async (req) => {
             preferred_supplier: supplier || null,
             cost_per_unit: unit_cost ? parseFloat(unit_cost) : null,
             is_active: true,
+            environment: 'LIVE',
           });
 
           if (unit_cost) {
@@ -93,6 +104,11 @@ Deno.serve(async (req) => {
               new_value: String(unit_cost),
               changed_by: changedBy,
               notes: `Created from supplier catalogue import`,
+              actor_role: user?.role || user?.app_role || 'unknown',
+              source_module: 'Import Supplier Catalogue',
+              action_type: 'PRICE_UPDATE',
+              linked_source_record: newItem.id,
+              environment: 'LIVE',
             });
           }
         }

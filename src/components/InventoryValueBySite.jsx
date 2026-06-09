@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
+import { envFilter } from '@/lib/envFilter';
+import { RefreshCw } from 'lucide-react';
 
 export default function InventoryValueBySite() {
   const [siteValues, setSiteValues] = useState([]);
@@ -10,7 +11,7 @@ export default function InventoryValueBySite() {
   const loadData = async () => {
     setLoading(true);
     const [items, sites] = await Promise.all([
-      base44.entities.InventoryItem.list('', 500),
+      base44.entities.InventoryItem.filter(envFilter(), '', 500),
       base44.entities.Site.list('', 100),
     ]);
 

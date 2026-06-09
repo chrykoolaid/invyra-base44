@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { FlaskConical, Monitor, Receipt, RefreshCw } from 'lucide-react';
 import ServiceList from '@/components/pos/ServiceList';
 import RecipeEditor from '@/components/pos/RecipeEditor';
@@ -26,7 +27,7 @@ export default function POSMode() {
     setLoading(true);
     const [svcs, items] = await Promise.all([
       base44.entities.LaundryService.filter({ is_active: true }, 'name', 200),
-      base44.entities.InventoryItem.filter({ is_active: true }, 'name', 200),
+      base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 200),
     ]);
     setServices(svcs || []);
     setInventoryItems(items || []);

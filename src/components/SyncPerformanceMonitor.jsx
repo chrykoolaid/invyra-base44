@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { RefreshCw, TrendingUp, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { RefreshCw, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export default function SyncPerformanceMonitor() {
   const [metrics, setMetrics] = useState([]);

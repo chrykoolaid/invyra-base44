@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ChevronDown } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 
 const statusStyle = {
   'Complete':     'bg-green-50 text-green-700 border border-green-200',
@@ -27,7 +28,7 @@ export default function ReceivingLog() {
   const [warehouseNote, setWarehouseNote] = useState({});
 
   useEffect(() => {
-    base44.entities.ReceivingRecord.list('-confirmed_at', 50).then(data => {
+    base44.entities.ReceivingRecord.filter(envFilter(), '-confirmed_at', 50).then(data => {
       const sorted = (data || []).sort((a, b) => {
         // Prioritize: Overdue → Due soon → Already resolved
         const aDate = a.expected_resolution_date ? new Date(a.expected_resolution_date) : null;

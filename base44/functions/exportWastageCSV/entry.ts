@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const movements = await base44.entities.StockMovement.filter({ movement_type: 'WASTE' }, '-created_date', 500);
+    const movements = await base44.entities.StockMovement.filter({ environment: 'LIVE', movement_type: 'WASTE' }, '-created_date', 500);
 
     const rows = [['Date', 'SKU', 'Item Name', 'Quantity', 'Site', 'Source Ref', 'Notes', 'Posted By', 'Status']];
 

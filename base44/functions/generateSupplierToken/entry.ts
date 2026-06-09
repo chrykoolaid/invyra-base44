@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     const portalUrl = `${origin}/SupplierPortal?token=${token}`;
 
     // Fetch the order to get supplier email and order number
-    const orders = await base44.asServiceRole.entities.PurchaseOrder.filter({ id: order_id });
+    const orders = await base44.asServiceRole.entities.PurchaseOrder.filter({ id: order_id, environment: 'LIVE' });
     const order = orders?.[0];
 
     if (order?.supplier_email) {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, ChevronDown, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { envFilter, ENV_LIVE } from '@/lib/envFilter';
 import DraftOrderWorkspace from '@/components/DraftOrderWorkspace';
 import ActiveOrderWorkspace from '@/components/ActiveOrderWorkspace';
 import NewOrderModal from '@/components/NewOrderModal';
@@ -124,7 +125,7 @@ export default function Orders() {
 
   // Load live DB orders and merge/override static list
   const loadDbOrders = useCallback(async () => {
-    const dbOrders = await base44.entities.PurchaseOrder.list('-created_date', 100);
+    const dbOrders = await base44.entities.PurchaseOrder.filter(envFilter(), '-created_date', 100);
     if (dbOrders && dbOrders.length > 0) {
       const mapped = dbOrders.map(o => ({
         id: o.id,
@@ -180,6 +181,7 @@ export default function Orders() {
         status: submittedOrder.status,
         submitted_at: new Date().toISOString(),
         supplier_email: submittedOrder.supplier_email || SUPPLIER_EMAILS[submittedOrder.supplier] || '',
+        environment: ENV_LIVE,
       });
     }
     setDraftOrder(null);
@@ -190,7 +192,7 @@ export default function Orders() {
   const handleStatusChange = async (orderId, newStatus) => {
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
     if (typeof orderId === 'string' && orderId.length > 10) {
-      await base44.entities.PurchaseOrder.update(orderId, { status: newStatus });
+      await base44.entities.PurchaseOrder.update(orderId, { status: newStatus, environment: ENV_LIVE });
     }
     setActiveOrder(null);
   };

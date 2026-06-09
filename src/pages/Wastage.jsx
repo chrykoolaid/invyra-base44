@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowRight, BellRing, Download, Filter, History, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import {
   createAlertRule,
   evaluateAlertRules,
@@ -13,15 +14,12 @@ import {
   getAlertSummary,
   getBarcodeMappings,
   getGovernanceSummary,
-  getKpiSummary,
   getLastAlertEvaluation,
   getLiveKpiSummary,
   getReasonGovernanceRows,
   getReportingPrototype,
-  getSourcePosture,
   getUnresolvedScans,
   reasonOptions,
-  statusStyle,
 } from '../lib/wastageData.js';
 
 const statusTabs = [
@@ -252,7 +250,7 @@ export default function Wastage() {
 
   // Fetch live stock movements for wastage
   useEffect(() => {
-    base44.entities.StockMovement.filter({ movement_type: 'WASTE' }, '-created_date', 10).then(data => {
+    base44.entities.StockMovement.filter({ ...envFilter(), movement_type: 'WASTE' }, '-created_date', 10).then(data => {
       setLiveMovements(data || []);
     });
   }, [refreshTick]);

@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { ENV_LIVE } from '@/lib/envFilter';
+import { postInventoryMovement } from '@/lib/inventoryMovement';
 import { Upload, X, CheckCircle2, AlertTriangle, Download } from 'lucide-react';
 
 // Parse a CSV text into an array of {sku, stock} rows
@@ -73,9 +75,24 @@ export default function BulkStockUpload({ allItems, onClose, onDone }) {
     const toUpdate = preview.filter(r => r.match);
     if (toUpdate.length === 0) return;
     setApplying(true);
-    await Promise.all(
-      toUpdate.map(r => base44.entities.InventoryItem.update(r.match.id, { stock: r.stock }))
-    );
+    const user = await base44.auth.me();
+    for (const r of toUpdate) {
+      const diff = Number(r.stock) - Number(r.match.stock || 0);
+      if (diff === 0) continue;
+      await postInventoryMovement({
+        item: r.match,
+        movementType: 'ADJUST',
+        direction: diff > 0 ? 'IN' : 'OUT',
+        qty: Math.abs(diff),
+        sourceType: 'MANUAL',
+        sourceRef: `BULK-${Date.now().toString(36).toUpperCase()}`,
+        sourceModule: 'Bulk Stock Upload',
+        notes: 'Bulk stock upload adjustment',
+        siteId: r.match.site_id || '',
+        environment: ENV_LIVE,
+        user,
+      });
+    }
     setApplying(false);
     setResults({
       updated: toUpdate.length,

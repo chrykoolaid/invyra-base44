@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter, ENV_LIVE } from '@/lib/envFilter';
+import { postInventoryTransfer } from '@/lib/inventoryMovement';
 import { ArrowLeftRight, Plus, RefreshCw, ArrowRight, Trash2 } from 'lucide-react';
 
 export default function Transfers() {
@@ -20,8 +22,8 @@ export default function Transfers() {
     setLoading(true);
     const [siteData, itemData, movements] = await Promise.all([
       base44.entities.Site.filter({ is_active: true }),
-      base44.entities.InventoryItem.list('', 500),
-      base44.entities.StockMovement.filter({ source_type: 'TRANSFER' }),
+      base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500),
+      base44.entities.StockMovement.filter({ ...envFilter(), source_type: 'TRANSFER' }),
     ]);
     setSites(siteData || []);
     setItems(itemData || []);
@@ -54,31 +56,34 @@ export default function Transfers() {
 
     const ref = `TRF-${Date.now().toString(36).toUpperCase()}`;
     const user = await base44.auth.me();
-    const postedBy = user?.email || user?.full_name || 'Unknown';
+    const workingItems = new Map(items.map(item => [item.id, { ...item, stock_per_site: { ...(item.stock_per_site || {}) } }]));
 
-    for (const line of validLines) {
-      const item = items.find(i => i.id === line.item_id);
-      if (!item) continue;
-      const qty = Number(line.qty);
-      const stockPerSite = item.stock_per_site || {};
-      const fromBalance = stockPerSite[fromSite] ?? (item.stock || 0);
-      const toBalance = stockPerSite[toSite] ?? 0;
-      const newFromBalance = Math.max(0, fromBalance - qty);
-      const newToBalance = toBalance + qty;
-      const newStockPerSite = { ...stockPerSite, [fromSite]: newFromBalance, [toSite]: newToBalance };
-      const newTotalStock = Object.values(newStockPerSite).reduce((s, v) => s + (v || 0), 0);
-
-      await base44.entities.InventoryItem.update(item.id, { stock_per_site: newStockPerSite, stock: newTotalStock });
-      await base44.entities.StockMovement.create({
-        site_id: fromSite, item_id: item.id, sku: item.sku, item_name: item.name,
-        movement_type: 'TRANSFER_OUT', direction: 'OUT', qty, balance_after: newFromBalance,
-        source_ref: ref, source_type: 'TRANSFER', notes: notes || `Transfer to site`, status: 'POSTED', posted_by: postedBy,
-      });
-      await base44.entities.StockMovement.create({
-        site_id: toSite, item_id: item.id, sku: item.sku, item_name: item.name,
-        movement_type: 'TRANSFER_IN', direction: 'IN', qty, balance_after: newToBalance,
-        source_ref: ref, source_type: 'TRANSFER', notes: notes || `Transfer from site`, status: 'POSTED', posted_by: postedBy,
-      });
+    try {
+      for (const line of validLines) {
+        const item = workingItems.get(line.item_id);
+        if (!item) continue;
+        const result = await postInventoryTransfer({
+          item,
+          fromSite,
+          toSite,
+          qty: Number(line.qty),
+          sourceRef: ref,
+          notes,
+          environment: ENV_LIVE,
+          user,
+        });
+        const nextStockPerSite = {
+          ...(item.stock_per_site || {}),
+          [fromSite]: result.balance_after.from,
+          [toSite]: result.balance_after.to,
+        };
+        const nextTotal = Object.values(nextStockPerSite).reduce((sum, value) => sum + Number(value || 0), 0);
+        workingItems.set(item.id, { ...item, stock_per_site: nextStockPerSite, stock: nextTotal });
+      }
+    } catch (error) {
+      console.error('Transfer post failed', error);
+      setSaving(false);
+      return;
     }
 
     setSaving(false);

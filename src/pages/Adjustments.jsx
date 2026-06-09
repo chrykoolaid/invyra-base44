@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { envFilter } from '@/lib/envFilter';
+import { envFilter, ENV_LIVE } from '@/lib/envFilter';
+import { postInventoryMovement } from '@/lib/inventoryMovement';
 import { Plus, RefreshCw, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 const REASONS = [
@@ -53,7 +54,6 @@ export default function Adjustments() {
     if (!item) { setSaving(false); return; }
 
     const user = await base44.auth.me();
-    const postedBy = user?.email || user?.full_name || 'Unknown';
     const ref = `ADJ-${Date.now().toString(36).toUpperCase()}`;
     const adjustQty = Number(qty);
 
@@ -65,27 +65,25 @@ export default function Adjustments() {
       return;
     }
 
-    const newStock = direction === 'IN' ? currentStock + adjustQty : currentStock - adjustQty;
-
-    await base44.entities.InventoryItem.update(item.id, { stock: newStock });
-    await base44.entities.StockMovement.create({
-      site_id: item.site_id || '',
-      item_id: item.id,
-      sku: item.sku,
-      item_name: item.name,
-      movement_type: 'ADJUST',
-      direction,
-      qty: adjustQty,
-      balance_before: currentStock,
-      balance_after: newStock,
-      source_ref: ref,
-      source_type: 'MANUAL',
-      notes: `${reason}${notes ? ` — ${notes}` : ''}`,
-      status: 'POSTED',
-      posted_by: postedBy,
-      actor_role: user?.role ?? 'unknown',
-      environment: 'LIVE',
-    });
+    try {
+      await postInventoryMovement({
+        item,
+        movementType: 'ADJUST',
+        direction,
+        qty: adjustQty,
+        sourceType: 'MANUAL',
+        sourceRef: ref,
+        sourceModule: 'Adjustments',
+        notes: `${reason}${notes ? ` — ${notes}` : ''}`,
+        siteId: item.site_id || '',
+        environment: ENV_LIVE,
+        user,
+      });
+    } catch (error) {
+      console.error('Adjustment post failed', error);
+      setSaving(false);
+      return;
+    }
 
     setSaving(false);
     setShowForm(false);

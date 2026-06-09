@@ -24,7 +24,7 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { hasAccess, roleLabel, roleBadgeClass, ROUTE_PERMISSIONS } from '@/lib/permissions';
+import { hasAccess, roleLabel, roleBadgeClass } from '@/lib/permissions';
 
 // Nav items — each has a `minRole` that controls visibility
 const primaryNav = [

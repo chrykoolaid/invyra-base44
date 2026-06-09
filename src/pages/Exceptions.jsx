@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { AlertTriangle, RefreshCw, AlertCircle, Clock, Bell, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -14,9 +15,9 @@ export default function Exceptions() {
     setLoading(true);
 
     const [items, movements, receivingRecords] = await Promise.all([
-      base44.entities.InventoryItem.list('', 500),
-      base44.entities.StockMovement.list('-created_date', 500),
-      base44.entities.ReceivingRecord.filter({ status: 'Discrepancy' }),
+      base44.entities.InventoryItem.filter(envFilter(), '', 500),
+      base44.entities.StockMovement.filter(envFilter(), '-created_date', 500),
+      base44.entities.ReceivingRecord.filter({ ...envFilter(), status: 'Discrepancy' }),
     ]);
 
     const alerts = [];
@@ -98,7 +99,7 @@ export default function Exceptions() {
   };
 
   const loadAlertHistory = async () => {
-    const history = await base44.entities.StockAlert.list('-created_date', 20);
+    const history = await base44.entities.StockAlert.filter(envFilter(), '-created_date', 20);
     setAlertHistory(history || []);
   };
 

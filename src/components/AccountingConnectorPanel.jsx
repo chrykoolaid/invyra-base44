@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Loader2, Check, AlertCircle, PlugZap, Copy, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Check, PlugZap, Copy, Eye, EyeOff } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 export default function AccountingConnectorPanel() {
