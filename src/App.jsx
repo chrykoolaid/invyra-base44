@@ -18,7 +18,7 @@ import ReorderReview from './pages/ReorderReview';
 import Orders from './pages/Orders';
 import Receiving from './pages/Receiving';
 import DeliveryPortal from './pages/DeliveryPortal';
-import POSMode from './pages/POSMode';
+import POSMode from './pages/POSMode.jsx';
 import Payroll from './pages/Payroll';
 import TimeTracking from './pages/TimeTracking';
 import InventoryAdmin from './pages/InventoryAdmin';
