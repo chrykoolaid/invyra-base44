@@ -5,6 +5,10 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import { TrainingProvider } from '@/lib/TrainingContext';
+import TrainingStaff from './pages/training/TrainingStaff';
+import TrainingSupervisor from './pages/training/TrainingSupervisor';
+import TrainingManager from './pages/training/TrainingManager';
 
 import Layout from './components/Layout';
 import RoleGuard from './components/RoleGuard';
@@ -83,6 +87,10 @@ const AuthenticatedApp = () => {
         <Route path="/Adjustments"           element={<RoleGuard><Adjustments /></RoleGuard>} />
         <Route path="/Movements"             element={<RoleGuard><Movements /></RoleGuard>} />
         <Route path="/Exceptions"            element={<RoleGuard><Exceptions /></RoleGuard>} />
+        {/* Training routes — each wraps its own TrainingProvider so sessions are isolated */}
+        <Route path="/Training/Staff"      element={<TrainingProvider><TrainingStaff /></TrainingProvider>} />
+        <Route path="/Training/Supervisor" element={<TrainingProvider><TrainingSupervisor /></TrainingProvider>} />
+        <Route path="/Training/Manager"    element={<TrainingProvider><TrainingManager /></TrainingProvider>} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

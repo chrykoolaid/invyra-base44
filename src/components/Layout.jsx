@@ -21,6 +21,7 @@ import {
   ScrollText,
   AlertTriangle,
   LogOut,
+  FlaskConical,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { hasAccess, roleLabel, roleBadgeClass, ROUTE_PERMISSIONS } from '@/lib/permissions';
@@ -56,6 +57,12 @@ const adminNav = [
 const optionalNav = [
   { path: '/Payroll',      label: 'Payroll & Rostering', icon: Users,  minRole: 'manager' },
   { path: '/TimeTracking', label: 'Time Tracking',       icon: Clock,  minRole: 'manager' },
+];
+
+const trainingNav = [
+  { path: '/Training/Staff',      label: 'Staff Training',      icon: FlaskConical, minRole: 'staff'      },
+  { path: '/Training/Supervisor', label: 'Supervisor Training', icon: FlaskConical, minRole: 'supervisor' },
+  { path: '/Training/Manager',    label: 'Manager Training',    icon: FlaskConical, minRole: 'manager'    },
 ];
 
 function NavGroup({ label, items, location, userRole }) {
@@ -106,6 +113,7 @@ export default function Layout() {
           <NavGroup label="Operations" items={operationsNav} location={location} userRole={userRole} />
           <NavGroup label="Admin"      items={adminNav}      location={location} userRole={userRole} />
           <NavGroup label="Modules"    items={optionalNav}   location={location} userRole={userRole} />
+          <NavGroup label="Training"   items={trainingNav}   location={location} userRole={userRole} />
         </nav>
 
         {/* User identity footer */}

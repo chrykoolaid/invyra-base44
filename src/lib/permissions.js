@@ -32,8 +32,11 @@ export const ROUTE_PERMISSIONS = {
   '/Reports':            'manager',
   '/Payroll':            'manager',
   '/TimeTracking':       'manager',
-  '/InventoryAdmin':     'admin',
-  '/ExportsIntegrations':'admin',
+  '/InventoryAdmin':        'admin',
+  '/ExportsIntegrations':   'admin',
+  '/Training/Staff':        'staff',
+  '/Training/Supervisor':   'supervisor',
+  '/Training/Manager':      'manager',
 };
 
 const ROLE_RANK = { staff: 1, supervisor: 2, manager: 3, admin: 4 };
