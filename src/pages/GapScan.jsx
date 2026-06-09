@@ -5,16 +5,48 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { base44 } from '@/api/base44Client';
 import ScanDataImportModal from '@/components/ScanDataImportModal';
 
-const scanData = [
-  { sku: 'CHM-001', name: 'Premium Detergent 20L', systemStock: 5,   onHand: 4,   avgUse: 3.2, daysLeft: 1,  suggested: 20, risk: 'Critical', flag: 'Critical' },
-  { sku: 'MNT-001', name: 'Machine Descaler',      systemStock: 3,   onHand: 3,   avgUse: 1.0, daysLeft: 3,  suggested: 10, risk: 'Critical', flag: 'Critical' },
-  { sku: 'CHM-003', name: 'Bleach 5L',             systemStock: 10,  onHand: 12,  avgUse: 2.8, daysLeft: 4,  suggested: 18, risk: 'High',     flag: 'Watch'    },
-  { sku: 'CHM-004', name: 'Stain Remover 2L',      systemStock: 8,   onHand: 8,   avgUse: 1.5, daysLeft: 5,  suggested: 12, risk: 'High',     flag: 'Watch'    },
-  { sku: 'CHM-002', name: 'Fabric Softener 20L',   systemStock: 18,  onHand: 18,  avgUse: 2.1, daysLeft: 8,  suggested: 8,  risk: 'Medium',   flag: 'Watch'    },
-  { sku: 'PKG-002', name: 'Garment Tag Roll',       systemStock: 5,   onHand: 5,   avgUse: 0.4, daysLeft: 12, suggested: 4,  risk: 'Low',      flag: 'OK'       },
-  { sku: 'OPS-001', name: 'Gloves Disposable',      systemStock: 350, onHand: 340, avgUse: 18,  daysLeft: 18, suggested: 0,  risk: 'Low',      flag: 'OK'       },
-  { sku: 'PKG-001', name: 'Packaging Bag Large',    systemStock: 900, onHand: 900, avgUse: 42,  daysLeft: 21, suggested: 0,  risk: 'None',     flag: 'OK'       },
-];
+// Derive risk/flag from days left
+const getRiskAndFlag = (daysLeft, stock) => {
+  if (stock === 0)      return { risk: 'Critical', flag: 'Critical' };
+  if (daysLeft <= 3)    return { risk: 'Critical', flag: 'Critical' };
+  if (daysLeft <= 7)    return { risk: 'High',     flag: 'Watch'    };
+  if (daysLeft <= 14)   return { risk: 'Medium',   flag: 'Watch'    };
+  if (daysLeft <= 21)   return { risk: 'Low',      flag: 'OK'       };
+  return                       { risk: 'None',     flag: 'OK'       };
+};
+
+// Build scan rows from live inventory items + stock movements in the lookback window
+const buildScanData = (items, movements, lookbackDays) => {
+  const cutoff = Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
+
+  return items.map(item => {
+    // Sum outbound movements in the lookback window for avg use/day
+    const outbound = movements.filter(m =>
+      m.sku === item.sku &&
+      m.direction === 'OUT' &&
+      m.status === 'POSTED' &&
+      new Date(m.created_date).getTime() >= cutoff
+    );
+    const totalOut = outbound.reduce((s, m) => s + (m.qty ?? 0), 0);
+    const avgUse = lookbackDays > 0 ? Math.round((totalOut / lookbackDays) * 10) / 10 : 0;
+    const daysLeft = avgUse > 0 ? Math.round(item.stock / avgUse) : null;
+    const suggested = item.reorder_qty ?? 0;
+    const { risk, flag } = getRiskAndFlag(daysLeft ?? 999, item.stock);
+
+    return {
+      sku:         item.sku,
+      name:        item.name,
+      systemStock: item.stock,
+      onHand:      item.stock, // physical = system until a floor scan overrides it
+      avgUse,
+      daysLeft:    daysLeft ?? '—',
+      suggested:   item.stock === 0 || (daysLeft != null && daysLeft <= 14) ? suggested : 0,
+      risk,
+      flag,
+      unit:        item.unit,
+    };
+  });
+};
 
 const flagStyle = {
   Critical: 'bg-red-50 text-red-700 border border-red-200',
@@ -23,6 +55,7 @@ const flagStyle = {
 };
 
 const daysLeftStyle = (days) => {
+  if (typeof days !== 'number') return 'text-muted-foreground';
   if (days <= 3)  return 'text-red-600 font-semibold';
   if (days <= 7)  return 'text-amber-600 font-medium';
   return 'text-foreground';
@@ -49,6 +82,7 @@ export default function GapScan() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [highlightedRow, setHighlightedRow] = useState(null);
   const [results, setResults] = useState([]);
+  const [scanning, setScanning] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [importedFrom, setImportedFrom] = useState('');
@@ -56,13 +90,29 @@ export default function GapScan() {
   const [trendData] = useState(generateTrendData());
   const hasResults = results.length > 0;
 
-  const handleRunScan = () => {
-    setResults(scanData);
-    setSelected(new Set());
-    setShowExplanation(false);
-    setHighlightedRow(null);
-    setImportedFrom('');
+  const handleRunScan = async () => {
+    setScanning(true);
     setImportError('');
+    setImportedFrom('');
+    try {
+      const [items, movements] = await Promise.all([
+        base44.entities.InventoryItem.filter({ environment: 'LIVE', is_active: true }),
+        base44.entities.StockMovement.filter({ environment: 'LIVE' }, '-created_date', 500),
+      ]);
+      const data = buildScanData(items, movements, lookback);
+      // Sort: Critical first, then by daysLeft ascending
+      data.sort((a, b) => {
+        const order = { Critical: 0, High: 1, Medium: 2, Low: 3, None: 4 };
+        return (order[a.risk] ?? 5) - (order[b.risk] ?? 5);
+      });
+      setResults(data);
+      setSelected(new Set());
+      setShowExplanation(false);
+      setHighlightedRow(null);
+    } catch (e) {
+      setImportError(`Scan failed: ${e.message}`);
+    }
+    setScanning(false);
   };
 
   const handleImportFromScanner = async () => {
@@ -162,9 +212,10 @@ export default function GapScan() {
 
         <button
           onClick={handleRunScan}
-          className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+          disabled={scanning}
+          className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity disabled:opacity-60"
         >
-          <Play size={12} /> Run Scan
+          <Play size={12} /> {scanning ? 'Scanning…' : 'Run Scan'}
         </button>
 
         <button
