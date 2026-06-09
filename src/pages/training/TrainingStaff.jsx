@@ -78,7 +78,8 @@ function POSTask() {
 
 function WasteTask() {
   const { items, adjustStock } = useTraining();
-  const [selectedId, setSelectedId] = useState(items[2]?.id ?? items[0]?.id);
+  // Blocker 9: derive default from loaded DB items by SKU, not array index
+  const [selectedId, setSelectedId] = useState(() => items.find(i => i.sku === 'CHM-003')?.id ?? items[0]?.id ?? '');
   const [qty, setQty] = useState(1);
   const [reason, setReason] = useState('Expired');
   const [done, setDone] = useState(false);

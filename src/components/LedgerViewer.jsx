@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { RefreshCw, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 const TYPE_COLORS = {
@@ -41,7 +42,8 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
 
   const load = async () => {
     setLoading(true);
-    const rows = await base44.entities.StockMovement.list('-created_date', 200);
+    // LIVE-only: exclude TRAINING and TEST movements from the production ledger
+    const rows = await base44.entities.StockMovement.filter(envFilter(), '-created_date', 200);
     setMovements(rows || []);
     setLastRefresh(new Date());
     setLoading(false);

@@ -18,9 +18,10 @@ const TASKS = [
 
 function ReceiveTask() {
   const { items, adjustStock } = useTraining();
-  const [lines, setLines] = useState([
-    { itemId: items.find(i => i.sku === 'CHM-001')?.id, expected: 20, received: '' },
-    { itemId: items.find(i => i.sku === 'CHM-004')?.id, expected: 12, received: '' },
+  // Blocker 9: derive defaults from loaded DB items, not hardcoded IDs
+  const [lines, setLines] = useState(() => [
+    { itemId: items.find(i => i.sku === 'CHM-001')?.id ?? null, expected: 20, received: '' },
+    { itemId: items.find(i => i.sku === 'CHM-004')?.id ?? null, expected: 12, received: '' },
   ]);
   const [done, setDone] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -160,7 +161,8 @@ function TransferTask() {
   // TRANSFER-001 fix: capture stockSnapshot BEFORE posting either leg so both
   // movements have accurate balance_before values and global stock stays unchanged.
   const { items, adjustStock } = useTraining();
-  const [itemId, setItemId] = useState(() => items.find(i => i.sku === 'OPS-001')?.id ?? items[0]?.id);
+  // Blocker 9: lazy-init from DB items to avoid undefined before load
+  const [itemId, setItemId] = useState(() => items.find(i => i.sku === 'OPS-001')?.id ?? items[0]?.id ?? '');
   const [qty, setQty] = useState(100);
   const [done, setDone] = useState(false);
   const [posting, setPosting] = useState(false);
@@ -251,7 +253,8 @@ function TransferTask() {
 
 function AdjustTask() {
   const { items, adjustStock } = useTraining();
-  const [itemId, setItemId] = useState(() => items.find(i => i.sku === 'CHM-002')?.id ?? items[0]?.id);
+  // Blocker 9: lazy-init from DB items
+  const [itemId, setItemId] = useState(() => items.find(i => i.sku === 'CHM-002')?.id ?? items[0]?.id ?? '');
   const [qty, setQty] = useState(2);
   const [direction, setDirection] = useState('OUT');
   const [done, setDone] = useState(false);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import {
   Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History, Upload, X
 } from 'lucide-react';
@@ -33,7 +34,7 @@ export default function Inventory() {
 
   const loadItems = useCallback(async () => {
     setLoading(true);
-    const rows = await base44.entities.InventoryItem.filter({ is_active: true }, '-updated_date', 200);
+    const rows = await base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, '-updated_date', 200);
     setItems(rows || []);
     setLoading(false);
   }, []);
@@ -75,8 +76,8 @@ export default function Inventory() {
     const changedBy = user?.email || user?.full_name || 'unknown';
 
     await base44.entities.InventoryItem.update(editingPrice, { cost_per_unit: price });
-    
-    // Log the audit entry
+
+    // Log the audit entry — scoped to LIVE environment
     await base44.entities.AuditLog.create({
       item_id: editingPrice,
       sku: item.sku,
@@ -86,6 +87,9 @@ export default function Inventory() {
       old_value: String(item.cost_per_unit || ''),
       new_value: String(price || ''),
       changed_by: changedBy,
+      actor_role: (await base44.auth.me())?.role ?? 'unknown',
+      source_module: 'Inventory',
+      environment: 'LIVE',
     });
 
     setItems(prev => prev.map(i => i.id === editingPrice ? { ...i, cost_per_unit: price } : i));

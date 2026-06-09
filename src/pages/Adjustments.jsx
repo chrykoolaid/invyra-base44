@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { Plus, RefreshCw, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 const REASONS = [
@@ -29,9 +30,10 @@ export default function Adjustments() {
 
   const loadData = async () => {
     setLoading(true);
+    // Filter to LIVE environment only — exclude TRAINING/TEST records
     const [itemData, movements] = await Promise.all([
-      base44.entities.InventoryItem.list('', 500),
-      base44.entities.StockMovement.filter({ movement_type: 'ADJUST' }),
+      base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500),
+      base44.entities.StockMovement.filter({ ...envFilter(), movement_type: 'ADJUST' }, '-created_date', 200),
     ]);
     setItems(itemData || []);
     setAdjustments((movements || []).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
@@ -56,9 +58,14 @@ export default function Adjustments() {
     const adjustQty = Number(qty);
 
     const currentStock = item.stock || 0;
-    const newStock = direction === 'IN'
-      ? currentStock + adjustQty
-      : Math.max(0, currentStock - adjustQty);
+
+    // Blocker 6 fix: block over-deduction — do not silently clamp to zero
+    if (direction === 'OUT' && adjustQty > currentStock) {
+      setSaving(false);
+      return;
+    }
+
+    const newStock = direction === 'IN' ? currentStock + adjustQty : currentStock - adjustQty;
 
     await base44.entities.InventoryItem.update(item.id, { stock: newStock });
     await base44.entities.StockMovement.create({
@@ -69,12 +76,15 @@ export default function Adjustments() {
       movement_type: 'ADJUST',
       direction,
       qty: adjustQty,
+      balance_before: currentStock,
       balance_after: newStock,
       source_ref: ref,
       source_type: 'MANUAL',
       notes: `${reason}${notes ? ` — ${notes}` : ''}`,
       status: 'POSTED',
       posted_by: postedBy,
+      actor_role: user?.role ?? 'unknown',
+      environment: 'LIVE',
     });
 
     setSaving(false);
@@ -131,6 +141,13 @@ export default function Adjustments() {
             </div>
           )}
 
+          {/* Over-deduction warning */}
+          {direction === 'OUT' && selectedItem && qty && Number(qty) > (items.find(i => i.id === selectedItem)?.stock || 0) && (
+            <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+              ⛔ Over-deduction blocked: qty {qty} exceeds on-hand stock of {items.find(i => i.id === selectedItem)?.stock ?? 0}. Reduce quantity.
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Quantity</label>
@@ -148,7 +165,7 @@ export default function Adjustments() {
             <button onClick={() => setShowForm(false)} className="h-9 px-4 text-sm border border-border rounded-xl hover:bg-muted">Cancel</button>
             <button
               onClick={handleSubmit}
-              disabled={saving || !selectedItem || !reason || !qty || Number(qty) <= 0}
+              disabled={saving || !selectedItem || !reason || !qty || Number(qty) <= 0 || (direction === 'OUT' && Number(qty) > (items.find(i => i.id === selectedItem)?.stock || 0))}
               className="h-9 px-5 text-sm bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-40 font-medium"
             >
               {saving ? 'Posting…' : 'Post Adjustment'}

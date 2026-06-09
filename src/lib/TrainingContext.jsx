@@ -93,7 +93,7 @@ export function TrainingProvider({ children }) {
       throw new Error(errMsg);
     }
 
-    // Persist movement to real DB with full audit fields
+    // Persist movement to real DB with full audit fields (Blocker 2: formal AuditLog record)
     const movement = await base44.entities.StockMovement.create({
       site_id: item.site_id || TRAINING_SITE_ID,
       item_id: itemId,
@@ -110,6 +110,23 @@ export function TrainingProvider({ children }) {
       status: 'POSTED',
       posted_by: actor?.email ?? 'training-user',
       actor_role: actorRole,
+      environment: ENV,
+    });
+
+    // Persist formal AuditLog entry — Blocker 2
+    await base44.entities.AuditLog.create({
+      item_id: itemId,
+      sku: item.sku,
+      item_name: item.name,
+      change_type: 'QUANTITY_UPDATE',
+      field_name: 'stock',
+      old_value: String(balanceBefore),
+      new_value: String(balanceAfter),
+      changed_by: actor?.email ?? 'training-user',
+      actor_role: actorRole,
+      source_module: `Training/${movementType}`,
+      linked_movement_id: movement.id,
+      notes: `[TRAINING] ${notes}`,
       environment: ENV,
     });
 
@@ -167,19 +184,24 @@ export function TrainingProvider({ children }) {
   }, [orders, actor, actorRole, addLog]);
 
   // ─── reset ────────────────────────────────────────────────────────────────
-  // Deletes all TRAINING-scoped records from DB and re-seeds fresh ones.
+  // Deletes ALL TRAINING-scoped records from DB (all entity types) and re-seeds.
+  // Blocker 8: includes AuditLog and ReceivingRecord clearing.
   const reset = useCallback(async () => {
     setLoading(true);
-    // Delete all existing TRAINING records
-    const [existingItems, existingMovements, existingOrders] = await Promise.all([
+    // Fetch all TRAINING-scoped records across every relevant entity
+    const [existingItems, existingMovements, existingOrders, existingAudit, existingReceiving] = await Promise.all([
       base44.entities.InventoryItem.filter({ environment: ENV }, '', 500),
       base44.entities.StockMovement.filter({ environment: ENV }, '', 500),
       base44.entities.PurchaseOrder.filter({ environment: ENV }, '', 500),
+      base44.entities.AuditLog.filter({ environment: ENV }, '', 500),
+      base44.entities.ReceivingRecord.filter({ environment: ENV }, '', 500),
     ]);
     await Promise.all([
       ...existingItems.map(i => base44.entities.InventoryItem.delete(i.id)),
       ...existingMovements.map(m => base44.entities.StockMovement.delete(m.id)),
       ...existingOrders.map(o => base44.entities.PurchaseOrder.delete(o.id)),
+      ...existingAudit.map(a => base44.entities.AuditLog.delete(a.id)),
+      ...existingReceiving.map(r => base44.entities.ReceivingRecord.delete(r.id)),
     ]);
     // Re-seed fresh items
     const seeded = await base44.entities.InventoryItem.bulkCreate(TRAINING_SEED_DATA);
