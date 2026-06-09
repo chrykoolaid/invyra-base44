@@ -60,6 +60,16 @@ function DraftPOTask() {
         if (!bySupplier[sup]) bySupplier[sup] = [];
         bySupplier[sup].push({ sku: i.sku, name: i.name, qty: i.reorder_qty ?? 10, unit_cost: i.cost_per_unit ?? 0 });
       });
+
+      // Deduplication guard — same logic as DedupTask (INV-VP1-MGR-001)
+      const existingDraftSuppliers = new Set(
+        orders.filter(o => o.status === 'Draft').map(o => o.supplier)
+      );
+      const duplicates = Object.keys(bySupplier).filter(sup => existingDraftSuppliers.has(sup));
+      if (duplicates.length > 0) {
+        throw new Error(`Duplicate draft PO blocked: open draft(s) already exist for: ${duplicates.join(', ')}. Reset training or submit/cancel existing drafts first.`);
+      }
+
       const newPOs = [];
       for (const [sup, lines] of Object.entries(bySupplier)) {
         const po = await createDraftOrder(sup, lines);
