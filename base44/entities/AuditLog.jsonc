@@ -28,7 +28,9 @@
         "STOCK_TRANSFER",
         "STOCKTAKE_COMMIT",
         "REVERSAL",
-        "ENVIRONMENT_BLOCKED"
+        "ENVIRONMENT_BLOCKED",
+        "ITEM_CREATE",
+        "ITEM_UPDATE"
       ],
       "description": "Type of change made"
     },
