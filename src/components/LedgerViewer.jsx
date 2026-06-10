@@ -149,15 +149,15 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
               <col className="w-[8%]" />
               <col className="w-[8%]" />
               <col className="w-[10%]" />
-              <col className="w-[12%]" />
-              <col className="w-[7%]" />
+              <col className="w-[10%]" />
+              <col className="w-[9%]" />
             </colgroup>
             <thead className="bg-muted/20 text-muted-foreground text-[11px] uppercase tracking-[0.16em]">
               <tr>
                 {['Date / Time', 'Type', 'Item', 'Qty', 'Balance', 'Source', 'Reference'].map(h => (
                   <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
                 ))}
-                <th className="text-right pl-3 pr-6 py-2.5 font-medium whitespace-nowrap">Details</th>
+                <th className="text-center px-4 pr-8 py-2.5 font-medium whitespace-nowrap">Details</th>
               </tr>
             </thead>
             <tbody>
@@ -223,11 +223,11 @@ function FragmentRow({ movement: m, rowIndex, rowKeyValue, isExpanded, onToggle 
         <td className="px-4 py-2.5 align-middle min-w-0">
           <p className="text-xs text-muted-foreground font-mono truncate" title={m.source_ref || ''}>{shortRef(m.source_ref)}</p>
         </td>
-        <td className="pl-3 pr-6 py-2.5 align-middle whitespace-nowrap text-right">
+        <td className="px-4 pr-8 py-2.5 align-middle whitespace-nowrap text-center">
           <button
             type="button"
             onClick={() => onToggle(rowKeyValue)}
-            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="inline-flex items-center justify-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             aria-expanded={isExpanded}
           >
             {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
