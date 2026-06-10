@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter } from '@/lib/envFilter';
-import { RefreshCw, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import {
+  RefreshCw,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  ChevronDown,
+  ChevronRight,
+} from 'lucide-react';
 
 const TYPE_COLORS = {
   RECEIVE:      'bg-green-50 text-green-700 border-green-200',
@@ -33,12 +39,34 @@ function formatDate(iso) {
   });
 }
 
+function shortRef(ref) {
+  if (!ref) return '—';
+  if (ref.length <= 14) return ref;
+  return `${ref.slice(0, 11)}…`;
+}
+
+function shortUser(user) {
+  if (!user) return '—';
+  const [name] = user.split('@');
+  if (!name) return user;
+  if (name.length <= 18) return name;
+  return `${name.slice(0, 18)}…`;
+}
+
+function noteSummary(note) {
+  if (!note) return '—';
+  const [summary] = note.split('—');
+  const clean = summary.trim();
+  return clean || note;
+}
+
 export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('All');
   const [skuFilter, setSkuFilter] = useState(defaultSku);
   const [lastRefresh, setLastRefresh] = useState(null);
+  const [expandedRows, setExpandedRows] = useState({});
 
   const load = async () => {
     setLoading(true);
@@ -61,6 +89,10 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
   const totals = {
     in:  filtered.filter(m => m.direction === 'IN').reduce((s, m) => s + (m.qty || 0), 0),
     out: filtered.filter(m => m.direction === 'OUT').reduce((s, m) => s + (m.qty || 0), 0),
+  };
+
+  const toggleExpanded = rowKey => {
+    setExpandedRows(prev => ({ ...prev, [rowKey]: !prev[rowKey] }));
   };
 
   return (
@@ -110,60 +142,48 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border overflow-hidden">
+      <div className="rounded-2xl border border-border overflow-hidden bg-card">
         {loading ? (
           <div className="py-12 text-center text-sm text-muted-foreground">Loading ledger…</div>
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-sm text-muted-foreground">No movements found. Confirm a receiving or approve a wastage event to post the first entries.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[860px]">
-              <thead className="bg-muted/20 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
-                <tr>
-                  {['Timestamp', 'Type', 'Dir', 'SKU / Item', 'Qty', 'Balance After', 'Source', 'Ref', 'Posted By', 'Notes'].map(h => (
-                    <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((m, i) => (
-                  <tr key={m.id} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-muted-foreground">{formatDate(m.created_date)}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      <span className={`inline-flex text-[11px] px-2 py-0.5 rounded-full border font-medium ${TYPE_COLORS[m.movement_type] || 'bg-muted text-muted-foreground border-border'}`}>
-                        {m.movement_type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      {m.direction === 'IN'
-                        ? <ArrowUpCircle size={16} className="text-green-600" />
-                        : <ArrowDownCircle size={16} className="text-red-500" />}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <p className="font-medium text-foreground">{m.item_name || '—'}</p>
-                      <p className="text-[11px] text-muted-foreground font-mono">{m.sku || '—'}</p>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap font-semibold">
-                      <span className={m.direction === 'IN' ? 'text-green-700' : 'text-red-600'}>
-                        {m.direction === 'IN' ? '+' : '-'}{m.qty}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-foreground">{m.balance_after ?? '—'}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap">
-                      {m.source_type && (
-                        <span className={`inline-flex text-[11px] px-2 py-0.5 rounded-full border font-medium ${SOURCE_COLORS[m.source_type] || 'bg-muted text-muted-foreground border-border'}`}>
-                          {m.source_type}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-muted-foreground font-mono">{m.source_ref || '—'}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-muted-foreground">{m.posted_by || '—'}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground max-w-[200px] truncate">{m.notes || '—'}</td>
-                  </tr>
+          <table className="w-full table-fixed text-sm">
+            <colgroup>
+              <col className="w-[13%]" />
+              <col className="w-[11%]" />
+              <col className="w-[28%]" />
+              <col className="w-[9%]" />
+              <col className="w-[9%]" />
+              <col className="w-[11%]" />
+              <col className="w-[12%]" />
+              <col className="w-[7%]" />
+            </colgroup>
+            <thead className="bg-muted/20 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+              <tr>
+                {['Date / Time', 'Type', 'Item', 'Qty', 'Balance', 'Source', 'Reference', 'Details'].map(h => (
+                  <th key={h} className="text-left px-4 py-3 font-medium whitespace-nowrap">{h}</th>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((m, i) => {
+                const rowKey = m.id || `${m.sku}-${m.created_date}-${i}`;
+                const isExpanded = !!expandedRows[rowKey];
+
+                return (
+                  <FragmentRow
+                    key={rowKey}
+                    movement={m}
+                    rowIndex={i}
+                    rowKeyValue={rowKey}
+                    isExpanded={isExpanded}
+                    onToggle={toggleExpanded}
+                  />
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 
@@ -171,5 +191,82 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
         <p className="text-xs text-muted-foreground">{filtered.length} row{filtered.length !== 1 ? 's' : ''} shown</p>
       )}
     </div>
+  );
+}
+
+function FragmentRow({ movement: m, rowIndex, rowKeyValue, isExpanded, onToggle }) {
+  return (
+    <>
+      <tr className={`border-t border-border ${rowIndex % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
+        <td className="px-4 py-3 align-top whitespace-nowrap text-xs text-muted-foreground">{formatDate(m.created_date)}</td>
+        <td className="px-4 py-3 align-top whitespace-nowrap">
+          <div className="flex items-center gap-2">
+            {m.direction === 'IN'
+              ? <ArrowUpCircle size={15} className="shrink-0 text-green-600" />
+              : <ArrowDownCircle size={15} className="shrink-0 text-red-500" />}
+            <span className={`inline-flex max-w-full truncate text-[11px] px-2 py-0.5 rounded-full border font-medium ${TYPE_COLORS[m.movement_type] || 'bg-muted text-muted-foreground border-border'}`}>
+              {m.movement_type || '—'}
+            </span>
+          </div>
+        </td>
+        <td className="px-4 py-3 align-top min-w-0">
+          <p className="font-medium text-foreground truncate">{m.item_name || '—'}</p>
+          <p className="text-[11px] text-muted-foreground font-mono truncate">{m.sku || '—'}</p>
+        </td>
+        <td className="px-4 py-3 align-top whitespace-nowrap font-semibold">
+          <span className={m.direction === 'IN' ? 'text-green-700' : 'text-red-600'}>
+            {m.direction === 'IN' ? '+' : '-'}{m.qty}
+          </span>
+        </td>
+        <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{m.balance_after ?? '—'}</td>
+        <td className="px-4 py-3 align-top whitespace-nowrap">
+          {m.source_type ? (
+            <span className={`inline-flex max-w-full truncate text-[11px] px-2 py-0.5 rounded-full border font-medium ${SOURCE_COLORS[m.source_type] || 'bg-muted text-muted-foreground border-border'}`}>
+              {m.source_type}
+            </span>
+          ) : '—'}
+        </td>
+        <td className="px-4 py-3 align-top min-w-0">
+          <p className="text-xs text-muted-foreground font-mono truncate" title={m.source_ref || ''}>{shortRef(m.source_ref)}</p>
+          <p className="text-[11px] text-muted-foreground truncate" title={m.notes || ''}>{noteSummary(m.notes)}</p>
+        </td>
+        <td className="px-4 py-3 align-top whitespace-nowrap">
+          <button
+            type="button"
+            onClick={() => onToggle(rowKeyValue)}
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            aria-expanded={isExpanded}
+          >
+            {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            View
+          </button>
+        </td>
+      </tr>
+      {isExpanded && (
+        <tr className="border-t border-border bg-muted/10">
+          <td colSpan={8} className="px-4 py-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+              <div>
+                <p className="font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">Posted by</p>
+                <p className="text-foreground break-all">{m.posted_by || '—'}</p>
+                {m.posted_by && <p className="text-muted-foreground">Shown as {shortUser(m.posted_by)}</p>}
+              </div>
+              <div>
+                <p className="font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">Full reference</p>
+                <p className="font-mono text-foreground break-all">{m.source_ref || '—'}</p>
+              </div>
+              <div>
+                <p className="font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">Direction</p>
+                <p className="text-foreground">{m.direction || '—'}</p>
+              </div>
+              <div>
+                <p className="font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">Notes</p>
+                <p className="text-foreground break-words">{m.notes || '—'}</p>
+              </div>
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
