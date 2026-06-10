@@ -6,7 +6,6 @@ import {
   Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History, Upload, X
 } from 'lucide-react';
 import BulkStockUpload from '@/components/BulkStockUpload';
-import TransferModal from '@/components/TransferModal';
 import StockHistoryModal from '@/components/StockHistoryModal';
 
 const actions = [
@@ -337,7 +336,6 @@ export default function Inventory() {
   const [selected, setSelected] = useState(new Set());
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showItemMaster, setShowItemMaster] = useState(false);
-  const [showTransfer, setShowTransfer] = useState(false);
   const [showStockHistory, setShowStockHistory] = useState(false);
   const [editingPrice, setEditingPrice] = useState(null);
   const [priceInput, setPriceInput] = useState('');
@@ -431,14 +429,6 @@ export default function Inventory() {
         />
       )}
 
-      {showTransfer && (
-        <TransferModal
-          allItems={items}
-          onClose={() => setShowTransfer(false)}
-          onDone={loadItems}
-        />
-      )}
-
       {showBulkUpload && (
         <BulkStockUpload
           allItems={items}
@@ -490,7 +480,7 @@ export default function Inventory() {
             onClick={
               label === 'Add / Update Item' ? () => setShowItemMaster(true) :
               label === 'Reload' ? loadItems :
-              label === 'Transfer' ? () => setShowTransfer(true) :
+              label === 'Transfer' ? () => navigate('/Transfers') :
               label === 'Wastage' ? () => {
                 const selectedItems = items.filter(i => selected.has(i.id));
                 const params = selectedItems.length === 1
