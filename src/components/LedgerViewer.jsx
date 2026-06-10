@@ -53,12 +53,6 @@ function shortUser(user) {
   return `${name.slice(0, 18)}…`;
 }
 
-function noteSummary(note) {
-  if (!note) return '—';
-  const [summary] = note.split('—');
-  const clean = summary.trim();
-  return clean || note;
-}
 
 export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
   const [movements, setMovements] = useState([]);
@@ -96,24 +90,20 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Summary strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="rounded-2xl border border-border bg-card px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Total movements</p>
-          <p className="text-lg font-semibold text-foreground">{filtered.length}</p>
+    <div className="space-y-3">
+      {/* Compact summary strip */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="rounded-xl border border-border bg-card px-4 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-0.5">Total movements</p>
+          <p className="text-lg font-semibold leading-tight text-foreground">{filtered.length}</p>
         </div>
-        <div className="rounded-2xl border border-border bg-card px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Total IN qty</p>
-          <p className="text-lg font-semibold text-green-700">{totals.in.toLocaleString()}</p>
+        <div className="rounded-xl border border-border bg-card px-4 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-0.5">Total IN qty</p>
+          <p className="text-lg font-semibold leading-tight text-green-700">{totals.in.toLocaleString()}</p>
         </div>
-        <div className="rounded-2xl border border-border bg-card px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Total OUT qty</p>
-          <p className="text-lg font-semibold text-red-700">{totals.out.toLocaleString()}</p>
-        </div>
-        <div className="rounded-2xl border border-border bg-card px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Last refreshed</p>
-          <p className="text-sm font-medium text-muted-foreground">{lastRefresh ? lastRefresh.toLocaleTimeString('en-GB') : '—'}</p>
+        <div className="rounded-xl border border-border bg-card px-4 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-0.5">Total OUT qty</p>
+          <p className="text-lg font-semibold leading-tight text-red-700">{totals.out.toLocaleString()}</p>
         </div>
       </div>
 
@@ -133,16 +123,19 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
         >
           {ALL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
+        <div className="ml-auto text-xs text-muted-foreground">
+          Last refreshed: <span className="font-medium text-foreground">{lastRefresh ? lastRefresh.toLocaleTimeString('en-GB') : '—'}</span>
+        </div>
         <button
           onClick={load}
-          className="ml-auto flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
+          className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
         >
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
         </button>
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-border overflow-hidden bg-card">
+      <div className="rounded-xl border border-border overflow-hidden bg-card">
         {loading ? (
           <div className="py-12 text-center text-sm text-muted-foreground">Loading ledger…</div>
         ) : filtered.length === 0 ? (
@@ -152,18 +145,19 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
             <colgroup>
               <col className="w-[13%]" />
               <col className="w-[11%]" />
-              <col className="w-[28%]" />
-              <col className="w-[9%]" />
-              <col className="w-[9%]" />
-              <col className="w-[11%]" />
+              <col className="w-[31%]" />
+              <col className="w-[8%]" />
+              <col className="w-[8%]" />
+              <col className="w-[10%]" />
               <col className="w-[12%]" />
               <col className="w-[7%]" />
             </colgroup>
-            <thead className="bg-muted/20 text-muted-foreground text-[11px] uppercase tracking-[0.18em]">
+            <thead className="bg-muted/20 text-muted-foreground text-[11px] uppercase tracking-[0.16em]">
               <tr>
-                {['Date / Time', 'Type', 'Item', 'Qty', 'Balance', 'Source', 'Reference', 'Details'].map(h => (
-                  <th key={h} className="text-left px-4 py-3 font-medium whitespace-nowrap">{h}</th>
+                {['Date / Time', 'Type', 'Item', 'Qty', 'Balance', 'Source', 'Reference'].map(h => (
+                  <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
                 ))}
+                <th className="text-right pl-3 pr-6 py-2.5 font-medium whitespace-nowrap">Details</th>
               </tr>
             </thead>
             <tbody>
@@ -198,8 +192,8 @@ function FragmentRow({ movement: m, rowIndex, rowKeyValue, isExpanded, onToggle 
   return (
     <>
       <tr className={`border-t border-border ${rowIndex % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
-        <td className="px-4 py-3 align-top whitespace-nowrap text-xs text-muted-foreground">{formatDate(m.created_date)}</td>
-        <td className="px-4 py-3 align-top whitespace-nowrap">
+        <td className="px-4 py-2.5 align-middle whitespace-nowrap text-xs text-muted-foreground">{formatDate(m.created_date)}</td>
+        <td className="px-4 py-2.5 align-middle whitespace-nowrap">
           <div className="flex items-center gap-2">
             {m.direction === 'IN'
               ? <ArrowUpCircle size={15} className="shrink-0 text-green-600" />
@@ -209,42 +203,41 @@ function FragmentRow({ movement: m, rowIndex, rowKeyValue, isExpanded, onToggle 
             </span>
           </div>
         </td>
-        <td className="px-4 py-3 align-top min-w-0">
+        <td className="px-4 py-2.5 align-middle min-w-0">
           <p className="font-medium text-foreground truncate">{m.item_name || '—'}</p>
           <p className="text-[11px] text-muted-foreground font-mono truncate">{m.sku || '—'}</p>
         </td>
-        <td className="px-4 py-3 align-top whitespace-nowrap font-semibold">
+        <td className="px-4 py-2.5 align-middle whitespace-nowrap font-semibold">
           <span className={m.direction === 'IN' ? 'text-green-700' : 'text-red-600'}>
             {m.direction === 'IN' ? '+' : '-'}{m.qty}
           </span>
         </td>
-        <td className="px-4 py-3 align-top whitespace-nowrap text-foreground">{m.balance_after ?? '—'}</td>
-        <td className="px-4 py-3 align-top whitespace-nowrap">
+        <td className="px-4 py-2.5 align-middle whitespace-nowrap text-foreground">{m.balance_after ?? '—'}</td>
+        <td className="px-4 py-2.5 align-middle whitespace-nowrap">
           {m.source_type ? (
             <span className={`inline-flex max-w-full truncate text-[11px] px-2 py-0.5 rounded-full border font-medium ${SOURCE_COLORS[m.source_type] || 'bg-muted text-muted-foreground border-border'}`}>
               {m.source_type}
             </span>
           ) : '—'}
         </td>
-        <td className="px-4 py-3 align-top min-w-0">
+        <td className="px-4 py-2.5 align-middle min-w-0">
           <p className="text-xs text-muted-foreground font-mono truncate" title={m.source_ref || ''}>{shortRef(m.source_ref)}</p>
-          <p className="text-[11px] text-muted-foreground truncate" title={m.notes || ''}>{noteSummary(m.notes)}</p>
         </td>
-        <td className="px-4 py-3 align-top whitespace-nowrap">
+        <td className="pl-3 pr-6 py-2.5 align-middle whitespace-nowrap text-right">
           <button
             type="button"
             onClick={() => onToggle(rowKeyValue)}
-            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             aria-expanded={isExpanded}
           >
-            {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            View
+            {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+            Details
           </button>
         </td>
       </tr>
       {isExpanded && (
         <tr className="border-t border-border bg-muted/10">
-          <td colSpan={8} className="px-4 py-3">
+          <td colSpan={8} className="px-4 py-2.5">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
               <div>
                 <p className="font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-1">Posted by</p>
