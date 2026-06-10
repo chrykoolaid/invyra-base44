@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Play, Download, Lightbulb, Upload, AlertCircle, ScanLine } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -61,16 +61,23 @@ const daysLeftStyle = (days) => {
   return 'text-foreground';
 };
 
-// Mock 30-day missing items trend data
-const generateTrendData = () => {
+// Build real 30-day trend from OUT stock movements grouped by day
+const buildTrendData = (movements) => {
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const byDay = {};
+  movements
+    .filter(m => m.direction === 'OUT' && m.status === 'POSTED' && new Date(m.created_date).getTime() >= cutoff)
+    .forEach(m => {
+      const day = new Date(m.created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      byDay[day] = (byDay[day] || 0) + 1;
+    });
+
   const data = [];
   for (let i = 29; i >= 0; i--) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    data.push({
-      date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      missing: Math.floor(Math.random() * 8) + 2,
-    });
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    data.push({ date: label, missing: byDay[label] || 0 });
   }
   return data;
 };
@@ -87,7 +94,7 @@ export default function GapScan() {
   const [importError, setImportError] = useState('');
   const [importedFrom, setImportedFrom] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
-  const [trendData] = useState(generateTrendData());
+  const [trendData, setTrendData] = useState([]);
   const hasResults = results.length > 0;
 
   const handleRunScan = async () => {
@@ -100,12 +107,12 @@ export default function GapScan() {
         base44.entities.StockMovement.filter({ environment: 'LIVE' }, '-created_date', 500),
       ]);
       const data = buildScanData(items, movements, lookback);
-      // Sort: Critical first, then by daysLeft ascending
       data.sort((a, b) => {
         const order = { Critical: 0, High: 1, Medium: 2, Low: 3, None: 4 };
         return (order[a.risk] ?? 5) - (order[b.risk] ?? 5);
       });
       setResults(data);
+      setTrendData(buildTrendData(movements));
       setSelected(new Set());
       setShowExplanation(false);
       setHighlightedRow(null);
@@ -114,6 +121,8 @@ export default function GapScan() {
     }
     setScanning(false);
   };
+
+  useEffect(() => { handleRunScan(); }, []);
 
   const handleImportFromScanner = async () => {
     setImporting(true);
@@ -302,7 +311,7 @@ export default function GapScan() {
       {/* 30-day trend chart */}
       {hasResults && (
         <div className="mb-6 border border-border rounded bg-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Missing items trend (30 days)</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-4">Outbound movements trend (last 30 days)</h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={trendData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
