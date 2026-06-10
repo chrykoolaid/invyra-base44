@@ -25,8 +25,8 @@ const summaryCards = [
   },
   {
     eyebrow: 'Build status',
-    title: 'Roadmap placeholder only',
-    body: 'This page is intentionally honest in the prototype. It should not present fake live staff attendance or imply that active punch capture is already wired in this build.',
+    title: 'Module placeholder only',
+    body: 'This workforce module remains a placeholder in this inventory build. It should not be merged into Inventory Roadmap scope or imply that active punch capture is already wired today.',
   },
 ];
 
@@ -164,7 +164,7 @@ export default function TimeTracking() {
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Time Tracking</h1>
-        <p className="text-sm text-muted-foreground">Attendance capture, exception review, approval flow, and payroll-ready worked-time preparation for this prototype roadmap.</p>
+        <p className="text-sm text-muted-foreground">Attendance placeholder kept separate from Inventory Roadmap scope.</p>
       </div>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
@@ -173,9 +173,9 @@ export default function TimeTracking() {
             <CircleAlert className="h-4 w-4 text-amber-700" strokeWidth={2} />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-amber-900">This workspace is now positioned as an attendance roadmap hub.</p>
+            <p className="text-sm font-semibold text-amber-900">This is a non-inventory placeholder module.</p>
             <p className="text-sm leading-relaxed text-amber-800/90">
-              It should explain how Invyra will capture actual worked time and attendance exceptions later on. It should not pretend the prototype already has live punch data, active attendance tables, or a finished time clock workflow.
+              It should explain how Invyra will capture actual worked time and attendance exceptions later on. It is not part of the Inventory Roadmap, and it should not pretend the prototype already has live punch data, active attendance tables, or a finished time clock workflow.
             </p>
           </div>
         </div>

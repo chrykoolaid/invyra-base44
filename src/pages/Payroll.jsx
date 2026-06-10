@@ -19,8 +19,8 @@ const summaryCards = [
   },
   {
     eyebrow: 'Build status',
-    title: 'Prototype roadmap placeholder',
-    body: 'This workspace is being presented honestly in this build. It is not a fake live scheduling board and it does not imply active payroll execution features today.',
+    title: 'Module placeholder only',
+    body: 'This workforce module remains a placeholder in this inventory build. It is not part of Inventory Roadmap scope and does not imply active payroll or rostering execution today.',
   },
   {
     eyebrow: 'Product boundary',
@@ -163,7 +163,7 @@ export default function Payroll() {
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Payroll &amp; Rostering</h1>
-        <p className="text-sm text-muted-foreground">Workforce planning, attendance comparison, and payroll-ready export preparation for this prototype roadmap.</p>
+        <p className="text-sm text-muted-foreground">Workforce planning placeholder kept separate from Inventory Roadmap scope.</p>
       </div>
 
       <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
@@ -172,9 +172,9 @@ export default function Payroll() {
             <CircleAlert className="h-4 w-4 text-amber-700" strokeWidth={2} />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-amber-900">This workspace is now positioned as a payroll-support roadmap hub.</p>
+            <p className="text-sm font-semibold text-amber-900">This is a non-inventory placeholder module.</p>
             <p className="text-sm leading-relaxed text-amber-800/90">
-              It should help Invyra plan shifts, review attendance outcomes, and prepare export-ready records later on. It is not intended to represent live payroll execution, tax handling, or direct wage payment inside this build.
+              It should help Invyra plan shifts, review attendance outcomes, and prepare export-ready records later on. It is not part of the Inventory Roadmap, and it does not represent live payroll execution, tax handling, or direct wage payment inside this build.
             </p>
           </div>
         </div>

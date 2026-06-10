@@ -29,8 +29,8 @@ const overviewCards = [
   },
   {
     eyebrow: 'What exists now',
-    title: 'Roadmap + readiness only',
-    body: 'Use this page to show upcoming reporting surfaces, rollout order, and what core inventory flows still need to be completed first.',
+    title: 'Local readiness summary only',
+    body: 'Use this tab for local admin/reporting readiness only. The canonical consolidated plan now lives in Inventory Roadmap.',
   },
 ];
 
@@ -395,9 +395,9 @@ export default function InventoryAdmin() {
             <CircleAlert className="h-4 w-4 text-amber-700" strokeWidth={2} />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-amber-900">This module is intentionally presented as a roadmap hub in this build.</p>
+            <p className="text-sm font-semibold text-amber-900">This tab is now a local readiness summary.</p>
             <p className="text-sm leading-relaxed text-amber-800/90">
-              It is not a fake finished reporting page. Live report generation, audit output, and export actions will be connected later once the underlying inventory events are complete and trusted.
+              It is not the canonical roadmap anymore. Inventory-related future work from this tab is consolidated into the Admin-only Inventory Roadmap page, while this page remains focused on Unit Pricing, Ledger, Audit Log, and local reporting readiness.
             </p>
           </div>
         </div>
