@@ -1,21 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { envFilter, ENV_LIVE } from '@/lib/envFilter';
 import {
-  Plus, ArrowUpDown, RotateCcw, Trash2, ArrowLeftRight, RefreshCw, History, Upload, X
+  Plus, RefreshCw, History, Upload, X
 } from 'lucide-react';
 import BulkStockUpload from '@/components/BulkStockUpload';
 import StockHistoryModal from '@/components/StockHistoryModal';
 
 const actions = [
   { label: 'Add / Update Item', icon: Plus },
-  { label: 'Adjust Stock (+/-)', icon: ArrowUpDown },
-  { label: 'Return / Refund', icon: RotateCcw },
-  { label: 'Wastage', icon: Trash2 },
-  { label: 'Transfer', icon: ArrowLeftRight },
-  { label: 'Reload', icon: RefreshCw },
   { label: 'Stock History', icon: History },
+  { label: 'Reload', icon: RefreshCw },
 ];
 
 const blankItemForm = {
@@ -328,7 +323,6 @@ function ItemMasterModal({ item, items, onClose, onSaved }) {
 }
 
 export default function Inventory() {
-  const navigate = useNavigate();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -479,16 +473,8 @@ export default function Inventory() {
             key={label}
             onClick={
               label === 'Add / Update Item' ? () => setShowItemMaster(true) :
-              label === 'Reload' ? loadItems :
-              label === 'Transfer' ? () => navigate('/Transfers') :
-              label === 'Wastage' ? () => {
-                const selectedItems = items.filter(i => selected.has(i.id));
-                const params = selectedItems.length === 1
-                  ? `?sku=${encodeURIComponent(selectedItems[0].sku)}`
-                  : '';
-                navigate(`/Wastage/workspace${params}`);
-              } :
               label === 'Stock History' ? () => setShowStockHistory(true) :
+              label === 'Reload' ? loadItems :
               undefined
             }
             className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
