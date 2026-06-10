@@ -34,19 +34,25 @@ const primaryNav = [
 ];
 
 const operationsNav = [
-  { path: '/GapScan',        label: 'Gap Scan',        icon: ScanSearch,       minRole: 'staff'      },
-  { path: '/Wastage',        label: 'Wastage',          icon: Trash2,           minRole: 'staff'      },
-  { path: '/Inventory',      label: 'Inventory',        icon: Package,          minRole: 'supervisor' },
-  { path: '/Receiving',      label: 'Receiving',        icon: PackageCheck,     minRole: 'supervisor' },
-  { path: '/Stocktake',      label: 'Stocktake',        icon: ClipboardCheck,   minRole: 'supervisor' },
-  { path: '/Transfers',      label: 'Transfers',        icon: ArrowLeftRight,   minRole: 'supervisor' },
-  { path: '/Adjustments',    label: 'Adjustments',      icon: SlidersHorizontal,minRole: 'supervisor' },
-  { path: '/Movements',      label: 'Movements',        icon: ScrollText,       minRole: 'supervisor' },
-  { path: '/Exceptions',     label: 'Exceptions',       icon: AlertTriangle,    minRole: 'supervisor' },
-  { path: '/DeliveryPortal', label: 'Delivery Portal',  icon: Truck,            minRole: 'supervisor' },
-  { path: '/Suppliers',      label: 'Suppliers',        icon: Factory,          minRole: 'manager'    },
-  { path: '/ReorderReview',  label: 'Reorder Review',   icon: ClipboardList,    minRole: 'manager'    },
-  { path: '/Orders',         label: 'Orders',           icon: ShoppingCart,     minRole: 'manager'    },
+  { path: '/Inventory',      label: 'Inventory',   icon: Package,           minRole: 'supervisor' },
+  { path: '/Movements',      label: 'Movements',   icon: ScrollText,        minRole: 'supervisor' },
+  { path: '/Adjustments',    label: 'Adjustments', icon: SlidersHorizontal, minRole: 'supervisor' },
+  { path: '/Transfers',      label: 'Transfers',   icon: ArrowLeftRight,    minRole: 'supervisor' },
+  { path: '/Stocktake',      label: 'Stocktake',   icon: ClipboardCheck,    minRole: 'supervisor' },
+  { path: '/Wastage',        label: 'Wastage',     icon: Trash2,            minRole: 'staff'      },
+];
+
+const purchasingNav = [
+  { path: '/Suppliers',      label: 'Suppliers',       icon: Factory,       minRole: 'manager'    },
+  { path: '/ReorderReview',  label: 'Reorder Review',  icon: ClipboardList, minRole: 'manager'    },
+  { path: '/Orders',         label: 'Orders',          icon: ShoppingCart,  minRole: 'manager'    },
+  { path: '/Receiving',      label: 'Receiving',       icon: PackageCheck,  minRole: 'supervisor' },
+  { path: '/DeliveryPortal', label: 'Delivery Portal', icon: Truck,         minRole: 'supervisor' },
+];
+
+const intelligenceNav = [
+  { path: '/GapScan',    label: 'Gap Scan',   icon: ScanSearch,    minRole: 'staff'      },
+  { path: '/Exceptions', label: 'Exceptions', icon: AlertTriangle, minRole: 'supervisor' },
 ];
 
 const adminNav = [
@@ -111,11 +117,13 @@ export default function Layout() {
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2 pt-3">
-          <NavGroup label="Main"       items={primaryNav}   location={location} userRole={userRole} />
-          <NavGroup label="Operations" items={operationsNav} location={location} userRole={userRole} />
-          <NavGroup label="Admin"      items={adminNav}      location={location} userRole={userRole} />
-          <NavGroup label="Modules"    items={optionalNav}   location={location} userRole={userRole} />
-          <NavGroup label="Training"   items={trainingNav}   location={location} userRole={userRole} />
+          <NavGroup label="Main"         items={primaryNav}      location={location} userRole={userRole} />
+          <NavGroup label="Operations"   items={operationsNav}   location={location} userRole={userRole} />
+          <NavGroup label="Purchasing"   items={purchasingNav}   location={location} userRole={userRole} />
+          <NavGroup label="Intelligence" items={intelligenceNav} location={location} userRole={userRole} />
+          <NavGroup label="Admin"        items={adminNav}        location={location} userRole={userRole} />
+          <NavGroup label="Modules"      items={optionalNav}     location={location} userRole={userRole} />
+          <NavGroup label="Training"     items={trainingNav}     location={location} userRole={userRole} />
         </nav>
 
         {/* User identity footer */}
