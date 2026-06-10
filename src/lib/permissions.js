@@ -34,6 +34,7 @@ export const ROUTE_PERMISSIONS = {
   '/TimeTracking':       'manager',
   '/InventoryAdmin':        'admin',
   '/ExportsIntegrations':   'admin',
+  '/InventoryRoadmap':      'admin',
   '/Training/Staff':        'staff',
   '/Training/Supervisor':   'supervisor',
   '/Training/Manager':      'manager',

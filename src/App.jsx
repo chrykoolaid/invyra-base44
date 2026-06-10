@@ -37,6 +37,7 @@ import Transfers from './pages/Transfers';
 import Adjustments from './pages/Adjustments';
 import Movements from './pages/Movements';
 import Exceptions from './pages/Exceptions';
+import InventoryRoadmap from './pages/InventoryRoadmap';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -81,6 +82,7 @@ const AuthenticatedApp = () => {
         <Route path="/TimeTracking"          element={<RoleGuard><TimeTracking /></RoleGuard>} />
         <Route path="/InventoryAdmin"        element={<RoleGuard><InventoryAdmin /></RoleGuard>} />
         <Route path="/ExportsIntegrations"   element={<RoleGuard><ExportsIntegrations /></RoleGuard>} />
+        <Route path="/InventoryRoadmap"      element={<RoleGuard><InventoryRoadmap /></RoleGuard>} />
         <Route path="/SupplierPortal"        element={<RoleGuard><SupplierPortal /></RoleGuard>} />
         <Route path="/Stocktake"             element={<RoleGuard><Stocktake /></RoleGuard>} />
         <Route path="/Transfers"             element={<RoleGuard><Transfers /></RoleGuard>} />

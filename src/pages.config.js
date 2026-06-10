@@ -54,6 +54,7 @@ import ReorderReview from './pages/ReorderReview';
 import Orders from './pages/Orders';
 import Receiving from './pages/Receiving';
 import DeliveryPortal from './pages/DeliveryPortal';
+import InventoryRoadmap from './pages/InventoryRoadmap';
 
 
 export const PAGES = {
@@ -64,6 +65,7 @@ export const PAGES = {
     "Orders": Orders,
     "Receiving": Receiving,
     "DeliveryPortal": DeliveryPortal,
+    "InventoryRoadmap": InventoryRoadmap,
 }
 
 export const pagesConfig = {

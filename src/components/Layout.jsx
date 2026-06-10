@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   ScrollText,
   AlertTriangle,
+  Map,
   LogOut,
   FlaskConical,
 } from 'lucide-react';
@@ -52,6 +53,7 @@ const adminNav = [
   { path: '/InventoryAdmin',       label: 'Inventory Admin',      icon: BarChart2, minRole: 'admin'   },
   { path: '/Reports',              label: 'Advanced Reports',     icon: BarChart3, minRole: 'manager' },
   { path: '/ExportsIntegrations',  label: 'Exports & Integrations',icon: Share2,   minRole: 'admin'   },
+  { path: '/InventoryRoadmap',      label: 'Inventory Roadmap',     icon: Map,      minRole: 'admin'   },
 ];
 
 const optionalNav = [
