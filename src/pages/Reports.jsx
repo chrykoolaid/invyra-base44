@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { BarChart3, TrendingDown, AlertCircle, CheckCircle2, Download } from 'lucide-react';
+import {
+  AlertCircle,
+  BarChart3,
+  Building2,
+  CheckCircle2,
+  ClipboardCheck,
+  Download,
+  History,
+  TrendingDown,
+} from 'lucide-react';
 import CostAnalysisReport from '@/components/CostAnalysisReport';
 import StockAgingReport from '@/components/StockAgingReport';
 import SupplierPerformanceReport from '@/components/SupplierPerformanceReport';
@@ -14,14 +23,59 @@ export default function Reports() {
   const [exporting, setExporting] = useState(false);
 
   const tabs = [
-    { id: 'cost', label: 'Cost Analysis', icon: TrendingDown },
-    { id: 'site-values', label: 'By Site', icon: BarChart3 },
-    { id: 'valuation', label: 'Valuation History', icon: TrendingDown },
-    { id: 'aging', label: 'Stock Aging', icon: BarChart3 },
-    { id: 'supplier', label: 'Supplier Scorecards', icon: CheckCircle2 },
-    { id: 'compliance', label: 'Compliance Overview', icon: AlertCircle },
-    { id: 'audit', label: 'Audit Summary', icon: BarChart3 },
+    {
+      id: 'cost',
+      label: 'Cost Analysis',
+      shortLabel: 'Costs',
+      icon: TrendingDown,
+      description: 'Inventory value, high-value stock, and reorder-cost pressure.',
+    },
+    {
+      id: 'site-values',
+      label: 'By Site',
+      shortLabel: 'Sites',
+      icon: Building2,
+      description: 'Location-level stock value and site concentration visibility.',
+    },
+    {
+      id: 'valuation',
+      label: 'Valuation History',
+      shortLabel: 'Valuation',
+      icon: History,
+      description: 'Recent price and stock movement events affecting valuation.',
+    },
+    {
+      id: 'aging',
+      label: 'Stock Aging',
+      shortLabel: 'Aging',
+      icon: BarChart3,
+      description: 'Age bands for stock that has not moved recently.',
+    },
+    {
+      id: 'supplier',
+      label: 'Supplier Scorecards',
+      shortLabel: 'Suppliers',
+      icon: CheckCircle2,
+      description: 'Supplier delivery, discrepancy, and quality-score monitoring.',
+    },
+    {
+      id: 'compliance',
+      label: 'Compliance Overview',
+      shortLabel: 'Compliance',
+      icon: AlertCircle,
+      description: 'Receiving, movement integrity, and unresolved discrepancy checks.',
+    },
+    {
+      id: 'audit',
+      label: 'Audit Summary',
+      shortLabel: 'Audit',
+      icon: ClipboardCheck,
+      description: 'Governance visibility for audit events and controlled changes.',
+    },
   ];
+
+  const activeReport = tabs.find(tab => tab.id === activeTab) || tabs[0];
+  const ActiveIcon = activeReport.icon;
 
   const handleExport = async () => {
     setExporting(true);
@@ -41,52 +95,75 @@ export default function Reports() {
   };
 
   return (
-    <div className="p-5 lg:p-6 max-w-[1400px] space-y-4">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground">Advanced Reporting</h1>
-        <p className="text-sm text-muted-foreground">Cost analysis, inventory aging, supplier performance, and compliance visibility.</p>
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex items-center justify-between gap-4 border-b border-border">
-        <div className="flex gap-2 overflow-x-auto">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Icon size={16} />
-                {tab.label}
-              </button>
-            );
-          })}
+    <div className="w-full max-w-none px-5 py-5 lg:px-8 space-y-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0 space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Advanced Reporting</h1>
+          <p className="max-w-3xl text-sm text-muted-foreground">
+            Cost analysis, inventory aging, supplier performance, and compliance visibility.
+          </p>
         </div>
+
         <button
           onClick={handleExport}
           disabled={exporting}
-          className="flex items-center gap-2 h-9 px-4 text-sm rounded-lg bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50 font-medium"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50 xl:mt-1"
         >
-          <Download size={14} />
+          <Download size={15} />
           {exporting ? 'Exporting…' : 'Export'}
         </button>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="rounded-2xl border border-border bg-card p-2 shadow-sm">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`group flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 text-left text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                    : 'border-transparent text-muted-foreground hover:border-border hover:bg-muted/45 hover:text-foreground'
+                }`}
+              >
+                <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground group-hover:text-foreground'}`}>
+                  <Icon size={15} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate xl:hidden">{tab.shortLabel}</span>
+                  <span className="hidden truncate xl:block">{tab.label}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Content */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden p-6">
-        {activeTab === 'cost' && <CostAnalysisReport />}
-        {activeTab === 'site-values' && <InventoryValueBySite />}
-        {activeTab === 'valuation' && <ValuationHistory />}
-        {activeTab === 'aging' && <StockAgingReport />}
-        {activeTab === 'supplier' && <SupplierPerformanceReport />}
-        {activeTab === 'compliance' && <ComplianceReport />}
-        {activeTab === 'audit' && <AuditSummaryDashboard />}
+      <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="flex items-start gap-3 border-b border-border bg-muted/20 px-5 py-4">
+          <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <ActiveIcon size={17} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-foreground">{activeReport.label}</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">{activeReport.description}</p>
+          </div>
+        </div>
+
+        <div className="p-5">
+          {activeTab === 'cost' && <CostAnalysisReport />}
+          {activeTab === 'site-values' && <InventoryValueBySite />}
+          {activeTab === 'valuation' && <ValuationHistory />}
+          {activeTab === 'aging' && <StockAgingReport />}
+          {activeTab === 'supplier' && <SupplierPerformanceReport />}
+          {activeTab === 'compliance' && <ComplianceReport />}
+          {activeTab === 'audit' && <AuditSummaryDashboard />}
+        </div>
       </div>
     </div>
   );

@@ -31,7 +31,7 @@ export default function CostAnalysisReport() {
   if (loading) return <div className="p-8 text-center text-muted-foreground">Loading cost analysis…</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-5">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="rounded-xl border border-border bg-background p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total Inventory Value</p>

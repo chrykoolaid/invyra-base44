@@ -47,7 +47,7 @@ export default function StockAgingReport() {
   ];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-5">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {categories.map(cat => (
           <div key={cat.name} className={`rounded-xl border p-3 ${cat.color}`}>

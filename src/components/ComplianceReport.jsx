@@ -40,7 +40,7 @@ export default function ComplianceReport() {
   if (loading) return <div className="p-8 text-center text-muted-foreground">Loading compliance…</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-5">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         <div className="rounded-xl border border-green-200 bg-green-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-wide text-green-700">Complete Receipts</p>
