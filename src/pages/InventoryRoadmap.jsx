@@ -9,6 +9,7 @@ import {
   Layers3,
   Link2,
   Lock,
+  MapPin,
   PackageOpen,
   PauseCircle,
   PlugZap,
@@ -147,6 +148,83 @@ const roadmapGroups = [
           'Approved wastage movements should continue to feed reporting and audit views cleanly.',
           'Future action history and acknowledgement write endpoints remain planned until public write contracts exist.',
           'Grouped views can shape future reporting but must not pretend export/compliance output is finished before validation.',
+        ],
+      },
+    ],
+  },
+  {
+    title: 'Locations & Stock Visibility',
+    description: 'Location master data and branch stock lookup without duplicating Transfers, Receiving, Stocktake, or Movements.',
+    tone: 'teal',
+    icon: MapPin,
+    items: [
+      {
+        title: 'Locations v1',
+        status: 'SCOPED / PLANNED',
+        source: 'Locations v1 scope and real-time tracking requirements',
+        reason: 'Locations should define where stock can exist and let users look up stock availability across branches and storage areas, similar to a retail pharmacy branch stock lookup workflow. It must not become a duplicate transfer, receiving, stocktake, or ledger module.',
+        summary: [
+          'Create a short, clean Locations module for branches/sites, storage areas, and stock visibility across locations.',
+          'Allow users to search an item/SKU and see current stock at the current branch and permitted other branches.',
+          'Support branch stock views for managers who need to see low stock, out-of-stock, recent movements, and stock by storage area.',
+          'Keep Locations as the visibility and setup layer while Transfers, Receiving, Stocktake, Adjustments, and Wastage remain the stock-changing workflows.',
+        ],
+        plannedFeatures: [
+          'Branch/site management: location name, code, type, address, city, province/state, country, contact details, active/inactive status, default flag, and notes',
+          'Storage area management: stockrooms, shelves, zones, bins, receiving areas, damaged stock areas, quarantine areas, transfer allowed, receiving allowed, and stocktake allowed flags',
+          'Multi-location stock lookup: search item/SKU and show stock across permitted branches and storage areas',
+          'Branch stock view: open one location and see all stock held there, low stock items, out-of-stock items, recent movements, and stock by storage area',
+          'Location status controls: Active, Inactive, Archived, Transfer blocked, Receiving blocked, and Stocktake blocked',
+          'Permission-based visibility for Owner/Admin, Manager, Supervisor, and Staff',
+          'Integration hooks for Transfers, Receiving, Stocktake, Adjustments, Wastage, Reorder Review, Orders, Suppliers, Advanced Reports, Exports & Integrations, Dashboard Priority Issues, and future Exceptions',
+        ],
+        technicalRequirements: [
+          'Every stock-changing workflow must record location context: item, SKU, movement type, quantity, from/to location, from/to storage area, reference type, reference ID, environment, created by, created at, and posted at',
+          'StockMovement remains the source of truth; Locations must not create fake or manually typed stock balances',
+          'Maintain an ItemStockBalance read model for fast branch and storage-area lookup, updated from StockMovement events or atomic stock transactions',
+          'Movement entry and stock balance update must succeed together; failed stock updates must be logged and recoverable',
+          'Provide a future Admin-only rebuild function that recalculates ItemStockBalance from the StockMovement ledger and logs the rebuild event',
+          'Locations should show data freshness indicators: last updated, last movement, last counted, data source, and status such as Current, Stale, Count overdue, Movement mismatch, or Rebuild recommended',
+          'Use near real-time wording unless a proper live sync/event system exists; support manual Refresh and optional 30–60 second auto-refresh later',
+          'Support on-hand, reserved, available, incoming, and outgoing quantities, with reserved/incoming/outgoing allowed to remain planned until allocation and transfer reservation logic is wired',
+          'LIVE, TRAINING, and TEST balances must never mix; each movement and balance row must include environment and Locations must only show the current environment',
+          'Cross-branch stock visibility must be role/permission controlled and audit-ready',
+        ],
+        dataModel: [
+          'Location: id, location_code, name, location_type, address, city, province, country, contact details, active/default/archive flags, notes, created_at, updated_at, updated_by',
+          'StorageArea: id, location_id, storage_area_code, name, storage_type, active/archive flags, receiving_allowed, transfer_allowed, stocktake_allowed, notes, created_at, updated_at, updated_by',
+          'ItemStockBalance: item_id, SKU, location_id, storage_area_id, on_hand_qty, reserved_qty, available_qty, incoming_qty, outgoing_qty, last_movement_at, last_counted_at, last_synced_at, balance_status, environment, updated_at',
+          'Recommended services/functions: listLocations, listStorageAreas, getLocationStockSummary, getItemStockByLocation, getBranchStockView, refreshStockBalances, rebuildStockBalances, validateLocationSelectable, validateStorageAreaSelectable',
+        ],
+        ownershipRules: [
+          'Locations owns branch/site master data, storage area master data, location active/inactive state, stock visibility by location, stock lookup across branches, and branch-level stock summaries',
+          'Transfers owns transfer creation, source/destination selection, dispatch, receipt, approval, transfer history, and transfer ledger entries',
+          'Receiving owns supplier delivery receipt, PO receiving, quantity received, discrepancies, receiving history, and stock-in movement creation',
+          'Stocktake owns count sessions, variance review, reconciliation, approval, and stocktake adjustment movements',
+          'Movements owns the official stock movement ledger and proof of every stock change',
+        ],
+        outOfScope: [
+          'Full transfer workflow',
+          'Full stocktake workflow',
+          'Full receiving workflow',
+          'Supplier ordering',
+          'Customer-facing/public store availability lookup',
+          'Real-time external branch sync guarantee',
+          'GPS mapping, route planning, delivery scheduling, warehouse slotting optimisation, AI stock balancing, or automatic inter-branch transfer recommendations',
+          'Offline scanner/device sync unless separately scoped with scanner workflows',
+        ],
+        dependencies: [
+          'StockMovement ledger with location context',
+          'ItemStockBalance read model or clearly planned equivalent',
+          'Role/permission model',
+          'LIVE/TRAINING/TEST environment separation',
+          'Transfers, Receiving, Stocktake, Adjustments, and Wastage workflow contracts',
+          'Audit logging and future stock-balance rebuild path',
+        ],
+        priority: [
+          'High-priority roadmap item for commercial multi-branch inventory readiness',
+          'Add to roadmap now, implement after current stock-changing workflows remain stable',
+          'Keep sidebar name short: Locations',
         ],
       },
     ],
@@ -669,6 +747,9 @@ function RoadmapCard({ item, tone }) {
       <DetailList title="Summary" items={item.summary} />
       <FormulaList formulas={item.formulas} />
       <DetailList title="Planned features" items={item.plannedFeatures} />
+      <DetailList title="Technical requirements" items={item.technicalRequirements} />
+      <DetailList title="Data model" items={item.dataModel} />
+      <DetailList title="Ownership rules" items={item.ownershipRules} />
       <DetailList title="Out of scope" items={item.outOfScope} />
       <DetailList title="Dependencies" items={item.dependencies} />
       <DetailList title="Priority" items={item.priority} />
