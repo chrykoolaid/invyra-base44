@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { envFilter, ENV_LIVE } from '@/lib/envFilter';
-import LedgerViewer from '@/components/LedgerViewer';
+import MovementLedgerSummary from '@/components/MovementLedgerSummary';
 
 const overviewCards = [
   {
@@ -161,7 +161,7 @@ function CapabilityCard({ icon: Icon, title, body, tag }) {
   );
 }
 
-const TABS = ['Unit Pricing', 'Ledger', 'Audit Log', 'Roadmap'];
+const TABS = ['Unit Pricing', 'Ledger Summary', 'Audit Log', 'Roadmap'];
 
 export default function InventoryAdmin() {
   const [tab, setTab] = useState('Unit Pricing');
@@ -229,7 +229,7 @@ export default function InventoryAdmin() {
     <div className="p-5 lg:p-6 max-w-[1280px] space-y-4">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold text-foreground">Inventory Admin &amp; Reporting</h1>
-        <p className="text-sm text-muted-foreground">Stock movement ledger and admin reporting hub.</p>
+        <p className="text-sm text-muted-foreground">Unit pricing, movement summary, audit history, and admin reporting hub.</p>
       </div>
 
       {/* Tab bar */}
@@ -336,7 +336,7 @@ export default function InventoryAdmin() {
         </div>
       )}
 
-      {tab === 'Ledger' && <LedgerViewer />}
+      {tab === 'Ledger Summary' && <MovementLedgerSummary />}
 
       {tab === 'Audit Log' && (
         <div className="space-y-4">
