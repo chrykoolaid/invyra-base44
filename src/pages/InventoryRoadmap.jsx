@@ -177,6 +177,57 @@ const roadmapGroups = [
     ],
   },
   {
+    title: 'Suppliers, Purchasing & Pricing',
+    description: 'Supplier seed data, reference pricebooks, MOQ, lead-time, branch overrides, and reorder-readiness without turning Invyra into a supplier marketplace.',
+    tone: 'amber',
+    icon: Users,
+    items: [
+      {
+        title: 'Supplier Seed & Pricing Foundation v1',
+        status: 'SCOPED / PLANNED',
+        source: 'Supplier Seed & Pricing Subsystem v1 scope',
+        reason: 'This is a legally safe supplier setup foundation, not a live supplier marketplace or supplier recommendation engine.',
+        summary: [
+          'Add legally safe starter supplier data while keeping the existing Suppliers grid clean.',
+          'Support reference pricebooks with MOQ, lead time, pack size, currency, and estimated service cost impact per kg.',
+          'Support PH national and Iloilo local seed overlays without overwriting client-created suppliers or client overrides.',
+          'Prepare supplier data for reorder workflow integration without automating purchasing in this phase.',
+        ],
+        plannedFeatures: [
+          'Supplier Type column: Starter / Client / Archived',
+          'Locked Supplier Information Notice disclaimer in Suppliers, onboarding, and documentation',
+          'SYSTEM_SEED, CLIENT, and ARCHIVED supplier origins',
+          'Supplier pricebook rows for seeded, client, and override pricing',
+          'Admin/Owner ability to hide starter suppliers',
+          'Supplier onboarding acknowledgement',
+          'Supplier audit events for create, edit, archive, restore, seed visibility, disclaimer acknowledgement, and pricebook changes',
+          'Branch-level supplier overrides for MOQ, lead time, price, and visibility',
+          'Preferred and alternate supplier hooks for future reorder workflows',
+        ],
+        outOfScope: [
+          'Live supplier marketplace',
+          'Supplier recommendations or ranking engine',
+          'Automatic supplier verification',
+          'Online supplier scraping or live Search Online behaviour',
+          'Direct supplier ordering, payments, supplier portal, or contract management',
+          'Full reorder automation engine',
+        ],
+        dependencies: [
+          'Admin → Suppliers module',
+          'Item master supplier fields',
+          'Audit log',
+          'Branch/location model',
+          'Reorder Review workflow',
+        ],
+        priority: [
+          'Add to roadmap first',
+          'Implement after current reporting and supplier UI baselines remain stable',
+          'Keep as minimal enterprise extension of Suppliers, not a redesign',
+        ],
+      },
+    ],
+  },
+  {
     title: 'Supplier Intelligence',
     description: 'Supplier-side data that should improve purchasing decisions after enough real order and receiving history exists.',
     tone: 'amber',
@@ -566,6 +617,7 @@ function RoadmapCard({ item, tone }) {
       <DetailList title="Summary" items={item.summary} />
       <FormulaList formulas={item.formulas} />
       <DetailList title="Planned features" items={item.plannedFeatures} />
+      <DetailList title="Out of scope" items={item.outOfScope} />
       <DetailList title="Dependencies" items={item.dependencies} />
       <DetailList title="Priority" items={item.priority} />
     </article>
