@@ -2,10 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter, ENV_LIVE } from '@/lib/envFilter';
 import {
-  Plus, RefreshCw, History, Upload, X
+  Plus, RefreshCw, History, Upload, X, Eye
 } from 'lucide-react';
 import BulkStockUpload from '@/components/BulkStockUpload';
 import StockHistoryModal from '@/components/StockHistoryModal';
+import ItemDetailsWorkspace from '@/components/ItemDetailsWorkspace';
 
 const actions = [
   { label: 'Add / Update Item', icon: Plus },
@@ -333,6 +334,7 @@ export default function Inventory() {
   const [showStockHistory, setShowStockHistory] = useState(false);
   const [editingPrice, setEditingPrice] = useState(null);
   const [priceInput, setPriceInput] = useState('');
+  const [detailsItem, setDetailsItem] = useState(null);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
@@ -404,6 +406,18 @@ export default function Inventory() {
   const selectedItemForForm = selected.size === 1
     ? items.find(item => selected.has(item.id))
     : null;
+
+  if (detailsItem) {
+    return (
+      <ItemDetailsWorkspace
+        item={detailsItem}
+        onBack={() => {
+          setDetailsItem(null);
+          loadItems();
+        }}
+      />
+    );
+  }
 
   return (
     <div className="p-6">
@@ -501,11 +515,12 @@ export default function Inventory() {
               {['SKU', 'Name', 'On Hand', 'Unit', 'Unit Price', 'Reorder Point', 'Reorder Qty'].map(h => (
                 <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
               ))}
+              <th className="text-left px-4 py-2.5 font-medium whitespace-nowrap">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground text-sm">Loading inventory…</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground text-sm">Loading inventory…</td></tr>
             ) : filtered.map((item, i) => {
               const belowReorder = item.reorder_point != null && (item.stock || 0) <= item.reorder_point;
               return (
@@ -568,12 +583,25 @@ export default function Inventory() {
                    </td>
                    <td className="px-4 py-2.5 text-muted-foreground">{item.reorder_point ?? '—'}</td>
                    <td className="px-4 py-2.5 text-muted-foreground">{item.reorder_qty ?? '—'}</td>
+                   <td className="px-4 py-2.5">
+                     <button
+                       type="button"
+                       onClick={event => {
+                         event.stopPropagation();
+                         setDetailsItem(item);
+                       }}
+                       className="inline-flex items-center gap-1.5 h-7 px-2.5 text-xs border border-border rounded bg-card hover:bg-muted transition-colors text-foreground"
+                       aria-label={`View details for ${item.name || item.sku || 'item'}`}
+                     >
+                       <Eye size={12} /> View
+                     </button>
+                   </td>
                 </tr>
               );
             })}
             {!loading && filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground text-sm">
                   {items.length === 0 ? 'No inventory items found. Seed items via InventoryItem entity.' : 'No items match your search.'}
                 </td>
               </tr>
