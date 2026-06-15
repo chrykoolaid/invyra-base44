@@ -54,7 +54,7 @@ function shortUser(user) {
 }
 
 
-export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
+export default function LedgerViewer({ defaultSku = '', selectedSkus = [], defaultFilterSource = '' }) {
   const [movements, setMovements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('All');
@@ -84,6 +84,8 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
     return matchType && matchSku && matchSelected;
   });
 
+  const appliedDefaultFilter = Boolean(defaultFilterSource && defaultSku && skuFilter.trim() === defaultSku);
+
   const totals = {
     in:  filtered.filter(m => m.direction === 'IN').reduce((s, m) => s + (m.qty || 0), 0),
     out: filtered.filter(m => m.direction === 'OUT').reduce((s, m) => s + (m.qty || 0), 0),
@@ -95,6 +97,12 @@ export default function LedgerViewer({ defaultSku = '', selectedSkus = [] }) {
 
   return (
     <div className="space-y-3">
+      {appliedDefaultFilter && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-xs text-blue-900">
+          Filtered from {defaultFilterSource}: <span className="font-mono font-semibold">{defaultSku}</span>. Clear the filter field to view the full movement ledger.
+        </div>
+      )}
+
       {/* Compact summary strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-xl border border-border bg-card px-4 py-2.5">

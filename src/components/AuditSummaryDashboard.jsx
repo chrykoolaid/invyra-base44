@@ -12,6 +12,29 @@ const complianceChecklist = [
   { id: 6, item: 'Reorder threshold changes recorded', standard: 'Best Practice' },
 ];
 
+function formatAuditValue(value) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value !== 'string') return JSON.stringify(value, null, 2);
+
+  const trimmed = value.trim();
+  if (!trimmed) return '—';
+
+  try {
+    return JSON.stringify(JSON.parse(trimmed), null, 2);
+  } catch {
+    return value;
+  }
+}
+
+function AuditValueBlock({ label, value }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border bg-muted/20 p-2">
+      <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</p>
+      <pre className="whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-muted-foreground">{formatAuditValue(value)}</pre>
+    </div>
+  );
+}
+
 export default function AuditSummaryDashboard() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [movements, setMovements] = useState([]);
@@ -181,19 +204,15 @@ export default function AuditSummaryDashboard() {
                     {log.change_type.replace('_', ' ')}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-1">
-                  <div>
-                    <span className="font-mono">Old:</span> {log.old_value || '—'}
-                  </div>
-                  <div>
-                    <span className="font-mono">New:</span> {log.new_value || '—'}
-                  </div>
+                <div className="mb-2 grid grid-cols-1 gap-2 lg:grid-cols-2">
+                  <AuditValueBlock label="Old value" value={log.old_value} />
+                  <AuditValueBlock label="New value" value={log.new_value} />
                 </div>
-                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground/70">
-                  <span>By: {log.changed_by}</span>
-                  <span>{new Date(log.created_date).toLocaleString()}</span>
+                <div className="flex flex-col gap-1 text-xs text-muted-foreground/70 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="min-w-0 break-all">By: {log.changed_by || '—'}</span>
+                  <span className="whitespace-nowrap">{new Date(log.created_date).toLocaleString()}</span>
                 </div>
-                {log.notes && <p className="text-xs mt-1 text-muted-foreground italic">Note: {log.notes}</p>}
+                {log.notes && <p className="mt-1 break-words text-xs italic text-muted-foreground">Note: {log.notes}</p>}
               </div>
             ))
           )}

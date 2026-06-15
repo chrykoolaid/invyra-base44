@@ -11,10 +11,9 @@ export default function Movements() {
         <h1 className="text-xl font-semibold text-foreground">Inventory Movements</h1>
         <p className="text-sm text-muted-foreground">
           Complete inventory ledger — every stock-in, stock-out, adjustment, transfer, and reversal in one place.
-          {defaultSku && <span className="block mt-1">Filtered from Item Details: <span className="font-mono text-foreground">{defaultSku}</span></span>}
         </p>
       </div>
-      <LedgerViewer defaultSku={defaultSku} />
+      <LedgerViewer defaultSku={defaultSku} defaultFilterSource={defaultSku ? 'Item Details' : ''} />
     </div>
   );
 }
