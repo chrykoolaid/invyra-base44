@@ -75,6 +75,23 @@ const roadmapGroups = [
         ],
       },
       {
+        title: 'Item Details Transition Part 2B',
+        status: 'LOCKED UI + READ-ONLY DRILL-DOWN',
+        source: 'Item Details transition lock / invyra-inventory_item-details-part2-polish-v1.zip',
+        summary: [
+          'Inventory row-level View is now the primary item-level drill-down path into a read-only Item Details workspace.',
+          'The old Stock History toolbar button was removed from the Inventory UI only; stock-history internals and movement-ledger services remain preserved.',
+          'Item Details includes Item Summary, Usage & Demand, Reorder Intelligence display, lightweight Stock Movement Summary, and Open Full Movements.',
+          'Part 2A fixed the Movements filter notice so it only appears when an active Item Details SKU filter exists.',
+          'Part 2B fixed Audit Trail long-value wrapping so old/new JSON values no longer overlap.',
+        ],
+        ownershipRules: [
+          'Item Details summarizes item-level health and movement activity; it must not become a stock-changing workflow.',
+          'Movements remains the full transaction ledger and source of truth for every stock change.',
+          'Stock History internals remain available for Gap Scan, Reorder Review, Dashboard alerts, Reports, Audit Trail, and future fallback use.',
+        ],
+      },
+      {
         title: 'Existing module baselines',
         status: 'LOCKED CURRENT FORM',
         source: 'Prior inventory module locks',
@@ -131,7 +148,7 @@ const roadmapGroups = [
           'Inventory item master remains the current stock truth surface',
           'Movements ledger remains the read-only audit trail',
           'Adjustments, Transfers, Stocktake, and Wastage stay as dedicated stock-changing modules',
-          'Bulk Stock Update and Stock History remain inventory-list/admin utilities',
+          'Bulk Stock Update remains an inventory-list/admin utility; Item Details row-level View has replaced the old Stock History toolbar workflow at the UI level while preserving stock-history internals.',
         ],
         dependencies: [
           'StockMovement ledger integrity',
@@ -556,6 +573,34 @@ const roadmapGroups = [
           'Report reconciliation proof',
         ],
       },
+      {
+        title: 'Inventory Performance roll-up report',
+        status: 'PLANNED / ADVANCED REPORTS EXTENSION',
+        source: 'Item Details roadmap consolidation check',
+        summary: [
+          'Add a business-wide inventory performance view under the existing Advanced Reports / reporting group, not as a new duplicate module.',
+          'This report should roll up item-level insights across the business while Item Details remains the single-item drill-down view.',
+          'The report must summarize inventory health without becoming a movement ledger, reorder engine, supplier scorecard, or stock-changing workflow.',
+        ],
+        plannedFeatures: [
+          'Total items, low stock items, slow-moving items, overstocked items, waste value, and inventory value KPIs',
+          'Stock health distribution, fast vs slow movers, usage trend, and reorder risk sections',
+          'Items Requiring Review table with View Item drill-down back into Item Details',
+          'Future export readiness only after Advanced Reports reconciliation remains stable',
+        ],
+        ownershipRules: [
+          'Advanced Reports owns business-wide inventory performance roll-ups.',
+          'Item Details owns single-item read-only drill-downs.',
+          'Movements owns transaction-level ledger history.',
+          'Threshold Intelligence owns future reorder-point and reorder-quantity calculations.',
+        ],
+        dependencies: [
+          'Item Details read-only drill-down',
+          'StockMovement ledger integrity',
+          'Advanced Reports reconciliation proof',
+          'Threshold Intelligence outputs when available',
+        ],
+      },
     ],
   },
   {
@@ -639,6 +684,11 @@ const roadmapGroups = [
           'StockMovement ledger',
           'Supplier lead-time records',
           'Reorder Review engine',
+        ],
+        ownershipRules: [
+          'Threshold Intelligence owns reorder calculations and suggestion logic.',
+          'Item Details may display future threshold outputs but must not become a separate reorder engine.',
+          'Reorder Review remains the operational review and draft-order start point.',
         ],
         priority: [
           'After LIVE seed pass',
@@ -890,7 +940,7 @@ export default function InventoryRoadmap() {
           <div className="space-y-1">
             <p className="text-sm font-semibold text-amber-900">Locked inventory passes remain closed.</p>
             <p className="text-sm leading-relaxed text-amber-800/90">
-              Inventory Verification Pass v1, LIVE Inventory Seed + Opening Balance Pass v1, and the accepted Movements readability baseline are documented here as accepted proof only. This consolidation pass must not alter stock, ledger, Dashboard, Advanced Reports, Reorder Review, or seeded LIVE data.
+              Inventory Verification Pass v1, LIVE Inventory Seed + Opening Balance Pass v1, the accepted Movements readability baseline, and the Item Details Part 2B transition are documented here as accepted proof only. This consolidation pass must not alter stock, ledger, Dashboard, Advanced Reports, Reorder Review, or seeded LIVE data.
             </p>
           </div>
         </div>
