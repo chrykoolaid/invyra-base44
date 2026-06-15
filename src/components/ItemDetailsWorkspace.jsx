@@ -373,7 +373,7 @@ export default function ItemDetailsWorkspace({ item, onBack }) {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-sm font-semibold text-foreground">Stock Movement Summary</h2>
-            <p className="text-xs text-muted-foreground">Lightweight summary only. Full ledger stays in Movements.</p>
+            <p className="text-xs text-muted-foreground">Lightweight summary only. Full ledger stays in Movements. Inbound/outbound are direction totals; category cards are diagnostic breakdowns, not extra additions.</p>
           </div>
           <button
             type="button"
@@ -387,11 +387,11 @@ export default function ItemDetailsWorkspace({ item, onBack }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
           <InfoMetric label="Last Movement Date" value={formatDateTime(summary.lastMovement?.created_date)} />
           <InfoMetric label="Last Movement Type" value={TYPE_LABELS[summary.lastMovement?.movement_type] || summary.lastMovement?.movement_type || '—'} />
-          <InfoMetric label="Stock In 30D" value={`${formatNumber(summary.stockIn30)} ${unit}`} />
-          <InfoMetric label="Stock Out 30D" value={`${formatNumber(summary.stockOut30)} ${unit}`} />
+          <InfoMetric label="Inbound 30D" value={`${formatNumber(summary.stockIn30)} ${unit}`} />
+          <InfoMetric label="Outbound 30D" value={`${formatNumber(summary.stockOut30)} ${unit}`} />
           <InfoMetric label="Adjustments 30D" value={`${summary.adjustments30 > 0 ? '+' : ''}${formatNumber(summary.adjustments30)} ${unit}`} />
           <InfoMetric label="Wastage 30D" value={`${formatNumber(summary.wastage30)} ${unit}`} />
-          <InfoMetric label="Net Movement 30D" value={`${summary.net30 > 0 ? '+' : ''}${formatNumber(summary.net30)} ${unit}`} />
+          <InfoMetric label="Net Change 30D" value={`${summary.net30 > 0 ? '+' : ''}${formatNumber(summary.net30)} ${unit}`} />
           <InfoMetric label="Rows Read" value={`${formatNumber(summary.last30.length)} movement${summary.last30.length === 1 ? '' : 's'}`} />
         </div>
       </section>
