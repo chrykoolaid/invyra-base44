@@ -52,3 +52,8 @@ Part 1 is implemented as a safe additive rollout.
 ## Part 2 reminder
 
 Only after manual verification should the old Inventory toolbar `Stock History` button be hidden or removed. Internal stock-history and movement-ledger logic must remain preserved.
+
+
+## Part 2 follow-up
+
+Part 2 has now been implemented in `INVYRA_ITEM_DETAILS_PART2_IMPLEMENTATION_REPORT.md`. The visible Inventory toolbar `Stock History` button was removed as a UI cleanup only. Internal stock-history and movement-ledger logic remains preserved.

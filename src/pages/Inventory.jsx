@@ -2,15 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter, ENV_LIVE } from '@/lib/envFilter';
 import {
-  Plus, RefreshCw, History, Upload, X, Eye
+  Plus, RefreshCw, Upload, X, Eye
 } from 'lucide-react';
 import BulkStockUpload from '@/components/BulkStockUpload';
-import StockHistoryModal from '@/components/StockHistoryModal';
 import ItemDetailsWorkspace from '@/components/ItemDetailsWorkspace';
 
 const actions = [
   { label: 'Add / Update Item', icon: Plus },
-  { label: 'Stock History', icon: History },
   { label: 'Reload', icon: RefreshCw },
 ];
 
@@ -331,7 +329,6 @@ export default function Inventory() {
   const [selected, setSelected] = useState(new Set());
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showItemMaster, setShowItemMaster] = useState(false);
-  const [showStockHistory, setShowStockHistory] = useState(false);
   const [editingPrice, setEditingPrice] = useState(null);
   const [priceInput, setPriceInput] = useState('');
   const [detailsItem, setDetailsItem] = useState(null);
@@ -430,13 +427,6 @@ export default function Inventory() {
         />
       )}
 
-      {showStockHistory && (
-        <StockHistoryModal
-          onClose={() => setShowStockHistory(false)}
-          selectedSkus={items.filter(i => selected.has(i.id)).map(i => i.sku)}
-        />
-      )}
-
       {showBulkUpload && (
         <BulkStockUpload
           allItems={items}
@@ -487,7 +477,6 @@ export default function Inventory() {
             key={label}
             onClick={
               label === 'Add / Update Item' ? () => setShowItemMaster(true) :
-              label === 'Stock History' ? () => setShowStockHistory(true) :
               label === 'Reload' ? loadItems :
               undefined
             }
