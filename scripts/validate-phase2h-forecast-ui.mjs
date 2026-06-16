@@ -33,7 +33,6 @@ const workspace = read(files.workspace);
 
 assertContains(client, 'VITE_INVYRA_FORECASTING_API_BASE_URL', 'forecasting client');
 assertContains(client, '/inventory/item-details/forecast', 'forecasting client');
-assertContains(client, '/inventory/item-details/forecast/snapshots/', 'forecasting client');
 assertContains(client, 'Forecast unavailable. Item Details and stock history remain usable.', 'forecasting client');
 assertContains(client, 'mutates_stock: false', 'forecasting client');
 assertContains(client, 'creates_purchase_order: false', 'forecasting client');
@@ -50,6 +49,7 @@ assertNotContains(client, 'base44.entities.PurchaseOrder.update', 'forecasting c
 assertNotContains(client, 'base44.entities.StockMovement.create', 'forecasting client');
 
 assertContains(panel, 'ItemDetailsForecastPanel', 'forecast panel');
+assertContains(panel, '/inventory/item-details/forecast/snapshots/', 'forecast panel');
 assertContains(panel, 'Advisory only', 'forecast panel');
 assertContains(panel, 'Ledger remains source of truth', 'forecast panel');
 assertContains(panel, 'No stock adjustment', 'forecast panel');
