@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import ItemDetailsForecastPanel from '@/components/ItemDetailsForecastPanel';
 import { envFilter } from '@/lib/envFilter';
 import {
   ArrowLeft,
@@ -293,6 +294,8 @@ export default function ItemDetailsWorkspace({ item, onBack }) {
           {error}
         </div>
       )}
+
+      <ItemDetailsForecastPanel item={item} movements={movements} loadingMovements={loadingMovements} />
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr] gap-4">
         <section className="rounded-xl border border-border bg-card p-4">
