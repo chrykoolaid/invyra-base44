@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Search, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight, CheckCircle2, X, Undo2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 
 export default function WastageTab({ refreshTick }) {
   const [records, setRecords] = useState([]);
@@ -36,6 +37,42 @@ export default function WastageTab({ refreshTick }) {
       r.location.toLowerCase().includes(q)
     );
   }, [records, query]);
+
+  const handleApprove = async (recordId) => {
+    try {
+      const response = await base44.functions.invoke('approveStockOutRecordV2', { record_id: recordId });
+      if (response.data.success) {
+        toast.success(`Stock-out approved. Balance: ${response.data.balance_before} → ${response.data.balance_after}`);
+        window.location.reload();
+      }
+    } catch (error) {
+      toast.error(`Approval failed: ${error.message}`);
+    }
+  };
+
+  const handleReject = async (recordId, reason) => {
+    try {
+      const response = await base44.functions.invoke('rejectStockOutRecord', { record_id: recordId, reason });
+      if (response.data.success) {
+        toast.success('Record rejected');
+        window.location.reload();
+      }
+    } catch (error) {
+      toast.error(`Rejection failed: ${error.message}`);
+    }
+  };
+
+  const handleReverse = async (recordId, reason) => {
+    try {
+      const response = await base44.functions.invoke('reverseStockOutRecord', { record_id: recordId, reason });
+      if (response.data.success) {
+        toast.success(`Reversed. Balance: ${response.data.balance_before} → ${response.data.balance_after}`);
+        window.location.reload();
+      }
+    } catch (error) {
+      toast.error(`Reversal failed: ${error.message}`);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -113,9 +150,45 @@ export default function WastageTab({ refreshTick }) {
                       <p className="text-xs text-muted-foreground">₱{record.estimated_value?.toFixed(2)}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
-                    <span>{record.reason_category}</span>
-                    <span>{new Date(record.created_date).toLocaleDateString()}</span>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+                    <div className="flex items-center gap-4">
+                      <span>{record.reason_category}</span>
+                      <span>{new Date(record.created_date).toLocaleDateString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {record.status === 'DRAFT' && (
+                        <button
+                          onClick={() => base44.functions.invoke('submitStockOutRecord', { record_id: record.id }).then(() => window.location.reload()).catch(e => toast.error(e.message))}
+                          className="px-2 py-1 text-[11px] rounded bg-primary text-primary-foreground hover:opacity-90"
+                        >
+                          Submit
+                        </button>
+                      )}
+                      {record.status === 'SUBMITTED' && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(record.id)}
+                            className="px-2 py-1 text-[11px] rounded bg-green-600 text-white hover:opacity-90 flex items-center gap-1"
+                          >
+                            <CheckCircle2 size={12} /> Approve
+                          </button>
+                          <button
+                            onClick={() => handleReject(record.id, 'User rejected')}
+                            className="px-2 py-1 text-[11px] rounded bg-red-600 text-white hover:opacity-90 flex items-center gap-1"
+                          >
+                            <X size={12} /> Reject
+                          </button>
+                        </>
+                      )}
+                      {record.status === 'POSTED' && (
+                        <button
+                          onClick={() => handleReverse(record.id, 'User reversed')}
+                          className="px-2 py-1 text-[11px] rounded bg-slate-600 text-white hover:opacity-90 flex items-center gap-1"
+                        >
+                          <Undo2 size={12} /> Reverse
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
