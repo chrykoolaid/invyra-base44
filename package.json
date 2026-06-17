@@ -10,6 +10,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
     "validate:forecast-ui": "node scripts/validate-phase2h-forecast-ui.mjs",
+    "verify:forecast-api": "node scripts/verify-phase2l-forecast-api.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
