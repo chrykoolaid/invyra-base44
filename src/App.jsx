@@ -28,7 +28,6 @@ import Payroll from './pages/Payroll';
 import TimeTracking from './pages/TimeTracking';
 import InventoryAdmin from './pages/InventoryAdmin';
 import ReceivingWorkspace from './pages/ReceivingWorkspace';
-import WastageWorkspace from './pages/WastageWorkspace';
 import ReceivingLog from './pages/ReceivingLog';
 import ExportsIntegrations from './pages/ExportsIntegrations';
 import SupplierPortal from './pages/SupplierPortal';
@@ -81,7 +80,6 @@ const AuthenticatedApp = () => {
         <Route path="/ReorderReview"         element={<RoleGuard><ReorderReview /></RoleGuard>} />
         <Route path="/Orders"                element={<RoleGuard><Orders /></RoleGuard>} />
         <Route path="/Receiving"             element={<RoleGuard><Receiving /></RoleGuard>} />
-        <Route path="/Wastage/workspace"     element={<RoleGuard><WastageWorkspace /></RoleGuard>} />
         <Route path="/Receiving/workspace"   element={<RoleGuard><ReceivingWorkspace /></RoleGuard>} />
         <Route path="/Receiving/log"         element={<RoleGuard><ReceivingLog /></RoleGuard>} />
         <Route path="/DeliveryPortal"        element={<RoleGuard><DeliveryPortal /></RoleGuard>} />

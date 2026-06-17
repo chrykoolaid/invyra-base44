@@ -31,28 +31,30 @@ export default function ScannerIntakeTab({ refreshTick }) {
     );
   }, [entries, query]);
 
-  const handleResolve = async (itemId, sku) => {
+  const handleAccept = async (entry) => {
     try {
       const response = await base44.functions.invoke('processScannerIntake', {
-        intake_id: itemId,
-        action: 'resolve',
-        resolved_sku: sku,
+        intake_id: entry.id,
+        accept: true,
+        resolved_sku: entry.resolved_sku,
+        resolved_item_id: entry.resolved_item_id,
+        proposed_reason_category: entry.proposed_stock_out_class || 'WASTAGE',
       });
       if (response.data.success) {
-        toast.success('Scan resolved and record created');
+        toast.success(`Draft created: ${response.data.generated_record_id}`);
         window.location.reload();
       }
     } catch (error) {
-      toast.error(`Resolution failed: ${error.message}`);
+      toast.error(`Accept failed: ${error.message}`);
     }
   };
 
-  const handleReject = async (itemId, reason) => {
+  const handleReject = async (itemId) => {
     try {
       const response = await base44.functions.invoke('processScannerIntake', {
         intake_id: itemId,
-        action: 'reject',
-        rejection_reason: reason,
+        accept: false,
+        rejection_reason: 'Operator rejected',
       });
       if (response.data.success) {
         toast.success('Scan rejected');
@@ -140,27 +142,16 @@ export default function ScannerIntakeTab({ refreshTick }) {
                   <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-border">
                     <span className="text-xs text-muted-foreground">{new Date(entry.scanned_at).toLocaleString()}</span>
                     <div className="flex gap-2">
-                      {!entry.resolved_sku && (
-                        <button
-                          onClick={() => {
-                            setSelectedItem(entry);
-                            setShowModal(true);
-                          }}
-                          className="px-2 py-1 text-[11px] rounded bg-primary text-primary-foreground hover:opacity-90"
-                        >
-                          Resolve
-                        </button>
-                      )}
                       {entry.resolved_sku && (
                         <button
-                          onClick={() => handleResolve(entry.id, entry.resolved_sku)}
+                          onClick={() => handleAccept(entry)}
                           className="px-2 py-1 text-[11px] rounded bg-green-600 text-white hover:opacity-90 flex items-center gap-1"
                         >
-                          <CheckCircle2 size={12} /> Confirm
+                          <CheckCircle2 size={12} /> Accept & Create Draft
                         </button>
                       )}
                       <button
-                        onClick={() => handleReject(entry.id, 'Manual rejection')}
+                        onClick={() => handleReject(entry.id)}
                         className="px-2 py-1 text-[11px] rounded bg-red-600 text-white hover:opacity-90"
                       >
                         Reject

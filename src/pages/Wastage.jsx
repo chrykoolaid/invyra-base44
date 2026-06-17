@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -34,9 +34,30 @@ function PillTab({ active, onClick, label }) {
 
 export default function Wastage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    base44.auth.me().then(u => {
+      setUser(u);
+    }).catch(() => {});
+  }, []);
+
+  const role = (user?.role || '').toLowerCase();
+  const isSupervisor = ['supervisor', 'manager', 'admin'].includes(role);
+  const isManager = ['manager', 'admin'].includes(role);
+
+  const visibleTabs = mainTabs.filter(tab => {
+    if (tab.key === 'WASTAGE' || tab.key === 'STORE_USE') return true;
+    if (tab.key === 'SCANNER_INTAKE' && isSupervisor) return true;
+    if (tab.key === 'AMENDMENTS' && isManager) return true;
+    if (tab.key === 'ALERTS' && isManager) return true;
+    if (tab.key === 'REPORTS' && isManager) return true;
+    return false;
+  });
+
   const initialTab = (() => {
     const tab = searchParams.get('tab');
-    return mainTabs.some((t) => t.key === tab) ? tab : 'WASTAGE';
+    return visibleTabs.some((t) => t.key === tab) ? tab : 'WASTAGE';
   })();
 
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -73,7 +94,7 @@ export default function Wastage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {mainTabs.map((tab) => (
+        {visibleTabs.map((tab) => (
           <PillTab key={tab.key} label={tab.label} active={activeTab === tab.key} onClick={() => updateTab(tab.key)} />
         ))}
       </div>
@@ -90,10 +111,10 @@ export default function Wastage() {
 
       {activeTab === 'WASTAGE' && <WastageTab refreshTick={refreshTick} />}
       {activeTab === 'STORE_USE' && <StoreUseTab refreshTick={refreshTick} />}
-      {activeTab === 'SCANNER_INTAKE' && <ScannerIntakeTab refreshTick={refreshTick} />}
-      {activeTab === 'AMENDMENTS' && <AmendmentsTab refreshTick={refreshTick} />}
-      {activeTab === 'ALERTS' && <AlertsTab refreshTick={refreshTick} />}
-      {activeTab === 'REPORTS' && <ReportsTab refreshTick={refreshTick} />}
+      {activeTab === 'SCANNER_INTAKE' && isSupervisor && <ScannerIntakeTab refreshTick={refreshTick} />}
+      {activeTab === 'AMENDMENTS' && isManager && <AmendmentsTab refreshTick={refreshTick} />}
+      {activeTab === 'ALERTS' && isManager && <AlertsTab refreshTick={refreshTick} />}
+      {activeTab === 'REPORTS' && isManager && <ReportsTab refreshTick={refreshTick} />}
     </div>
   );
 }

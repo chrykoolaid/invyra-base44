@@ -1,9 +1,10 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
- * approveStockOutAmendment
- * Manager/Admin approves an amendment.
- * If quantity changed, posts a delta movement and updates the original record.
+ * approveStockOutAmendment — FIXED
+ * Correct stock movement direction for amendments:
+ * - Positive delta (increase qty) = OUT (remove more stock)
+ * - Negative delta (decrease qty) = IN (restore stock)
  */
 
 function normaliseRole(role) {
@@ -37,20 +38,45 @@ Deno.serve(async (req) => {
   const record = records[0];
   if (!record) return Response.json({ error: 'Original record not found.' }, { status: 404 });
 
+  // Get item for stock guards
+  const items = await base44.asServiceRole.entities.InventoryItem.filter({ id: record.item_id });
+  const item = items[0];
+  if (!item) return Response.json({ error: 'InventoryItem not found.' }, { status: 404 });
+
+  const configs = await base44.asServiceRole.entities.SystemConfiguration.filter({ environment: record.environment || 'LIVE' });
+  const config = configs[0];
+  const allowNegative = config?.inventory_rules?.allow_negative_stock ?? false;
+
   const now = new Date().toISOString();
   const afterSnapshot = amendment.after_snapshot;
   let adjustmentMovement = null;
 
-  // If quantity changed, post delta movement
+  // If quantity changed, post delta movement with CORRECT direction
   if (amendment.quantity_delta !== 0 && amendment.requires_adjustment_posting) {
+    const isIncrease = amendment.quantity_delta > 0;
+    const deltaQty = Math.abs(amendment.quantity_delta);
+
     const recentMovements = await base44.asServiceRole.entities.StockMovement.filter(
       { item_id: record.item_id, environment: record.environment || 'LIVE', status: 'POSTED' },
       '-created_date', 1
     );
-    const balanceBefore = recentMovements[0] ? recentMovements[0].balance_after : 0;
-    const balanceAfter = amendment.quantity_delta > 0
-      ? balanceBefore + amendment.quantity_delta // recovery/addition
-      : Math.max(0, balanceBefore - Math.abs(amendment.quantity_delta)); // additional removal
+    const balanceBefore = recentMovements[0] ? recentMovements[0].balance_after : (item.stock || 0);
+    
+    // Correct direction logic:
+    // Increase (qty goes up) = OUT (remove more)
+    // Decrease (qty goes down) = IN (restore)
+    const balanceAfter = isIncrease ? (balanceBefore - deltaQty) : (balanceBefore + deltaQty);
+    const direction = isIncrease ? 'OUT' : 'IN';
+
+    // Guard: Block if insufficient stock for increase
+    if (isIncrease && balanceAfter < 0 && !allowNegative) {
+      return Response.json({
+        error: `Insufficient stock for amendment increase. Current: ${balanceBefore}, Additional remove: ${deltaQty}, Projected: ${balanceAfter}`,
+        current_stock: balanceBefore,
+        additional_removal: deltaQty,
+        projected_stock: balanceAfter,
+      }, { status: 409 });
+    }
 
     adjustmentMovement = await base44.asServiceRole.entities.StockMovement.create({
       site_id: record.site_id || '',
@@ -58,17 +84,22 @@ Deno.serve(async (req) => {
       sku: record.sku,
       item_name: record.item_name,
       movement_type: 'ADJUST',
-      direction: amendment.quantity_delta > 0 ? 'IN' : 'OUT',
-      qty: Math.abs(amendment.quantity_delta),
+      direction,
+      qty: deltaQty,
       balance_before: balanceBefore,
       balance_after: balanceAfter,
       source_ref: `AMEND-${record.id.slice(-6)}`,
       source_type: 'MANUAL',
-      notes: `Amendment approved: ${amendment.amendment_reason}. Delta: ${amendment.quantity_delta} units.`,
+      notes: `Amendment approved: ${amendment.amendment_reason}. Delta: ${amendment.quantity_delta > 0 ? '+' : ''}${amendment.quantity_delta} units.`,
       status: 'POSTED',
       posted_by: user.email || user.id,
       actor_role: role,
       environment: record.environment || 'LIVE',
+    });
+
+    // Update InventoryItem stock
+    await base44.asServiceRole.entities.InventoryItem.update(record.item_id, {
+      stock: balanceAfter,
     });
   }
 
@@ -108,7 +139,7 @@ Deno.serve(async (req) => {
     linked_movement_id: adjustmentMovement?.id || null,
     linked_source_record: amendment.record_id,
     source_record_id: amendment_id,
-    notes: `Amendment approved. ${amendment.amendment_reason}. Delta: ${amendment.quantity_delta} units. ${approval_notes || ''}`,
+    notes: `Amendment approved. ${amendment.amendment_reason}. Delta: ${amendment.quantity_delta > 0 ? '+' : ''}${amendment.quantity_delta} units. Stock updated. ${approval_notes || ''}`,
     environment: record.environment || 'LIVE',
   });
 

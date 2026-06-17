@@ -1,6 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
+ * DEPRECATED: approveStockOutRecord
+ * This function is retired. Use approveStockOutRecordV2 instead.
+ * V2 includes safe stock guards and correct balance calculation.
+ */
+
+/**
  * approveStockOutRecord
  * Supervisor/Manager approves a SUBMITTED record and posts the stock movement.
  * Creates StockMovement and transitions record to APPROVED → POSTED.
@@ -11,6 +17,12 @@ function normaliseRole(role) {
 }
 
 Deno.serve(async (req) => {
+  return Response.json({
+    error: 'DEPRECATED: approveStockOutRecord has been retired. Use approveStockOutRecordV2 instead.',
+    deprecation_message: 'This function used unsafe stock clamping. Please use approveStockOutRecordV2 which includes proper guards and validation.',
+  }, { status: 410 });
+
+  // Old code below disabled for safety
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
