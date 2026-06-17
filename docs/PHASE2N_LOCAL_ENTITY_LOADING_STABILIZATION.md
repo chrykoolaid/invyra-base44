@@ -1,6 +1,6 @@
 # Phase 2N — Local Base44 Entity Loading Stabilization
 
-Status: implementation support added; local browser evidence pending
+Status: COMPLETE / LOCAL RUNTIME-PASSING
 
 ## Objective
 
@@ -40,6 +40,7 @@ Hosted Base44 and production runtime continue to use normal Base44 entity calls.
 ```text
 src/pages/Inventory.jsx
 src/components/ItemDetailsWorkspace.jsx
+src/lib/forecastingItemDetails.js
 package.json
 ```
 
@@ -69,6 +70,8 @@ StockMovement.filter -> withLocalDevTimeout(...)
 
 If the call times out in local dev fallback mode, Item Details uses local movement rows so the same forecast panel can render through the standard Item Details path.
 
+The browser forecast request now has a bounded timeout so the forecast panel cannot remain in a loading state forever if the API is unavailable.
+
 ## Validation Command
 
 Run:
@@ -83,39 +86,35 @@ Expected result:
 Phase 2N local entity fallback validation passed.
 ```
 
-## Expected Browser Test
+## Runtime Evidence Received
 
-Start the forecasting API with local Vite origin allowed.
-
-Start Inventory/Base44 with:
-
-```powershell
-$env:VITE_INVYRA_FORECASTING_API_BASE_URL="http://127.0.0.1:8000"
-$env:VITE_INVYRA_LOCAL_DEV_ROLE_OVERRIDE="Admin"
-npm run dev
-```
-
-Open:
+Local browser evidence was captured from:
 
 ```text
-http://localhost:<vite-port>/Inventory
+http://127.0.0.1:5174/Inventory
 ```
 
-Expected:
+Observed result:
 
 ```text
-Inventory no longer hangs forever on Loading inventory...
-A local dev fallback notice appears if Base44 entity loading is unavailable
-A CHM-LIVE-002 verification row appears
-View opens Item Details
-Forecast intelligence renders available or low_confidence if API/CORS is configured
-No stock adjustment action appears
-No purchase order creation or approval action appears
+/Inventory exited Loading inventory state
+local dev fallback notice appeared
+CHM-LIVE-002 verification row appeared
+View opened Item Details
+Stock movements fallback notice appeared
+Item Details KPIs populated
+Forecast intelligence panel reached the forecasting API
+Forecast status displayed Medium
+Evidence action appeared
+Advisory only remained visible
+Ledger remains source of truth remained visible
+No stock adjustment action appeared
+No purchase order action appeared
 ```
 
-## Exit Criteria
+## Completion Result
 
-Phase 2N is complete when local browser evidence confirms:
+Phase 2N is complete because local browser evidence confirms:
 
 ```text
 /Inventory exits loading state
