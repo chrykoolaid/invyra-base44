@@ -95,6 +95,23 @@ Deno.serve(async (req) => {
       environment: record.environment || 'LIVE',
     });
 
+    // Create alert for reversal
+    await base44.asServiceRole.entities.StockOutAlert.create({
+      alert_type: 'REVERSAL_AFTER_POST',
+      severity: 'MEDIUM',
+      status: 'OPEN',
+      linked_record_id: record_id,
+      trigger_reason: `Stock-out reversal posted. Reason: ${reason}`,
+      dedupe_key: `REVERSAL_${record_id}`,
+      metadata: {
+        sku: record.sku,
+        item_name: record.item_name,
+        quantity: record.quantity,
+        value: record.estimated_value,
+      },
+      environment: 'LIVE',
+    });
+
     return Response.json({
       success: true,
       record_id,

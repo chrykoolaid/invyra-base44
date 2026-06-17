@@ -126,6 +126,28 @@ Deno.serve(async (req) => {
       environment: record.environment || 'LIVE',
     });
 
+    // Create alert for high-value records (threshold: ₱10,000)
+    if (estimatedValue > 10000) {
+      const alertType = record.stock_out_class === 'WASTAGE' ? 'HIGH_VALUE_WASTAGE' : 'HIGH_VALUE_STORE_USE';
+      await base44.asServiceRole.entities.StockOutAlert.create({
+        alert_type: alertType,
+        severity: estimatedValue > 50000 ? 'CRITICAL' : 'HIGH',
+        status: 'OPEN',
+        linked_record_id: record_id,
+        trigger_reason: `High-value ${record.stock_out_class.toLowerCase()}: ₱${estimatedValue.toFixed(0)}`,
+        dedupe_key: `${alertType}_${record.sku}_${record_id}`,
+        metadata: {
+          sku: record.sku,
+          item_name: record.item_name,
+          quantity: qty,
+          value: estimatedValue,
+          reason: record.reason_category,
+          location: record.location,
+        },
+        environment: 'LIVE',
+      });
+    }
+
     return Response.json({
       success: true,
       record_id,

@@ -72,6 +72,9 @@ Deno.serve(async (req) => {
     }, { status: 400 });
   }
 
+  // Check if this was an unknown barcode (original barcode doesn't match resolved SKU)
+  const wasUnknownBarcode = intake.raw_barcode && intake.resolved_sku && intake.raw_barcode !== intake.resolved_sku;
+
   // Fetch item for naming and cost
   let item = null;
   let itemName = resolved_sku;
@@ -134,6 +137,25 @@ Deno.serve(async (req) => {
     notes: `Scanner intake resolved. Generated draft ${proposed_stock_out_class} record.`,
     environment,
   });
+
+  // Create alert if this was an unknown barcode
+  if (wasUnknownBarcode) {
+    await base44.asServiceRole.entities.StockOutAlert.create({
+      alert_type: 'UNKNOWN_BARCODE',
+      severity: 'LOW',
+      status: 'OPEN',
+      linked_record_id: record.id,
+      trigger_reason: `Unknown barcode resolved: ${intake.raw_barcode} → ${resolved_sku}`,
+      dedupe_key: `UNKNOWN_BARCODE_${intake.raw_barcode}`,
+      metadata: {
+        sku: resolved_sku,
+        item_name: itemName,
+        quantity: intake.quantity,
+        raw_barcode: intake.raw_barcode,
+      },
+      environment,
+    });
+  }
 
   return Response.json({
     success: true,

@@ -47,14 +47,13 @@ export default function AlertsTab({ refreshTick }) {
 
   const handleAcknowledge = async (alertId) => {
     try {
-      const now = new Date().toISOString();
-      await base44.asServiceRole.entities.StockOutAlert.update(alertId, {
-        status: 'ACKNOWLEDGED',
-        acknowledged_by: 'current_user',
-        acknowledged_at: now,
+      const response = await base44.functions.invoke('acknowledgeStockOutAlert', {
+        alert_id: alertId,
       });
-      toast.success('Alert acknowledged');
-      setAlerts(alerts.map(a => a.id === alertId ? { ...a, status: 'ACKNOWLEDGED', acknowledged_at: now } : a));
+      if (response.data.success) {
+        toast.success('Alert acknowledged');
+        setAlerts(alerts.map(a => a.id === alertId ? { ...a, status: 'ACKNOWLEDGED' } : a));
+      }
     } catch (error) {
       toast.error(`Acknowledge failed: ${error.message}`);
     }
@@ -62,14 +61,13 @@ export default function AlertsTab({ refreshTick }) {
 
   const handleResolve = async (alertId) => {
     try {
-      const now = new Date().toISOString();
-      await base44.asServiceRole.entities.StockOutAlert.update(alertId, {
-        status: 'RESOLVED',
-        resolved_by: 'current_user',
-        resolved_at: now,
+      const response = await base44.functions.invoke('resolveStockOutAlert', {
+        alert_id: alertId,
       });
-      toast.success('Alert resolved');
-      setAlerts(alerts.map(a => a.id === alertId ? { ...a, status: 'RESOLVED', resolved_at: now } : a));
+      if (response.data.success) {
+        toast.success('Alert resolved');
+        setAlerts(alerts.map(a => a.id === alertId ? { ...a, status: 'RESOLVED' } : a));
+      }
     } catch (error) {
       toast.error(`Resolve failed: ${error.message}`);
     }
@@ -77,15 +75,14 @@ export default function AlertsTab({ refreshTick }) {
 
   const handleDedupe = async (alertId, dedupeOfId) => {
     try {
-      const now = new Date().toISOString();
-      await base44.asServiceRole.entities.StockOutAlert.update(alertId, {
-        status: 'DEDUPED',
-        deduped_by: 'current_user',
-        deduped_at: now,
+      const response = await base44.functions.invoke('dedupeStockOutAlert', {
+        alert_id: alertId,
         deduped_of: dedupeOfId,
       });
-      toast.success('Alert marked as duplicate');
-      setAlerts(alerts.map(a => a.id === alertId ? { ...a, status: 'DEDUPED', deduped_at: now } : a));
+      if (response.data.success) {
+        toast.success('Alert marked as duplicate');
+        setAlerts(alerts.map(a => a.id === alertId ? { ...a, status: 'DEDUPED' } : a));
+      }
     } catch (error) {
       toast.error(`Dedupe failed: ${error.message}`);
     }
