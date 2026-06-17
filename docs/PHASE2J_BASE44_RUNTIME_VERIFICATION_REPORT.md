@@ -1,6 +1,6 @@
 # Phase 2J — Base44 Runtime Verification Report
 
-Status: partial runtime verified — safe unavailable mode passing
+Status: substantial runtime verified — safe unavailable mode, lower Item Details sections, and Movements navigation passing
 
 ## Objective
 
@@ -28,12 +28,18 @@ Verified path:
 Inventory -> View item -> Item Details -> Forecast intelligence panel
 ```
 
+Additional verified navigation:
+
+```text
+Item Details -> Open Full Movements -> Inventory Movements filtered by item SKU
+```
+
 ## Evidence Received
 
 Runtime evidence source:
 
 ```text
-Base44 Builder preview screenshot supplied by project owner.
+Base44 Builder preview screenshots supplied by project owner.
 ```
 
 Observed item:
@@ -76,6 +82,9 @@ Observed result:
 - No stock adjustment action appeared in the forecast panel.
 - No purchase order action appeared in the forecast panel.
 - Existing KPI cards remained visible.
+- Existing lower Item Details sections remained visible after scroll.
+- Open Full Movements navigation worked.
+- Inventory Movements opened with the item filter applied for `CHM-LIVE-002`.
 - No page crash was visible.
 
 Status:
@@ -104,7 +113,7 @@ Expected result:
 Status:
 
 ```text
-PENDING — API URL not configured in supplied screenshot.
+PENDING — API URL not configured in supplied runtime evidence.
 ```
 
 ### Mode C — Forecasting API stopped mode
@@ -127,43 +136,64 @@ PENDING — depends on Mode B runtime setup.
 
 ## Required Existing Sections
 
-Confirm these remain present after forecast panel insertion:
+Confirmed present after forecast panel insertion:
 
 - Item Summary
 - Usage & Demand
 - Reorder Intelligence
+- Recommendation box
 - Stock Movement Summary
 - Open Full Movements button
 - Safety lock footer
 
-Screenshot evidence confirms the top Item Details header and KPI cards remain visible. Lower sections require scroll confirmation.
+These sections were confirmed through lower-scroll screenshots.
 
 ## Required Forecast Panel Guardrails
 
-Observed in the screenshot:
+Observed in the screenshots:
 
 - advisory-only text visible
 - ledger remains source of truth text visible
 - no stock adjustment action visible
 - no purchase order action visible
 - unavailable fallback visible
+- no duplicated Stock History table visible in Item Details
+- no duplicated Reorder Review table visible in Item Details
+- no raw movement rows displayed in the forecast panel
+- no raw model internals displayed in the forecast panel
 
-Required guardrails still to verify by scroll/runtime review:
+## Movements Navigation Evidence
 
-- no duplicated Stock History table
-- no duplicated Reorder Review table
-- no raw movement rows
-- no raw model internals
+The `Open Full Movements` button was clicked from Item Details.
+
+Observed result:
+
+- Inventory Movements opened successfully.
+- The Movements sidebar item became active.
+- The page displayed `Inventory Movements`.
+- A banner showed the ledger was filtered from Item Details for `CHM-LIVE-002`.
+- The filter field contained `CHM-LIVE-002`.
+- Total Movements showed `3`.
+- Total In Qty showed `9`.
+- Total Out Qty showed `3`.
+- The ledger rows shown were for Fabric Softener 20L / `CHM-LIVE-002`.
+
+Status:
+
+```text
+PASS
+```
 
 ## Screenshot Evidence Checklist
 
 | Evidence | Status | Notes |
 |---|---|---|
-| Inventory page with item row visible | Partial | Sidebar and Item Details context visible; row list not shown in supplied screenshot. |
+| Inventory page with item row visible | Partial | Item list row itself not shown, but Inventory context and Item Details screen are clearly visible. |
 | Item Details opened from the `View` button | Pass | Item Details screen is open for Fabric Softener 20L. |
 | Forecast intelligence panel visible | Pass | Forecast unavailable panel visible. |
-| Existing Item Summary / Usage & Demand / Reorder Intelligence sections still visible | Pending | Requires scroll/lower section screenshot. |
-| Stock Movement Summary and Open Full Movements button still visible | Pending | Requires scroll/lower section screenshot. |
+| Existing Item Summary / Usage & Demand / Reorder Intelligence sections still visible | Pass | Confirmed by lower-scroll screenshots. |
+| Stock Movement Summary and Open Full Movements button still visible | Pass | Confirmed by lower-scroll screenshots. |
+| Open Full Movements navigation | Pass | Confirmed by Movements page screenshot filtered to `CHM-LIVE-002`. |
 | Safe unavailable state if forecasting API URL is blank | Pass | Unavailable state and env configuration guidance visible. |
 | Available or low-confidence state if forecasting API is configured | Pending | Requires configured forecasting API. |
 
@@ -175,15 +205,15 @@ Required guardrails still to verify by scroll/runtime review:
 | Item Details opens from View | Pass | Item Details is open for Fabric Softener 20L. |
 | Forecast intelligence panel appears | Pass | Panel visible in screenshot. |
 | Safe unavailable mode works | Pass | Correct unavailable state appears when API URL is not configured. |
-| Existing Item Summary remains visible | Pending | Requires lower section screenshot. |
-| Usage & Demand remains visible | Pending | Requires lower section screenshot. |
-| Reorder Intelligence remains visible | Pending | Requires lower section screenshot. |
-| Stock Movement Summary remains visible | Pending | Requires lower section screenshot. |
-| Open Full Movements still works | Pending | Requires click/runtime confirmation. |
+| Existing Item Summary remains visible | Pass | Confirmed by lower-scroll screenshot. |
+| Usage & Demand remains visible | Pass | Confirmed by lower-scroll screenshot. |
+| Reorder Intelligence remains visible | Pass | Confirmed by lower-scroll screenshot. |
+| Stock Movement Summary remains visible | Pass | Confirmed by lower-scroll screenshot. |
+| Open Full Movements still works | Pass | Movements page opened with item filter applied for `CHM-LIVE-002`. |
 | No stock mutation action appears | Pass | Forecast panel shows no stock adjustment action. |
 | No PO creation/approval action appears | Pass | Forecast panel shows no purchase order action. |
-| No duplicated Stock History appears | Pending | Requires lower section screenshot. |
-| No duplicated Reorder Review appears | Pending | Requires lower section screenshot. |
+| No duplicated Stock History appears | Pass | No duplicate Stock History section visible across shown Item Details sections. |
+| No duplicated Reorder Review appears | Pass | No duplicate Reorder Review section visible across shown Item Details sections. |
 | Low-confidence forecast remains visible when returned | Pending | Requires configured forecasting API response. |
 | Snapshot evidence link behaves safely | Pending | Requires configured forecasting API response with snapshot ID or missing snapshot check. |
 
@@ -192,12 +222,12 @@ Required guardrails still to verify by scroll/runtime review:
 Current result:
 
 ```text
-PARTIAL PASS — Base44 safe unavailable mode verified. API-configured mode and lower-section scroll checks remain pending.
+SUBSTANTIAL PASS — Base44 Item Details UI wiring is runtime-verified in safe unavailable mode, including lower section preservation and Movements navigation. Remaining checks are limited to API-configured behaviour.
 ```
 
 ## Completion Rule
 
-Phase 2J may be fully marked complete when the remaining pass/fail items are updated from actual runtime evidence.
+Phase 2J may be fully marked complete when the remaining API-configured pass/fail items are updated from actual runtime evidence.
 
 If issues are found, do not mark Phase 2J complete. Open Phase 2K as:
 
@@ -214,6 +244,4 @@ Status: COMPLETE / RUNTIME-PASSING
 
 ## Next Recommended Action
 
-Capture one lower-scroll screenshot showing Item Summary, Usage & Demand, Reorder Intelligence, Stock Movement Summary, and Open Full Movements.
-
-Then configure the forecasting API URL when ready and verify the API-configured state.
+Configure the forecasting API URL when ready and verify the API-configured state.
