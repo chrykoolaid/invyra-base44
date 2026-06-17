@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { hasAccess, roleLabel, roleBadgeClass } from '@/lib/permissions';
+import { resolveEffectiveRole } from '@/lib/devRoleOverride';
 
 // Nav items — each has a `minRole` that controls visibility
 const primaryNav = [
@@ -145,7 +146,7 @@ function NavGroup({ label, items, location, userRole, isCollapsed = false, onTog
 export default function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
-  const userRole = user?.role ?? 'staff';
+  const userRole = resolveEffectiveRole(user?.role);
   const [collapsedGroups, setCollapsedGroups] = useState(getInitialCollapsedGroups);
 
   const navGroups = useMemo(() => [
