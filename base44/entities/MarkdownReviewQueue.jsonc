@@ -1,0 +1,102 @@
+{
+  "name": "MarkdownReviewQueue",
+  "type": "object",
+  "properties": {
+    "batch_id": {
+      "type": "string",
+      "description": "Reference to MarkdownBatch.id"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending_Investigation",
+        "Supervisor_Ack",
+        "Manager_Auth",
+        "Ready_For_Disposition",
+        "Disposition_Complete",
+        "Recovered"
+      ],
+      "default": "Pending_Investigation",
+      "description": "Governance workflow state"
+    },
+    "entered_review_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when batch was placed into the Review Queue"
+    },
+    "expected_remaining_qty": {
+      "type": "number",
+      "description": "System-computed remaining quantity at time of floor removal"
+    },
+    "actual_floor_count": {
+      "type": "number",
+      "description": "Physical count taken on the floor at time of removal"
+    },
+    "variance_qty": {
+      "type": "number",
+      "description": "Absolute variance: expected - actual"
+    },
+    "variance_percent": {
+      "type": "number",
+      "description": "Variance as percentage of expected: (variance_qty / expected_remaining_qty) * 100"
+    },
+    "last_floor_count_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deadline_warning_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Alert threshold: entered_review_at + review_warning_hours (default 24h)"
+    },
+    "deadline_escalation_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Escalation threshold: entered_review_at + review_escalation_hours (default 72h)"
+    },
+    "deadline_critical_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Critical alert threshold: entered_review_at + review_critical_hours (default 96h)"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "User ID of Supervisor/Manager assigned to investigate"
+    },
+    "supervisor_ack_by": {
+      "type": "string",
+      "description": "User ID who acknowledged at Supervisor level"
+    },
+    "supervisor_ack_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "manager_auth_by": {
+      "type": "string",
+      "description": "User ID who authorized at Manager level"
+    },
+    "manager_auth_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "investigation_notes": {
+      "type": "string",
+      "description": "Free-text notes from investigation"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "batch_id",
+    "status",
+    "entered_review_at",
+    "expected_remaining_qty"
+  ]
+}

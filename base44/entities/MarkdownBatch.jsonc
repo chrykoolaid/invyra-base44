@@ -1,0 +1,131 @@
+{
+  "name": "MarkdownBatch",
+  "type": "object",
+  "properties": {
+    "batch_ref": {
+      "type": "string",
+      "description": "Human-readable reference e.g. MB-2026-001"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Reference to InventoryItem.sku \u2014 Item Master read-only"
+    },
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name at time of batch creation"
+    },
+    "parent_batch_id": {
+      "type": "string",
+      "description": "Optional: reference to parent MarkdownBatch.id for splits"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Draft",
+        "Pending_Approval",
+        "Active",
+        "Review_Queue",
+        "Disposition_Complete",
+        "Recovered",
+        "Voided"
+      ],
+      "default": "Draft",
+      "description": "Lifecycle state of the markdown batch"
+    },
+    "total_original_qty": {
+      "type": "number",
+      "description": "Total quantity originally allocated into this markdown batch"
+    },
+    "allocated_qty": {
+      "type": "number",
+      "description": "Quantity formally allocated into the markdown batch from inventory"
+    },
+    "current_remaining_qty": {
+      "type": "number",
+      "description": "Running remaining quantity (starts = allocated_qty, decremented by sales)"
+    },
+    "removed_from_floor_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantity physically removed from the display floor"
+    },
+    "sold_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "Total units sold under markdown pricing"
+    },
+    "recovered_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "Units recovered back to full-price inventory"
+    },
+    "disposed_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "Units disposed of (waste, donate, transfer, store use)"
+    },
+    "sell_through_pct": {
+      "type": "number",
+      "default": 0,
+      "description": "Derived: sold_qty / allocated_qty * 100"
+    },
+    "current_round_number": {
+      "type": "number",
+      "default": 1,
+      "description": "Active round number (1, 2, or 3)"
+    },
+    "site_id": {
+      "type": "string",
+      "description": "Reference to Site.id"
+    },
+    "settings_snapshot": {
+      "type": "object",
+      "description": "Copy of MarkdownSettings at time of batch creation for immutable governance reference"
+    },
+    "initiated_by": {
+      "type": "string",
+      "description": "User ID of staff who initiated the request"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "User ID of Supervisor/Manager who approved the batch"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "voided_by": {
+      "type": "string",
+      "description": "User ID of Manager who voided the batch"
+    },
+    "voided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "voided_reason": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "sku",
+    "item_id",
+    "item_name",
+    "status",
+    "total_original_qty",
+    "allocated_qty",
+    "current_remaining_qty"
+  ]
+}

@@ -1,0 +1,135 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
+
+/**
+ * validateMarkdownPOSSale
+ * 8-point POS validation for markdown sales.
+ * Called BEFORE processing any markdown-priced transaction line.
+ * Returns Sale_Allowed or Sale_Blocked with a detailed check breakdown.
+ *
+ * Checks:
+ * 1. markdown_batch_id exists
+ * 2. markdown_round_id exists
+ * 3. barcode_status = Active or Reprinted
+ * 4. batch status = Active
+ * 5. round status = Active
+ * 6. markdown price matches round's markdown_unit_price
+ * 7. expiry_date not passed
+ * 8. remaining_qty >= qty_requested (sale eligibility)
+ */
+Deno.serve(async (req) => {
+  const base44 = createClientFromRequest(req);
+  const user = await base44.auth.me();
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const {
+    markdown_batch_id,
+    markdown_round_id,
+    markdown_barcode_scanned,
+    markdown_price_offered,
+    qty_requested,
+    environment = 'LIVE',
+  } = await req.json();
+
+  const checks = [];
+  let sale_allowed = true;
+
+  const fail = (check_name, reason) => {
+    checks.push({ check: check_name, passed: false, reason });
+    sale_allowed = false;
+  };
+
+  const pass = (check_name, detail) => {
+    checks.push({ check: check_name, passed: true, detail: detail || '' });
+  };
+
+  // Check 1: batch_id provided
+  if (!markdown_batch_id) { fail('batch_id_present', 'markdown_batch_id is missing.'); }
+  else pass('batch_id_present');
+
+  // Check 2: round_id provided
+  if (!markdown_round_id) { fail('round_id_present', 'markdown_round_id is missing.'); }
+  else pass('round_id_present');
+
+  let batch = null;
+  let round = null;
+
+  if (markdown_batch_id) {
+    const batches = await base44.asServiceRole.entities.MarkdownBatch.filter({ id: markdown_batch_id });
+    batch = batches[0] || null;
+  }
+
+  if (markdown_round_id) {
+    const rounds = await base44.asServiceRole.entities.MarkdownRound.filter({ id: markdown_round_id });
+    round = rounds[0] || null;
+  }
+
+  // Check 3: barcode_status
+  if (!round) {
+    fail('barcode_status', 'Round not found.');
+  } else if (!['Active', 'Reprinted'].includes(round.barcode_status)) {
+    fail('barcode_status', `Barcode status is ${round.barcode_status} — sale not allowed.`);
+  } else {
+    pass('barcode_status', round.barcode_status);
+  }
+
+  // Check 4: batch status
+  if (!batch) {
+    fail('batch_status', 'Batch not found.');
+  } else if (batch.status !== 'Active') {
+    fail('batch_status', `Batch status is ${batch.status} — sale not allowed.`);
+  } else {
+    pass('batch_status', 'Active');
+  }
+
+  // Check 5: round active status
+  if (!round) {
+    fail('round_active_status', 'Round not found.');
+  } else if (round.status !== 'Active') {
+    fail('round_active_status', `Round status is ${round.status} — sale not allowed.`);
+  } else {
+    pass('round_active_status', 'Active');
+  }
+
+  // Check 6: markdown price matches
+  if (!round) {
+    fail('markdown_price', 'Round not found — cannot validate price.');
+  } else if (markdown_price_offered !== undefined && Math.abs(round.markdown_unit_price - markdown_price_offered) > 0.001) {
+    fail('markdown_price', `Price mismatch: offered ${markdown_price_offered}, expected ${round.markdown_unit_price}.`);
+  } else {
+    pass('markdown_price', `₱${round ? round.markdown_unit_price : 'N/A'}`);
+  }
+
+  // Check 7: expiry date
+  if (!round) {
+    fail('expiry_date', 'Round not found.');
+  } else {
+    const today = new Date().toISOString().slice(0, 10);
+    if (round.expiry_date < today) {
+      fail('expiry_date', `Expired on ${round.expiry_date}. Today is ${today}.`);
+    } else {
+      pass('expiry_date', `Expires ${round.expiry_date}`);
+    }
+  }
+
+  // Check 8: remaining quantity / sale eligibility
+  if (!batch) {
+    fail('sale_eligibility', 'Batch not found — cannot validate remaining quantity.');
+  } else if (qty_requested && batch.current_remaining_qty < qty_requested) {
+    fail('sale_eligibility', `Insufficient remaining qty: ${batch.current_remaining_qty} available, ${qty_requested} requested.`);
+  } else {
+    pass('sale_eligibility', `${batch ? batch.current_remaining_qty : 'N/A'} units remaining`);
+  }
+
+  const result = {
+    validation_status: sale_allowed ? 'Sale_Allowed' : 'Sale_Blocked',
+    sale_allowed,
+    checks,
+    batch_ref: batch ? batch.batch_ref : null,
+    markdown_unit_price: round ? round.markdown_unit_price : null,
+    expiry_date: round ? round.expiry_date : null,
+    remaining_qty: batch ? batch.current_remaining_qty : null,
+    round_number: round ? round.round_number : null,
+  };
+
+  return Response.json(result);
+});

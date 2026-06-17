@@ -1,0 +1,68 @@
+{
+  "name": "MarkdownEventLog",
+  "type": "object",
+  "properties": {
+    "batch_id": {
+      "type": "string",
+      "description": "Reference to MarkdownBatch.id"
+    },
+    "round_id": {
+      "type": "string",
+      "description": "Optional: reference to MarkdownRound.id when event is round-specific"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "MARKDOWN_CREATED",
+        "MARKDOWN_APPROVED",
+        "ROUND_PROGRESS",
+        "LABEL_PRINTED",
+        "LABEL_REPRINTED",
+        "SALE_POSTED",
+        "SALE_REVERSED",
+        "REMOVED_FROM_DISPLAY",
+        "VARIANCE_RECORDED",
+        "DISPOSITION_CONFIRMED",
+        "RECOVERY_COMPLETED",
+        "EXPIRY_AMENDED"
+      ],
+      "description": "Append-only event type \u2014 analytics and forecasting feed"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "User ID of the actor who triggered this event"
+    },
+    "user_role": {
+      "type": "string",
+      "description": "Role of the actor at time of event"
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Optional: scanner, terminal, or device ID"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Full delta capture: { before: {...}, after: {...}, meta: {...} } \u2014 immutable analytics feed"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Event creation timestamp \u2014 always server-side"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "batch_id",
+    "event_type",
+    "user_id",
+    "created_at"
+  ]
+}

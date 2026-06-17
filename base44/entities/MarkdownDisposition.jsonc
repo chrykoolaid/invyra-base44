@@ -1,0 +1,107 @@
+{
+  "name": "MarkdownDisposition",
+  "type": "object",
+  "properties": {
+    "review_queue_id": {
+      "type": "string",
+      "description": "Reference to MarkdownReviewQueue.id"
+    },
+    "batch_id": {
+      "type": "string",
+      "description": "Denormalized reference to MarkdownBatch.id"
+    },
+    "disposition_status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Confirmed",
+        "Failed",
+        "Reversed"
+      ],
+      "default": "Pending",
+      "description": "Human-confirmed before any StockMovement is posted"
+    },
+    "outcome_type": {
+      "type": "string",
+      "enum": [
+        "Waste",
+        "Store_Use",
+        "Donate",
+        "Return_To_Supplier",
+        "Transfer",
+        "Recover"
+      ],
+      "description": "Final disposal outcome \u2014 no automatic posting"
+    },
+    "disposition_reason_code": {
+      "type": "string",
+      "description": "Reason code for audit trail"
+    },
+    "disposition_notes": {
+      "type": "string",
+      "description": "Free-text notes from the authorizing manager"
+    },
+    "qty": {
+      "type": "number",
+      "description": "Quantity covered by this disposition record (supports split disposition)"
+    },
+    "cost_impact_value": {
+      "type": "number",
+      "description": "Computed cost write-off value: qty * cost_per_unit at time of disposition"
+    },
+    "destination_ref": {
+      "type": "string",
+      "description": "Optional external reference (charity name, transfer site, return PO number)"
+    },
+    "authorized_by": {
+      "type": "string",
+      "description": "User ID of Supervisor/Manager who authorized"
+    },
+    "authorization_role": {
+      "type": "string",
+      "description": "Role of authorizing user at time of authorization"
+    },
+    "confirmed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of final confirmation \u2014 triggers StockMovement posting"
+    },
+    "confirmed_by": {
+      "type": "string",
+      "description": "User ID who confirmed \u2014 may differ from authorized_by"
+    },
+    "linked_movement_id": {
+      "type": "string",
+      "description": "Reference to StockMovement.id created on disposition confirmation"
+    },
+    "reversal_reason": {
+      "type": "string",
+      "description": "Required if disposition_status = Reversed"
+    },
+    "reversed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reversed_by": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "review_queue_id",
+    "batch_id",
+    "disposition_status",
+    "outcome_type",
+    "qty",
+    "authorized_by",
+    "authorization_role"
+  ]
+}

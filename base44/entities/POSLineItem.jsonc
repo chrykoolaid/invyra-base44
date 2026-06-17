@@ -1,0 +1,106 @@
+{
+  "name": "POSLineItem",
+  "type": "object",
+  "properties": {
+    "pos_transaction_id": {
+      "type": "string",
+      "description": "Reference to parent POS transaction"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Reference to InventoryItem.sku"
+    },
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name at time of sale"
+    },
+    "qty": {
+      "type": "number",
+      "description": "Quantity sold on this line"
+    },
+    "unit_price": {
+      "type": "number",
+      "description": "Actual price charged \u2014 markdown_unit_price if markdown sale"
+    },
+    "original_unit_price": {
+      "type": "number",
+      "description": "Full price before markdown for variance reporting"
+    },
+    "line_total": {
+      "type": "number",
+      "description": "qty * unit_price"
+    },
+    "is_markdown_sale": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this line item was sold under a markdown batch"
+    },
+    "markdown_batch_id": {
+      "type": "string",
+      "description": "POS line-level link to MarkdownBatch.id \u2014 required for markdown sales"
+    },
+    "markdown_round_id": {
+      "type": "string",
+      "description": "POS line-level link to MarkdownRound.id \u2014 required for markdown sales"
+    },
+    "markdown_barcode_scanned": {
+      "type": "string",
+      "description": "The actual barcode value scanned at POS for validation"
+    },
+    "pos_validation_status": {
+      "type": "string",
+      "enum": [
+        "Validated",
+        "Rejected",
+        "Bypassed"
+      ],
+      "description": "Result of the 8-point POS validation check"
+    },
+    "pos_validation_detail": {
+      "type": "object",
+      "description": "Full validation result payload: { checks: [...], passed: bool, failure_reason: string }"
+    },
+    "reversal_of": {
+      "type": "string",
+      "description": "POSLineItem.id this entry reverses \u2014 set only for sale reversals"
+    },
+    "is_reversed": {
+      "type": "boolean",
+      "default": false
+    },
+    "reversed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "site_id": {
+      "type": "string",
+      "description": "Reference to Site.id"
+    },
+    "served_by": {
+      "type": "string",
+      "description": "User ID of staff who processed the sale"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "pos_transaction_id",
+    "sku",
+    "item_id",
+    "item_name",
+    "qty",
+    "unit_price",
+    "line_total"
+  ]
+}

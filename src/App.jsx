@@ -40,6 +40,10 @@ import Exceptions from './pages/Exceptions';
 import InventoryRoadmap from './pages/InventoryRoadmap';
 import LocalForecastVerification from './pages/LocalForecastVerification';
 import InventorySettings from './pages/InventorySettings';
+import Markdown from './pages/Markdown';
+import MarkdownBatches from './pages/MarkdownBatches';
+import MarkdownReviewQueuePage from './pages/MarkdownReviewQueuePage';
+import MarkdownMonitor from './pages/MarkdownMonitor';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -93,6 +97,10 @@ const AuthenticatedApp = () => {
         <Route path="/Exceptions"            element={<RoleGuard><Exceptions /></RoleGuard>} />
         <Route path="/LocalForecastVerification" element={<RoleGuard><LocalForecastVerification /></RoleGuard>} />
         <Route path="/InventorySettings"        element={<RoleGuard><InventorySettings /></RoleGuard>} />
+        <Route path="/Markdown"               element={<RoleGuard><Markdown /></RoleGuard>} />
+        <Route path="/Markdown/Batches"       element={<RoleGuard><MarkdownBatches /></RoleGuard>} />
+        <Route path="/Markdown/ReviewQueue"   element={<RoleGuard><MarkdownReviewQueuePage /></RoleGuard>} />
+        <Route path="/Markdown/Monitor"       element={<RoleGuard><MarkdownMonitor /></RoleGuard>} />
         {/* Training routes — RoleGuard enforces RBAC; TrainingProvider scopes DB to environment:"TRAINING" */}
         <Route path="/Training/Staff"      element={<RoleGuard><TrainingProvider><TrainingStaff /></TrainingProvider></RoleGuard>} />
         <Route path="/Training/Supervisor" element={<RoleGuard><TrainingProvider><TrainingSupervisor /></TrainingProvider></RoleGuard>} />

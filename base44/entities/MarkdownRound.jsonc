@@ -1,0 +1,121 @@
+{
+  "name": "MarkdownRound",
+  "type": "object",
+  "properties": {
+    "batch_id": {
+      "type": "string",
+      "description": "Reference to MarkdownBatch.id"
+    },
+    "round_number": {
+      "type": "number",
+      "description": "Round sequence: 1, 2, or 3"
+    },
+    "original_unit_price": {
+      "type": "number",
+      "description": "Full original price before any markdown"
+    },
+    "markdown_unit_price": {
+      "type": "number",
+      "description": "Effective sale price for this round"
+    },
+    "discount_percent": {
+      "type": "number",
+      "description": "Percentage discount applied: (1 - markdown/original) * 100"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Display sell-by date for this round"
+    },
+    "expiry_amended_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp if expiry was amended post-print (Manager only)"
+    },
+    "expiry_amended_by": {
+      "type": "string",
+      "description": "User ID of Manager who amended the expiry"
+    },
+    "markdown_barcode": {
+      "type": "string",
+      "description": "Unique barcode value for this round label"
+    },
+    "barcode_status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Voided",
+        "Reprinted",
+        "Expired"
+      ],
+      "default": "Active",
+      "description": "Lifecycle state of the barcode/label"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Progressed",
+        "Completed",
+        "Voided"
+      ],
+      "default": "Active",
+      "description": "Round lifecycle status"
+    },
+    "printed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "print_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of times a label has been printed for this round"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User ID who created this round"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "User ID of Supervisor/Manager who approved this round"
+    },
+    "progressed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when this round was progressed to next"
+    },
+    "progressed_by": {
+      "type": "string",
+      "description": "User ID who progressed this round"
+    },
+    "qty_at_round_start": {
+      "type": "number",
+      "description": "Remaining quantity when this round began"
+    },
+    "qty_sold_in_round": {
+      "type": "number",
+      "default": 0,
+      "description": "Units sold during this specific round"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "batch_id",
+    "round_number",
+    "original_unit_price",
+    "markdown_unit_price",
+    "discount_percent",
+    "expiry_date",
+    "markdown_barcode",
+    "barcode_status",
+    "status"
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "name": "MarkdownSettings",
+  "type": "object",
+  "properties": {
+    "site_id": {
+      "type": "string",
+      "description": "Optional: site-specific override. Null = global default"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether markdown operations are enabled"
+    },
+    "max_reprints": {
+      "type": "number",
+      "default": 2,
+      "description": "Maximum reprints allowed before Manager escalation is required"
+    },
+    "max_rounds": {
+      "type": "number",
+      "default": 3,
+      "description": "Maximum markdown rounds permitted per batch"
+    },
+    "variance_threshold_supervisor": {
+      "type": "number",
+      "default": 0.05,
+      "description": "Variance % that requires Supervisor acknowledgement (e.g. 0.05 = 5%)"
+    },
+    "variance_threshold_manager": {
+      "type": "number",
+      "default": 0.1,
+      "description": "Variance % that requires Manager authorization (e.g. 0.10 = 10%)"
+    },
+    "review_warning_hours": {
+      "type": "number",
+      "default": 24,
+      "description": "Hours after entering Review Queue before first warning alert fires"
+    },
+    "review_escalation_hours": {
+      "type": "number",
+      "default": 72,
+      "description": "Hours after entering Review Queue before escalation alert fires"
+    },
+    "review_critical_hours": {
+      "type": "number",
+      "default": 96,
+      "description": "Hours after entering Review Queue before critical alert fires \u2014 no auto-action"
+    },
+    "require_approval_for_new_batch": {
+      "type": "boolean",
+      "default": true,
+      "description": "If true, Staff-initiated batches require Supervisor/Manager approval before activation"
+    },
+    "require_approval_for_round_progression": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, round progression requires Supervisor sign-off"
+    },
+    "default_label_template_id": {
+      "type": "string",
+      "description": "Default label template used when printing markdown labels"
+    },
+    "last_updated_by": {
+      "type": "string",
+      "description": "User ID of admin who last saved settings"
+    },
+    "last_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "is_active",
+    "max_reprints",
+    "variance_threshold_supervisor",
+    "variance_threshold_manager",
+    "review_warning_hours",
+    "review_escalation_hours",
+    "review_critical_hours"
+  ]
+}

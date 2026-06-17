@@ -1,0 +1,94 @@
+{
+  "name": "MarkdownPrintEvent",
+  "type": "object",
+  "properties": {
+    "batch_id": {
+      "type": "string",
+      "description": "Reference to MarkdownBatch.id"
+    },
+    "round_id": {
+      "type": "string",
+      "description": "Reference to MarkdownRound.id"
+    },
+    "round_number": {
+      "type": "number",
+      "description": "Denormalized round number for fast querying"
+    },
+    "printer_id": {
+      "type": "string",
+      "description": "Device or printer identifier"
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Terminal or handheld device ID"
+    },
+    "label_template_id": {
+      "type": "string",
+      "description": "Reference to the label template used for this print"
+    },
+    "print_type": {
+      "type": "string",
+      "enum": [
+        "Initial",
+        "Reprint"
+      ],
+      "default": "Initial",
+      "description": "Whether this is the first print or a reprint"
+    },
+    "print_status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Success",
+        "Failed",
+        "Cancelled"
+      ],
+      "default": "Pending"
+    },
+    "printed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "failure_reason": {
+      "type": "string",
+      "description": "Captured if print_status = Failed"
+    },
+    "reason_code": {
+      "type": "string",
+      "description": "Required for Reprint: reason justifying the reprint request"
+    },
+    "reprint_approved_by": {
+      "type": "string",
+      "description": "User ID of Supervisor/Manager who approved the reprint"
+    },
+    "reprint_approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_escalated": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if reprint request exceeded max_reprints threshold and required Manager approval"
+    },
+    "requested_by": {
+      "type": "string",
+      "description": "User ID who requested the print/reprint"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "batch_id",
+    "round_id",
+    "print_type",
+    "print_status",
+    "requested_by"
+  ]
+}

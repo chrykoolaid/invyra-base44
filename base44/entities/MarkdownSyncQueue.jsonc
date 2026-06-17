@@ -1,0 +1,74 @@
+{
+  "name": "MarkdownSyncQueue",
+  "type": "object",
+  "properties": {
+    "local_event_id": {
+      "type": "string",
+      "description": "Client-generated unique ID for offline event deduplication"
+    },
+    "server_event_id": {
+      "type": "string",
+      "description": "Server-assigned ID once the event is processed successfully"
+    },
+    "batch_id": {
+      "type": "string",
+      "description": "Reference to MarkdownBatch.id this event belongs to"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "The event action being queued (mirrors MarkdownEventLog.event_type)"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Full event payload captured offline \u2014 submitted as-is on reconnect"
+    },
+    "sync_status": {
+      "type": "string",
+      "enum": [
+        "Queued",
+        "Failed",
+        "Processed",
+        "Conflict"
+      ],
+      "default": "Queued",
+      "description": "Current synchronization state"
+    },
+    "retry_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of sync attempts made"
+    },
+    "conflict_reason": {
+      "type": "string",
+      "description": "Populated when sync_status = Conflict \u2014 describes the data mismatch"
+    },
+    "processed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of successful server processing"
+    },
+    "device_id": {
+      "type": "string",
+      "description": "Originating scanner/terminal device ID"
+    },
+    "submitted_by": {
+      "type": "string",
+      "description": "User ID of the operator who triggered the offline event"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "local_event_id",
+    "event_type",
+    "payload",
+    "sync_status"
+  ]
+}

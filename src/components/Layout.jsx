@@ -25,6 +25,7 @@ import {
   LogOut,
   FlaskConical,
   ChevronDown,
+  Tag,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { hasAccess, roleLabel, roleBadgeClass } from '@/lib/permissions';
@@ -37,6 +38,7 @@ const primaryNav = [
 ];
 
 const operationsNav = [
+  { path: '/Markdown',       label: 'Markdown',    icon: Tag,               minRole: 'staff'      },
   { path: '/Inventory',      label: 'Inventory',   icon: Package,           minRole: 'supervisor' },
   { path: '/Movements',      label: 'Movements',   icon: ScrollText,        minRole: 'supervisor' },
   { path: '/Adjustments',    label: 'Adjustments', icon: SlidersHorizontal, minRole: 'supervisor' },
