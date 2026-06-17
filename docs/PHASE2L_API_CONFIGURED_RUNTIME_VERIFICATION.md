@@ -1,6 +1,6 @@
 # Phase 2L — API-Configured Base44 Runtime Verification
 
-Status: verification support implemented; runtime evidence pending
+Status: API verification script passing; Base44 browser runtime evidence pending
 
 ## Objective
 
@@ -32,6 +32,29 @@ Local example:
 
 ```text
 VITE_INVYRA_FORECASTING_API_BASE_URL=http://127.0.0.1:8000
+```
+
+## Runtime Evidence Received
+
+API verification was run locally with the forecasting API running at:
+
+```text
+http://127.0.0.1:8000
+```
+
+Observed output:
+
+```text
+Phase 2L verification passed with panel status: available
+```
+
+This confirms the local Inventory/Base44 verification script can reach the forecasting API and receive a valid Item Details panel response.
+
+Status:
+
+```text
+PASS — API verification script
+PENDING — Base44 browser panel with configured API URL
 ```
 
 ## What The Script Verifies
@@ -96,9 +119,17 @@ Expected result:
 - No stock mutation action appears.
 - No purchase order creation or approval action appears.
 
+## Current Phase 2L Result
+
+Current result:
+
+```text
+PARTIAL PASS — API verification script passed with status available. Base44 browser runtime evidence remains pending.
+```
+
 ## Phase 2L Completion Rule
 
-Phase 2L can be marked runtime-passing only after actual API-configured evidence is supplied.
+Phase 2L can be marked fully runtime-passing only after actual Base44 browser evidence is supplied with the API URL configured.
 
 If the script passes but Base44 runtime fails, open:
 
