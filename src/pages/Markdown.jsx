@@ -7,6 +7,7 @@ const TABS = [
   { id: 'review',     label: 'Review Queue',      icon: ClipboardList, path: '/Markdown/ReviewQueue' },
   { id: 'monitor',    label: 'Monitor Sheet',     icon: Printer,       path: '/Markdown/Monitor' },
   { id: 'reports',    label: 'Reports',           icon: BarChart3,     path: '/Markdown/Reports' },
+  { id: 'tests',      label: 'Acceptance Tests',  icon: Settings,      path: '/Markdown/Tests' },
 ];
 
 export default function Markdown() {
