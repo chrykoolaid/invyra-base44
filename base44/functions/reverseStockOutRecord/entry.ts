@@ -65,10 +65,17 @@ Deno.serve(async (req) => {
       environment: record.environment || 'LIVE',
     });
 
-    // Update InventoryItem stock back
-    await base44.asServiceRole.entities.InventoryItem.update(record.item_id, {
-      stock: balanceAfter,
-    });
+    // Update InventoryItem stock and stock_per_site
+    const updatePayload = { stock: balanceAfter };
+    if (record.site_id) {
+      const currentPerSite = item.stock_per_site || {};
+      const siteKey = record.site_id;
+      const siteStockBefore = currentPerSite[siteKey] || 0;
+      const siteStockAfter = siteStockBefore + record.quantity; // Restore
+      currentPerSite[siteKey] = siteStockAfter;
+      updatePayload.stock_per_site = currentPerSite;
+    }
+    await base44.asServiceRole.entities.InventoryItem.update(record.item_id, updatePayload);
 
     // Update record to REVERSED
     await base44.asServiceRole.entities.StockOutRecord.update(record_id, {

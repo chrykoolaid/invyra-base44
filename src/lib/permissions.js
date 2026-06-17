@@ -15,7 +15,6 @@ export const ROUTE_PERMISSIONS = {
   '/GapScan':            'staff',
   '/GapScan/floor':      'staff',
   '/Wastage':            'staff',
-  '/Wastage/workspace':  'staff',
   '/Inventory':          'supervisor',
   '/Receiving':          'supervisor',
   '/Receiving/workspace':'supervisor',
