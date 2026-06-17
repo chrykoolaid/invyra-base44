@@ -117,10 +117,10 @@ export default function ReportsTab({ refreshTick }) {
   }, [filteredRecords, groupBy]);
 
   const summary = useMemo(() => {
-    // Gross: all posted records before reversals
-    const postedRecords = filteredRecords.filter(r => r.status === 'POSTED');
-    const grossQty = postedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
-    const grossValue = postedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    // Gross: includes POSTED and REVERSED (records that originally posted stock out)
+    const grossRecords = filteredRecords.filter(r => r.status === 'POSTED' || r.status === 'REVERSED');
+    const grossQty = grossRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const grossValue = grossRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
 
     // Reversed: records with REVERSED status
     const reversedRecords = filteredRecords.filter(r => r.status === 'REVERSED');
@@ -131,17 +131,36 @@ export default function ReportsTab({ refreshTick }) {
     const netQty = grossQty - reversedQty;
     const netValue = grossValue - reversedValue;
 
-    // Posted value (subset of gross)
-    const postedValue = postedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    // Wastage breakdowns (only POSTED and REVERSED)
+    const wastageGrossRecords = grossRecords.filter(r => r.stock_out_class === 'WASTAGE');
+    const wastageGrossValue = wastageGrossRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const wastageGrossQty = wastageGrossRecords.reduce((s, r) => s + (r.quantity || 0), 0);
 
-    // Wastage vs Store Use (all records)
-    const wastageValue = filteredRecords.filter(r => r.stock_out_class === 'WASTAGE').reduce((s, r) => s + (r.estimated_value || 0), 0);
-    const storeUseValue = filteredRecords.filter(r => r.stock_out_class === 'STORE_USE').reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const wastageReversedRecords = reversedRecords.filter(r => r.stock_out_class === 'WASTAGE');
+    const wastageReversedValue = wastageReversedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
 
-    // Pending approval
+    const wastageNetValue = wastageGrossValue - wastageReversedValue;
+    const wastageNetQty = wastageGrossQty - wastageReversedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+
+    // Store Use breakdowns (only POSTED and REVERSED)
+    const storeUseGrossRecords = grossRecords.filter(r => r.stock_out_class === 'STORE_USE');
+    const storeUseGrossValue = storeUseGrossRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const storeUseGrossQty = storeUseGrossRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+
+    const storeUseReversedRecords = reversedRecords.filter(r => r.stock_out_class === 'STORE_USE');
+    const storeUseReversedValue = storeUseReversedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+
+    const storeUseNetValue = storeUseGrossValue - storeUseReversedValue;
+    const storeUseNetQty = storeUseGrossQty - storeUseReversedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+
+    // Pending approval (not in gross/net)
     const pendingRecords = filteredRecords.filter(r => r.status === 'SUBMITTED' || r.status === 'DRAFT');
     const pendingQty = pendingRecords.reduce((s, r) => s + (r.quantity || 0), 0);
     const pendingValue = pendingRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+
+    // Rejected (not in gross/net)
+    const rejectedRecords = filteredRecords.filter(r => r.status === 'REJECTED');
+    const rejectedValue = rejectedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
 
     // Total quantity across all
     const totalQty = filteredRecords.reduce((s, r) => s + (r.quantity || 0), 0);
@@ -155,11 +174,15 @@ export default function ReportsTab({ refreshTick }) {
       reversedValue,
       netQty,
       netValue,
-      postedValue,
-      wastageValue,
-      storeUseValue,
+      wastageGrossValue,
+      wastageReversedValue,
+      wastageNetValue,
+      storeUseGrossValue,
+      storeUseReversedValue,
+      storeUseNetValue,
       pendingQty,
       pendingValue,
+      rejectedValue,
     };
   }, [filteredRecords]);
 
@@ -227,21 +250,36 @@ export default function ReportsTab({ refreshTick }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Value</p>
-          <p className="text-2xl font-bold text-foreground">₱{summary.wastageValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">Damaged, expired, spoiled</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Gross</p>
+          <p className="text-2xl font-bold text-foreground">₱{summary.wastageGrossValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Posted + reversed</p>
         </div>
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Value</p>
-          <p className="text-2xl font-bold text-foreground">₱{summary.storeUseValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">Staff use, cleaning, etc.</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Reversed</p>
+          <p className="text-2xl font-bold text-red-700">₱{summary.wastageReversedValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Restored</p>
         </div>
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Records</p>
-          <p className="text-2xl font-bold text-foreground">{summary.total}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.totalQty} total units</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Net</p>
+          <p className="text-2xl font-bold text-green-700">₱{summary.wastageNetValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">After reversals</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Gross</p>
+          <p className="text-2xl font-bold text-foreground">₱{summary.storeUseGrossValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Posted + reversed</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Reversed</p>
+          <p className="text-2xl font-bold text-red-700">₱{summary.storeUseReversedValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Restored</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Net</p>
+          <p className="text-2xl font-bold text-green-700">₱{summary.storeUseNetValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">After reversals</p>
         </div>
       </div>
 

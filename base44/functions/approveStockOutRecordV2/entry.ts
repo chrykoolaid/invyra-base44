@@ -60,6 +60,23 @@ Deno.serve(async (req) => {
     }, { status: 409 });
   }
 
+  // GUARD: Check site-level stock if location/site is specified
+  if (record.site_id) {
+    const sitePerStock = item.stock_per_site || {};
+    const siteStockBefore = sitePerStock[record.site_id] || 0;
+    const siteStockAfter = siteStockBefore - qty;
+
+    if (siteStockAfter < 0 && !allowNegative) {
+      return Response.json({
+        error: `Insufficient stock at site/location. Site: ${record.site_id}, Current: ${siteStockBefore}, Requested: ${qty}, Projected: ${siteStockAfter}. Negative stock not allowed.`,
+        site_id: record.site_id,
+        site_stock_before: siteStockBefore,
+        requested_qty: qty,
+        site_stock_after: siteStockAfter,
+      }, { status: 409 });
+    }
+  }
+
   const now = new Date().toISOString();
   const costPerUnit = item.cost_per_unit || 0;
   const estimatedValue = qty * costPerUnit;

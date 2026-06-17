@@ -78,6 +78,23 @@ Deno.serve(async (req) => {
       }, { status: 409 });
     }
 
+    // Guard: Check site-level stock if site is specified
+    if (record.site_id && isIncrease) {
+      const sitePerStock = item.stock_per_site || {};
+      const siteStockBefore = sitePerStock[record.site_id] || 0;
+      const siteStockAfter = siteStockBefore - deltaQty;
+
+      if (siteStockAfter < 0 && !allowNegative) {
+        return Response.json({
+          error: `Insufficient stock at site for amendment increase. Site: ${record.site_id}, Current: ${siteStockBefore}, Additional remove: ${deltaQty}, Projected: ${siteStockAfter}`,
+          site_id: record.site_id,
+          site_stock_before: siteStockBefore,
+          additional_removal: deltaQty,
+          site_stock_after: siteStockAfter,
+        }, { status: 409 });
+      }
+    }
+
     adjustmentMovement = await base44.asServiceRole.entities.StockMovement.create({
       site_id: record.site_id || '',
       item_id: record.item_id,
