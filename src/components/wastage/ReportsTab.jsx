@@ -9,15 +9,46 @@ export default function ReportsTab({ refreshTick }) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [groupBy, setGroupBy] = useState('reason');
-  const [window, setWindow] = useState('30D');
+  const [window, setWindow] = useState('ALL');
+  const [filterType, setFilterType] = useState('ALL');
+  const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterLocation, setFilterLocation] = useState('ALL');
+  const [filterDepartment, setFilterDepartment] = useState('ALL');
+  const [filterSource, setFilterSource] = useState('ALL');
 
+  // Load all relevant record statuses: DRAFT, SUBMITTED, POSTED, REVERSED, REJECTED
   useEffect(() => {
     setLoading(true);
-    base44.entities.StockOutRecord.filter({
-      status: 'POSTED',
-      environment: 'LIVE',
-    }, '-created_date', 200).then(data => {
-      setRecords(data || []);
+    Promise.all([
+      base44.entities.StockOutRecord.filter({
+        status: 'DRAFT',
+        environment: 'LIVE',
+      }, '-created_date', 200),
+      base44.entities.StockOutRecord.filter({
+        status: 'SUBMITTED',
+        environment: 'LIVE',
+      }, '-created_date', 200),
+      base44.entities.StockOutRecord.filter({
+        status: 'POSTED',
+        environment: 'LIVE',
+      }, '-created_date', 200),
+      base44.entities.StockOutRecord.filter({
+        status: 'REVERSED',
+        environment: 'LIVE',
+      }, '-created_date', 200),
+      base44.entities.StockOutRecord.filter({
+        status: 'REJECTED',
+        environment: 'LIVE',
+      }, '-created_date', 200),
+    ]).then(([draft, submitted, posted, reversed, rejected]) => {
+      const allRecords = [
+        ...(draft || []),
+        ...(submitted || []),
+        ...(posted || []),
+        ...(reversed || []),
+        ...(rejected || []),
+      ];
+      setRecords(allRecords);
       setLoading(false);
     });
   }, [refreshTick]);
@@ -25,24 +56,58 @@ export default function ReportsTab({ refreshTick }) {
   const filteredRecords = useMemo(() => {
     const q = query.toLowerCase();
     const now = new Date();
-    const daysDiff = window === '7D' ? 7 : 30;
-    const cutoff = new Date(now.getTime() - daysDiff * 24 * 60 * 60 * 1000);
+    let cutoff = new Date(0); // No cutoff for ALL
+
+    if (window === '7D') {
+      cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (window === '30D') {
+      cutoff = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
 
     return records.filter(r => {
       const createdDate = new Date(r.created_date);
-      return createdDate >= cutoff && (
-        r.sku.toLowerCase().includes(q) ||
-        r.item_name.toLowerCase().includes(q) ||
-        r.reason_category.toLowerCase().includes(q) ||
-        (r.location && r.location.toLowerCase().includes(q))
+      return (
+        createdDate >= cutoff &&
+        (filterType === 'ALL' || r.stock_out_class === filterType) &&
+        (filterStatus === 'ALL' || r.status === filterStatus) &&
+        (filterLocation === 'ALL' || (r.location === filterLocation)) &&
+        (filterDepartment === 'ALL' || (r.department === filterDepartment)) &&
+        (filterSource === 'ALL' || (r.source === filterSource)) &&
+        (r.sku.toLowerCase().includes(q) ||
+          r.item_name.toLowerCase().includes(q) ||
+          r.reason_category.toLowerCase().includes(q) ||
+          (r.location && r.location.toLowerCase().includes(q)) ||
+          (r.department && r.department.toLowerCase().includes(q)))
       );
     });
-  }, [records, query, window]);
+  }, [records, query, window, filterType, filterStatus, filterLocation, filterDepartment, filterSource]);
 
   const grouped = useMemo(() => {
     const groups = {};
     filteredRecords.forEach(r => {
-      const key = groupBy === 'sku' ? r.sku : groupBy === 'location' ? (r.location || 'N/A') : r.reason_category;
+      let key;
+      if (groupBy === 'sku') {
+        key = r.sku;
+      } else if (groupBy === 'item') {
+        key = r.item_name;
+      } else if (groupBy === 'reason') {
+        key = r.reason_category;
+      } else if (groupBy === 'user') {
+        key = r.submitted_by || r.approved_by || 'Unknown';
+      } else if (groupBy === 'location') {
+        key = r.location || 'N/A';
+      } else if (groupBy === 'source') {
+        key = r.source;
+      } else if (groupBy === 'department') {
+        key = r.department || 'N/A';
+      } else if (groupBy === 'status') {
+        key = r.status;
+      } else if (groupBy === 'type') {
+        key = r.stock_out_class;
+      } else {
+        key = r.reason_category;
+      }
+      
       if (!groups[key]) {
         groups[key] = [];
       }
@@ -66,46 +131,72 @@ export default function ReportsTab({ refreshTick }) {
     const netQty = grossQty - reversedQty;
     const netValue = grossValue - reversedValue;
 
-    // Wastage vs Store Use
+    // Posted value (subset of gross)
+    const postedValue = postedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+
+    // Wastage vs Store Use (all records)
     const wastageValue = filteredRecords.filter(r => r.stock_out_class === 'WASTAGE').reduce((s, r) => s + (r.estimated_value || 0), 0);
     const storeUseValue = filteredRecords.filter(r => r.stock_out_class === 'STORE_USE').reduce((s, r) => s + (r.estimated_value || 0), 0);
 
     // Pending approval
-    const pendingValue = filteredRecords.filter(r => r.status === 'SUBMITTED' || r.status === 'DRAFT').reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const pendingRecords = filteredRecords.filter(r => r.status === 'SUBMITTED' || r.status === 'DRAFT');
+    const pendingQty = pendingRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const pendingValue = pendingRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+
+    // Total quantity across all
+    const totalQty = filteredRecords.reduce((s, r) => s + (r.quantity || 0), 0);
 
     return {
       total: filteredRecords.length,
+      totalQty,
       grossQty,
       grossValue,
       reversedQty,
       reversedValue,
       netQty,
       netValue,
+      postedValue,
       wastageValue,
       storeUseValue,
+      pendingQty,
       pendingValue,
     };
   }, [filteredRecords]);
 
-  const handleExport = async (format) => {
+  // Extract unique values for filters
+  const uniqueLocations = [...new Set(records.filter(r => r.location).map(r => r.location))];
+  const uniqueDepartments = [...new Set(records.filter(r => r.department).map(r => r.department))];
+  const uniqueSources = [...new Set(records.map(r => r.source))];
+
+  const handleExport = async () => {
     try {
-      const response = await base44.functions.invoke('exportWastageCSV', {
-        records: filteredRecords.map(r => ({
-          id: r.id,
-          sku: r.sku,
-          item_name: r.item_name,
-          quantity: r.quantity,
-          reason_category: r.reason_category,
-          location: r.location,
-          status: r.status,
-          created_date: r.created_date,
-          estimated_value: r.estimated_value,
-        })),
-      });
-      if (response.data.csv_url) {
-        window.open(response.data.csv_url, '_blank');
-        toast.success('Export ready for download');
-      }
+      // Create CSV from filtered records
+      const headers = ['SKU', 'Item Name', 'Quantity', 'Reason', 'Location', 'Department', 'Status', 'Type', 'Value', 'Created Date'];
+      const rows = filteredRecords.map(r => [
+        r.sku,
+        r.item_name,
+        r.quantity,
+        r.reason_category,
+        r.location || '',
+        r.department || '',
+        r.status,
+        r.stock_out_class,
+        r.estimated_value.toFixed(2),
+        new Date(r.created_date).toLocaleDateString(),
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      ].join('\n');
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `stock-out-report-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      toast.success('CSV exported successfully');
     } catch (error) {
       toast.error(`Export failed: ${error.message}`);
     }
@@ -127,12 +218,12 @@ export default function ReportsTab({ refreshTick }) {
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Net Value</p>
           <p className="text-2xl font-bold text-green-700">₱{summary.netValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">After reversals</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.netQty} units after reversals</p>
         </div>
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Pending Approval</p>
           <p className="text-2xl font-bold text-amber-700">₱{summary.pendingValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">Awaiting approval</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.pendingQty} units awaiting</p>
         </div>
       </div>
 
@@ -150,7 +241,7 @@ export default function ReportsTab({ refreshTick }) {
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Records</p>
           <p className="text-2xl font-bold text-foreground">{summary.total}</p>
-          <p className="text-xs text-muted-foreground mt-2">In selected period</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.totalQty} total units</p>
         </div>
       </div>
 
@@ -162,7 +253,7 @@ export default function ReportsTab({ refreshTick }) {
               <p className="text-xs text-muted-foreground mt-1">Grouped and filterable reports</p>
             </div>
             <button
-              onClick={() => handleExport('csv')}
+              onClick={handleExport}
               className="px-3 py-1.5 text-xs rounded bg-primary text-primary-foreground hover:opacity-90 flex items-center gap-1 font-medium"
             >
               <Download size={13} /> Export CSV
@@ -171,35 +262,99 @@ export default function ReportsTab({ refreshTick }) {
         </div>
 
         <div className="p-4 space-y-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="relative flex-1 min-w-[240px]">
+          <div className="flex flex-col gap-3">
+            <div className="relative w-full">
               <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by SKU, item, reason, or location..."
+                placeholder="Search by SKU, item, reason, location, or department..."
                 className="pl-9"
               />
             </div>
 
-            <select
-              value={window}
-              onChange={(e) => setWindow(e.target.value)}
-              className="h-10 px-3 rounded-xl border border-input bg-background text-sm"
-            >
-              <option value="7D">Last 7 days</option>
-              <option value="30D">Last 30 days</option>
-              <option value="ALL">All time</option>
-            </select>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+              <select
+                value={window}
+                onChange={(e) => setWindow(e.target.value)}
+                className="h-9 px-2 rounded border border-input bg-background text-xs"
+              >
+                <option value="7D">Last 7 days</option>
+                <option value="30D">Last 30 days</option>
+                <option value="ALL">All time</option>
+              </select>
+
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="h-9 px-2 rounded border border-input bg-background text-xs"
+              >
+                <option value="ALL">Type: All</option>
+                <option value="WASTAGE">Wastage</option>
+                <option value="STORE_USE">Store Use</option>
+              </select>
+
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="h-9 px-2 rounded border border-input bg-background text-xs"
+              >
+                <option value="ALL">Status: All</option>
+                <option value="DRAFT">Draft</option>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="POSTED">Posted</option>
+                <option value="REVERSED">Reversed</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+
+              <select
+                value={filterLocation}
+                onChange={(e) => setFilterLocation(e.target.value)}
+                className="h-9 px-2 rounded border border-input bg-background text-xs"
+              >
+                <option value="ALL">Location: All</option>
+                {uniqueLocations.map(loc => (
+                  <option key={loc} value={loc}>{loc}</option>
+                ))}
+              </select>
+
+              <select
+                value={filterDepartment}
+                onChange={(e) => setFilterDepartment(e.target.value)}
+                className="h-9 px-2 rounded border border-input bg-background text-xs"
+              >
+                <option value="ALL">Dept: All</option>
+                {uniqueDepartments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+
+              <select
+                value={filterSource}
+                onChange={(e) => setFilterSource(e.target.value)}
+                className="h-9 px-2 rounded border border-input bg-background text-xs"
+              >
+                <option value="ALL">Source: All</option>
+                {uniqueSources.map(src => (
+                  <option key={src} value={src}>{src}</option>
+                ))}
+              </select>
+            </div>
 
             <select
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value)}
-              className="h-10 px-3 rounded-xl border border-input bg-background text-sm"
+              className="h-9 px-2 rounded border border-input bg-background text-xs w-full md:w-auto"
             >
               <option value="reason">Group by Reason</option>
               <option value="sku">Group by SKU</option>
+              <option value="item">Group by Item</option>
+              <option value="user">Group by User</option>
               <option value="location">Group by Location</option>
+              <option value="source">Group by Source</option>
+              <option value="department">Group by Department</option>
+              <option value="status">Group by Status</option>
+              <option value="type">Group by Type</option>
             </select>
           </div>
 
@@ -209,8 +364,8 @@ export default function ReportsTab({ refreshTick }) {
             </div>
           ) : Object.keys(grouped).length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm font-medium text-foreground mb-1">No records in this period</p>
-              <p className="text-xs text-muted-foreground">Try adjusting filters or time window</p>
+              <p className="text-sm font-medium text-foreground mb-1">No records match filters</p>
+              <p className="text-xs text-muted-foreground">Try adjusting date range or filters</p>
             </div>
           ) : (
             <div className="space-y-4">
