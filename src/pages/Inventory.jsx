@@ -6,6 +6,12 @@ import {
 } from 'lucide-react';
 import BulkStockUpload from '@/components/BulkStockUpload';
 import ItemDetailsWorkspace from '@/components/ItemDetailsWorkspace';
+import {
+  getLocalDevInventoryItems,
+  isLocalDevInventoryFallbackEnabled,
+  localDevInventoryFallbackNotice,
+  withLocalDevTimeout,
+} from '@/lib/localDevInventoryFallback';
 
 const actions = [
   { label: 'Add / Update Item', icon: Plus },
@@ -324,6 +330,7 @@ function ItemMasterModal({ item, items, onClose, onSaved }) {
 export default function Inventory() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadNotice, setLoadNotice] = useState('');
   const [query, setQuery] = useState('');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(new Set());
@@ -335,9 +342,23 @@ export default function Inventory() {
 
   const loadItems = useCallback(async () => {
     setLoading(true);
-    const rows = await base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, '-updated_date', 200);
-    setItems(rows || []);
-    setLoading(false);
+    setLoadNotice('');
+
+    try {
+      const request = base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, '-updated_date', 200);
+      const rows = await withLocalDevTimeout(request, 4000, 'InventoryItem.filter');
+      setItems(rows || []);
+    } catch (err) {
+      if (isLocalDevInventoryFallbackEnabled()) {
+        setItems(getLocalDevInventoryItems());
+        setLoadNotice(localDevInventoryFallbackNotice('Inventory items'));
+      } else {
+        setItems([]);
+        setLoadNotice(err?.message || 'Could not load inventory items.');
+      }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { loadItems(); }, [loadItems]);
@@ -445,6 +466,12 @@ export default function Inventory() {
           <Upload size={13} /> Bulk Stock Update
         </button>
       </div>
+
+      {loadNotice && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {loadNotice}
+        </div>
+      )}
 
       {/* Search row */}
       <div className="flex items-center gap-2 mb-4">
