@@ -11,6 +11,7 @@
     "typecheck": "tsc -p ./jsconfig.json",
     "validate:forecast-ui": "node scripts/validate-phase2h-forecast-ui.mjs",
     "validate:phase2m-dev-role-override": "node scripts/validate-phase2m-dev-role-override.mjs",
+    "validate:phase2n-local-entity-fallback": "node scripts/validate-phase2n-local-entity-fallback.mjs",
     "verify:forecast-api": "node scripts/verify-phase2l-forecast-api.mjs",
     "preview": "vite preview"
   },
