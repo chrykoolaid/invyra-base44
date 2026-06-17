@@ -52,10 +52,39 @@ export default function ReportsTab({ refreshTick }) {
   }, [filteredRecords, groupBy]);
 
   const summary = useMemo(() => {
-    const total = filteredRecords.length;
-    const qty = filteredRecords.reduce((s, r) => s + (r.quantity || 0), 0);
-    const value = filteredRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
-    return { total, qty, value };
+    // Gross: all posted records before reversals
+    const postedRecords = filteredRecords.filter(r => r.status === 'POSTED');
+    const grossQty = postedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const grossValue = postedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+
+    // Reversed: records with REVERSED status
+    const reversedRecords = filteredRecords.filter(r => r.status === 'REVERSED');
+    const reversedQty = reversedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const reversedValue = reversedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+
+    // Net = Gross - Reversed
+    const netQty = grossQty - reversedQty;
+    const netValue = grossValue - reversedValue;
+
+    // Wastage vs Store Use
+    const wastageValue = filteredRecords.filter(r => r.stock_out_class === 'WASTAGE').reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const storeUseValue = filteredRecords.filter(r => r.stock_out_class === 'STORE_USE').reduce((s, r) => s + (r.estimated_value || 0), 0);
+
+    // Pending approval
+    const pendingValue = filteredRecords.filter(r => r.status === 'SUBMITTED' || r.status === 'DRAFT').reduce((s, r) => s + (r.estimated_value || 0), 0);
+
+    return {
+      total: filteredRecords.length,
+      grossQty,
+      grossValue,
+      reversedQty,
+      reversedValue,
+      netQty,
+      netValue,
+      wastageValue,
+      storeUseValue,
+      pendingValue,
+    };
   }, [filteredRecords]);
 
   const handleExport = async (format) => {
@@ -86,24 +115,42 @@ export default function ReportsTab({ refreshTick }) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Gross Value</p>
+          <p className="text-2xl font-bold text-foreground">₱{summary.grossValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.grossQty} units posted</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Reversed Value</p>
+          <p className="text-2xl font-bold text-red-700">₱{summary.reversedValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.reversedQty} units reversed</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Net Value</p>
+          <p className="text-2xl font-bold text-green-700">₱{summary.netValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">After reversals</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Pending Approval</p>
+          <p className="text-2xl font-bold text-amber-700">₱{summary.pendingValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Awaiting approval</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Value</p>
+          <p className="text-2xl font-bold text-foreground">₱{summary.wastageValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Damaged, expired, spoiled</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Value</p>
+          <p className="text-2xl font-bold text-foreground">₱{summary.storeUseValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Staff use, cleaning, etc.</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Records</p>
           <p className="text-2xl font-bold text-foreground">{summary.total}</p>
           <p className="text-xs text-muted-foreground mt-2">In selected period</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Quantity</p>
-          <p className="text-2xl font-bold text-foreground">{summary.qty}</p>
-          <p className="text-xs text-muted-foreground mt-2">Units removed</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Value</p>
-          <p className="text-2xl font-bold text-foreground">₱{summary.value.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">Estimated cost</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Avg per Record</p>
-          <p className="text-2xl font-bold text-foreground">₱{summary.total > 0 ? (summary.value / summary.total).toFixed(0) : 0}</p>
-          <p className="text-xs text-muted-foreground mt-2">Average value</p>
         </div>
       </div>
 
@@ -172,6 +219,7 @@ export default function ReportsTab({ refreshTick }) {
                 .map(([key, items]) => {
                   const groupQty = items.reduce((s, r) => s + (r.quantity || 0), 0);
                   const groupValue = items.reduce((s, r) => s + (r.estimated_value || 0), 0);
+                  const percentage = summary.netValue > 0 ? (groupValue / summary.netValue) * 100 : 0;
                   return (
                     <div key={key} className="border border-border rounded-xl p-4 bg-background/40">
                       <div className="flex items-start justify-between gap-3 mb-3">
@@ -180,14 +228,14 @@ export default function ReportsTab({ refreshTick }) {
                             {key}
                             <TrendingUp size={14} className="text-muted-foreground" />
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">{items.length} records · {groupQty} units</p>
+                          <p className="text-xs text-muted-foreground mt-1">{items.length} records · {groupQty} units · {percentage.toFixed(1)}%</p>
                         </div>
                         <p className="font-semibold text-foreground whitespace-nowrap">₱{groupValue.toFixed(0)}</p>
                       </div>
                       <div className="w-full bg-muted rounded h-2">
                         <div
                           className="bg-primary h-2 rounded"
-                          style={{ width: `${(groupValue / summary.value) * 100}%` }}
+                          style={{ width: `${Math.min(percentage, 100)}%` }}
                         ></div>
                       </div>
                     </div>

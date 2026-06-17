@@ -1,0 +1,104 @@
+{
+  "name": "StockOutAlert",
+  "type": "object",
+  "properties": {
+    "alert_type": {
+      "type": "string",
+      "enum": [
+        "HIGH_VALUE_WASTAGE",
+        "HIGH_VALUE_STORE_USE",
+        "REPEATED_SKU_WASTAGE",
+        "REPEATED_SKU_STORE_USE",
+        "UNKNOWN_BARCODE",
+        "DUPLICATE_SCAN",
+        "AMENDMENT_AFTER_POST",
+        "REVERSAL_AFTER_POST"
+      ],
+      "description": "Alert category"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ],
+      "default": "MEDIUM"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "OPEN",
+        "ACKNOWLEDGED",
+        "RESOLVED",
+        "DEDUPED"
+      ],
+      "default": "OPEN",
+      "description": "Alert lifecycle status"
+    },
+    "linked_record_id": {
+      "type": "string",
+      "description": "Reference to StockOutRecord.id or ScannerIntakeQueue.id"
+    },
+    "linked_amendment_id": {
+      "type": "string",
+      "description": "Optional: Reference to StockOutAmendment.id for amendment alerts"
+    },
+    "trigger_reason": {
+      "type": "string",
+      "description": "Human-readable trigger reason"
+    },
+    "dedupe_key": {
+      "type": "string",
+      "description": "Unique key for deduplication across similar alerts"
+    },
+    "acknowledged_by": {
+      "type": "string",
+      "description": "User ID who acknowledged"
+    },
+    "acknowledged_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolved_by": {
+      "type": "string",
+      "description": "User ID who resolved"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deduped_by": {
+      "type": "string",
+      "description": "User ID who marked as duplicate"
+    },
+    "deduped_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "deduped_of": {
+      "type": "string",
+      "description": "Alert ID this duplicates"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional alert context: { sku, item_name, quantity, value, reason, location, etc. }"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "alert_type",
+    "status",
+    "trigger_reason",
+    "dedupe_key"
+  ]
+}
