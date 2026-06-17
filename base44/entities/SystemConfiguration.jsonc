@@ -140,6 +140,136 @@
         }
       }
     },
+    "wastage_reasons": {
+      "type": "object",
+      "description": "Controlled reason categories for WASTAGE stock outs",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Unique reason code (e.g., 'DAMAGED', 'EXPIRED')"
+              },
+              "label": {
+                "type": "string",
+                "description": "Human-readable label"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "label"
+            ]
+          },
+          "default": [
+            {
+              "code": "DAMAGED",
+              "label": "Damaged",
+              "description": "Item damaged in handling or storage"
+            },
+            {
+              "code": "EXPIRED",
+              "label": "Expired",
+              "description": "Item past expiry date"
+            },
+            {
+              "code": "SPOILED",
+              "label": "Spoiled",
+              "description": "Item spoiled or degraded"
+            },
+            {
+              "code": "CONTAMINATED",
+              "label": "Contaminated",
+              "description": "Item contaminated or unsafe"
+            },
+            {
+              "code": "BREAKAGE",
+              "label": "Breakage",
+              "description": "Item broken or shattered"
+            },
+            {
+              "code": "HANDLING_DAMAGE",
+              "label": "Handling Damage",
+              "description": "Damage from improper handling"
+            }
+          ]
+        }
+      }
+    },
+    "store_use_reasons": {
+      "type": "object",
+      "description": "Controlled reason categories for STORE_USE stock outs",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Unique reason code (e.g., 'STAFF_REFRESHMENT', 'CLEANING')"
+              },
+              "label": {
+                "type": "string",
+                "description": "Human-readable label"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "label"
+            ]
+          },
+          "default": [
+            {
+              "code": "STAFF_REFRESHMENT",
+              "label": "Staff Refreshments",
+              "description": "Employee meals or refreshments"
+            },
+            {
+              "code": "CLEANING_USE",
+              "label": "Cleaning Use",
+              "description": "Cleaning or maintenance supplies"
+            },
+            {
+              "code": "BREAKROOM",
+              "label": "Breakroom Supplies",
+              "description": "Breakroom or common area use"
+            },
+            {
+              "code": "TOILETRIES",
+              "label": "Toiletries / Amenities",
+              "description": "Bathroom or amenity supplies"
+            },
+            {
+              "code": "OFFICE_USE",
+              "label": "Office Use",
+              "description": "Office operations and supplies"
+            },
+            {
+              "code": "INTERNAL_OPS",
+              "label": "Internal Operations",
+              "description": "General internal operations"
+            }
+          ]
+        }
+      }
+    },
     "config_version": {
       "type": "number",
       "default": 1,

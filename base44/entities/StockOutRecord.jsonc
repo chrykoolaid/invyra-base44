@@ -1,0 +1,146 @@
+{
+  "name": "StockOutRecord",
+  "type": "object",
+  "properties": {
+    "sku": {
+      "type": "string",
+      "description": "Reference to InventoryItem.sku"
+    },
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name at time of record creation"
+    },
+    "stock_out_class": {
+      "type": "string",
+      "enum": [
+        "WASTAGE",
+        "STORE_USE"
+      ],
+      "default": "WASTAGE",
+      "description": "Classification: true wastage or legitimate internal consumption"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Units removed from stock"
+    },
+    "reason_category": {
+      "type": "string",
+      "description": "Controlled reason from SystemConfiguration.wastage_reasons or store_use_reasons"
+    },
+    "reason_notes": {
+      "type": "string",
+      "description": "Free-text additional notes or context"
+    },
+    "location": {
+      "type": "string",
+      "description": "Physical location or zone where the stock out occurred"
+    },
+    "department": {
+      "type": "string",
+      "description": "Department or cost center responsible (for Store Use)"
+    },
+    "cost_centre": {
+      "type": "string",
+      "description": "Finance cost centre for this stock out"
+    },
+    "estimated_value": {
+      "type": "number",
+      "description": "Estimated cost impact: quantity * cost_per_unit at record creation"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "MANUAL",
+        "SCANNER",
+        "GAP_SCAN",
+        "ADJUSTMENT",
+        "RECEIVING_DISCREPANCY"
+      ],
+      "default": "MANUAL",
+      "description": "How the record was originated"
+    },
+    "source_reference": {
+      "type": "string",
+      "description": "Reference to source record: ScannerIntakeQueue.id, GapScan.id, etc."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "SUBMITTED",
+        "APPROVED",
+        "REJECTED",
+        "POSTED",
+        "AMENDED",
+        "REVERSED"
+      ],
+      "default": "DRAFT",
+      "description": "Workflow status"
+    },
+    "submitted_by": {
+      "type": "string",
+      "description": "User ID who submitted the record"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "User ID who approved (Supervisor/Manager)"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejected_reason": {
+      "type": "string",
+      "description": "Reason if REJECTED"
+    },
+    "rejected_by": {
+      "type": "string"
+    },
+    "rejected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "posted_by": {
+      "type": "string",
+      "description": "User ID who posted the stock movement"
+    },
+    "posted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "linked_movement_id": {
+      "type": "string",
+      "description": "Reference to StockMovement.id created on approval/posting"
+    },
+    "site_id": {
+      "type": "string",
+      "description": "Reference to Site.id"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "sku",
+    "item_id",
+    "item_name",
+    "stock_out_class",
+    "quantity",
+    "reason_category",
+    "source"
+  ]
+}

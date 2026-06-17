@@ -1,0 +1,118 @@
+{
+  "name": "ScannerIntakeQueue",
+  "type": "object",
+  "properties": {
+    "device_id": {
+      "type": "string",
+      "description": "Handheld scanner or terminal device ID from Sync & Devices"
+    },
+    "session_id": {
+      "type": "string",
+      "description": "Unique session identifier for this scanner batch"
+    },
+    "operator_id": {
+      "type": "string",
+      "description": "User ID of the scanner operator"
+    },
+    "scanned_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when barcode was scanned"
+    },
+    "raw_barcode": {
+      "type": "string",
+      "description": "Original barcode string as scanned"
+    },
+    "resolved_sku": {
+      "type": "string",
+      "description": "SKU resolved from barcode lookup"
+    },
+    "resolved_item_id": {
+      "type": "string",
+      "description": "InventoryItem.id resolved from barcode"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Quantity associated with this scan"
+    },
+    "proposed_stock_out_class": {
+      "type": "string",
+      "enum": [
+        "WASTAGE",
+        "STORE_USE"
+      ],
+      "default": "WASTAGE",
+      "description": "System-proposed or operator-selected classification"
+    },
+    "proposed_reason_category": {
+      "type": "string",
+      "description": "System-proposed or operator-selected reason"
+    },
+    "location": {
+      "type": "string",
+      "description": "Location data from scanner or operator"
+    },
+    "department": {
+      "type": "string",
+      "description": "Department for Store Use classification"
+    },
+    "sync_status": {
+      "type": "string",
+      "enum": [
+        "QUEUED",
+        "RESOLVED",
+        "REJECTED",
+        "DUPLICATE",
+        "CONFLICT"
+      ],
+      "default": "QUEUED",
+      "description": "Intake processing status"
+    },
+    "unresolved_reason": {
+      "type": "string",
+      "description": "Reason if sync_status is REJECTED or CONFLICT"
+    },
+    "is_duplicate": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if this scan appears to be a duplicate"
+    },
+    "duplicate_of": {
+      "type": "string",
+      "description": "ScannerIntakeQueue.id this entry duplicates (if is_duplicate=true)"
+    },
+    "generated_record_id": {
+      "type": "string",
+      "description": "Reference to generated StockOutRecord.id after resolution"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "User ID who reviewed this intake entry"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "site_id": {
+      "type": "string",
+      "description": "Reference to Site.id"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "device_id",
+    "session_id",
+    "operator_id",
+    "raw_barcode",
+    "quantity",
+    "sync_status"
+  ]
+}

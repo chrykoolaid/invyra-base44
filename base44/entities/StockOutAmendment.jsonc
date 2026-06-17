@@ -1,0 +1,108 @@
+{
+  "name": "StockOutAmendment",
+  "type": "object",
+  "properties": {
+    "record_id": {
+      "type": "string",
+      "description": "Reference to StockOutRecord.id being amended"
+    },
+    "request_status": {
+      "type": "string",
+      "enum": [
+        "PENDING",
+        "APPROVED",
+        "REJECTED"
+      ],
+      "default": "PENDING",
+      "description": "Amendment request workflow status"
+    },
+    "amendment_reason": {
+      "type": "string",
+      "description": "Mandatory reason for the amendment (e.g. 'Incorrect SKU scanned', 'Quantity counted again')"
+    },
+    "amendment_notes": {
+      "type": "string",
+      "description": "Additional context for the amendment"
+    },
+    "before_snapshot": {
+      "type": "object",
+      "description": "Immutable copy of original record state: { sku, quantity, reason_category, stock_out_class, etc. }"
+    },
+    "after_snapshot": {
+      "type": "object",
+      "description": "Proposed new state: { sku, quantity, reason_category, stock_out_class, etc. }"
+    },
+    "quantity_delta": {
+      "type": "number",
+      "description": "Net change in quantity (after_qty - before_qty)"
+    },
+    "sku_changed": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if the SKU is being changed"
+    },
+    "reason_category_changed": {
+      "type": "boolean",
+      "default": false
+    },
+    "stock_out_class_changed": {
+      "type": "boolean",
+      "default": false
+    },
+    "location_changed": {
+      "type": "boolean",
+      "default": false
+    },
+    "requires_adjustment_posting": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if delta posting is needed (e.g., quantity change from 10 to 15 units)"
+    },
+    "adjustment_movement_id": {
+      "type": "string",
+      "description": "Reference to StockMovement.id created if quantity changes"
+    },
+    "requested_by": {
+      "type": "string",
+      "description": "User ID who requested the amendment"
+    },
+    "requested_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "User ID who approved the amendment (Manager/Admin)"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejected_by": {
+      "type": "string"
+    },
+    "rejected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejection_reason": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "record_id",
+    "amendment_reason",
+    "before_snapshot",
+    "after_snapshot",
+    "request_status"
+  ]
+}
