@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Search, CheckCircle2, AlertTriangle, HelpCircle, Copy, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import RejectReasonModal from './RejectReasonModal';
 
 // Unknown Barcode Resolution Modal
 function ResolveUnknownBarcodeModal({ entry, onClose, onResolve }) {
@@ -179,6 +180,7 @@ export default function ScannerIntakeTab({ refreshTick }) {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [resolveModal, setResolveModal] = useState(null);
+  const [rejectModal, setRejectModal] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -225,16 +227,18 @@ export default function ScannerIntakeTab({ refreshTick }) {
     }
   };
 
-  const handleReject = async (entryId) => {
+  const handleReject = async (reason) => {
+    if (!rejectModal) return;
     try {
       const response = await base44.functions.invoke('processScannerIntake', {
-        intake_id: entryId,
+        intake_id: rejectModal,
         accept: false,
-        rejection_reason: 'Operator rejected',
+        rejection_reason: reason,
       });
       if (response.data.success) {
         toast.success('Scan rejected');
-        setEntries(entries.filter(e => e.id !== entryId));
+        setRejectModal(null);
+        setEntries(entries.filter(e => e.id !== rejectModal));
       }
     } catch (error) {
       toast.error(`Rejection failed: ${error.message}`);
@@ -281,6 +285,13 @@ export default function ScannerIntakeTab({ refreshTick }) {
 
   return (
     <div className="space-y-4">
+      {rejectModal && (
+        <RejectReasonModal
+          title="Reject Scanner Intake"
+          onConfirm={handleReject}
+          onCancel={() => setRejectModal(null)}
+        />
+      )}
       {resolveModal && (
         <ResolveUnknownBarcodeModal
           entry={resolveModal}
@@ -417,7 +428,7 @@ export default function ScannerIntakeTab({ refreshTick }) {
                         <Copy size={12} /> Duplicate
                       </button>
                       <button
-                        onClick={() => handleReject(entry.id)}
+                        onClick={() => setRejectModal(entry.id)}
                         className="px-2 py-1 rounded bg-red-600 text-white text-[11px] hover:opacity-90"
                       >
                         Reject

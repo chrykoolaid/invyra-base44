@@ -3,11 +3,20 @@ import { base44 } from '@/api/base44Client';
 import { Search, CheckCircle2, X, Undo2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import RejectReasonModal from './RejectReasonModal';
+import { canApproveStockOut, canRejectStockOut, canReverseStockOut } from '@/lib/rolePermissions';
 
 export default function StoreUseTab({ refreshTick }) {
+  const [user, setUser] = useState(null);
   const [records, setRecords] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rejectModal, setRejectModal] = useState(null);
+  const [reverseModal, setReverseModal] = useState(null);
+
+  useEffect(() => {
+    base44.auth.me().then(u => setUser(u)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -50,11 +59,13 @@ export default function StoreUseTab({ refreshTick }) {
     }
   };
 
-  const handleReject = async (recordId, reason) => {
+  const handleReject = async (reason) => {
+    if (!rejectModal) return;
     try {
-      const response = await base44.functions.invoke('rejectStockOutRecord', { record_id: recordId, reason });
+      const response = await base44.functions.invoke('rejectStockOutRecord', { record_id: rejectModal, reason });
       if (response.data.success) {
         toast.success('Record rejected');
+        setRejectModal(null);
         window.location.reload();
       }
     } catch (error) {
@@ -62,11 +73,13 @@ export default function StoreUseTab({ refreshTick }) {
     }
   };
 
-  const handleReverse = async (recordId, reason) => {
+  const handleReverse = async (reason) => {
+    if (!reverseModal) return;
     try {
-      const response = await base44.functions.invoke('reverseStockOutRecord', { record_id: recordId, reason });
+      const response = await base44.functions.invoke('reverseStockOutRecord', { record_id: reverseModal, reason });
       if (response.data.success) {
         toast.success(`Reversed. Balance: ${response.data.balance_before} → ${response.data.balance_after}`);
+        setReverseModal(null);
         window.location.reload();
       }
     } catch (error) {
@@ -76,6 +89,20 @@ export default function StoreUseTab({ refreshTick }) {
 
   return (
     <div className="space-y-4">
+      {rejectModal && (
+        <RejectReasonModal
+          title="Reject Stock-Out Record"
+          onConfirm={handleReject}
+          onCancel={() => setRejectModal(null)}
+        />
+      )}
+      {reverseModal && (
+        <RejectReasonModal
+          title="Reverse Stock-Out Record"
+          onConfirm={handleReverse}
+          onCancel={() => setReverseModal(null)}
+        />
+      )}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Store Use</p>
@@ -167,23 +194,27 @@ export default function StoreUseTab({ refreshTick }) {
                       )}
                       {record.status === 'SUBMITTED' && (
                         <>
-                          <button
-                            onClick={() => handleApprove(record.id)}
-                            className="px-2 py-1 text-[11px] rounded bg-green-600 text-white hover:opacity-90 flex items-center gap-1"
-                          >
-                            <CheckCircle2 size={12} /> Approve
-                          </button>
-                          <button
-                            onClick={() => handleReject(record.id, 'User rejected')}
-                            className="px-2 py-1 text-[11px] rounded bg-red-600 text-white hover:opacity-90 flex items-center gap-1"
-                          >
-                            <X size={12} /> Reject
-                          </button>
+                          {canApproveStockOut(user?.role) && (
+                            <button
+                              onClick={() => handleApprove(record.id)}
+                              className="px-2 py-1 text-[11px] rounded bg-green-600 text-white hover:opacity-90 flex items-center gap-1"
+                            >
+                              <CheckCircle2 size={12} /> Approve
+                            </button>
+                          )}
+                          {canRejectStockOut(user?.role) && (
+                            <button
+                              onClick={() => setRejectModal(record.id)}
+                              className="px-2 py-1 text-[11px] rounded bg-red-600 text-white hover:opacity-90 flex items-center gap-1"
+                            >
+                              <X size={12} /> Reject
+                            </button>
+                          )}
                         </>
                       )}
-                      {record.status === 'POSTED' && (
+                      {record.status === 'POSTED' && canReverseStockOut(user?.role) && (
                         <button
-                          onClick={() => handleReverse(record.id, 'User reversed')}
+                          onClick={() => setReverseModal(record.id)}
                           className="px-2 py-1 text-[11px] rounded bg-slate-600 text-white hover:opacity-90 flex items-center gap-1"
                         >
                           <Undo2 size={12} /> Reverse

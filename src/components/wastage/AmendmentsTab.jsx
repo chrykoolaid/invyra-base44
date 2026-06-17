@@ -3,11 +3,13 @@ import { base44 } from '@/api/base44Client';
 import { Search, CheckCircle2, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import RejectReasonModal from './RejectReasonModal';
 
 export default function AmendmentsTab({ refreshTick }) {
   const [amendments, setAmendments] = useState([]);
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [rejectModal, setRejectModal] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -54,14 +56,16 @@ export default function AmendmentsTab({ refreshTick }) {
     }
   };
 
-  const handleReject = async (amendmentId) => {
+  const handleReject = async (reason) => {
+    if (!rejectModal) return;
     try {
       const response = await base44.functions.invoke('rejectStockOutAmendment', {
-        amendment_id: amendmentId,
-        rejection_reason: 'Manager rejected',
+        amendment_id: rejectModal,
+        rejection_reason: reason,
       });
       if (response.data.success) {
         toast.success('Amendment rejected');
+        setRejectModal(null);
         window.location.reload();
       }
     } catch (error) {
@@ -71,6 +75,13 @@ export default function AmendmentsTab({ refreshTick }) {
 
   return (
     <div className="space-y-4">
+      {rejectModal && (
+        <RejectReasonModal
+          title="Reject Amendment Request"
+          onConfirm={handleReject}
+          onCancel={() => setRejectModal(null)}
+        />
+      )}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Pending</p>
@@ -165,7 +176,7 @@ export default function AmendmentsTab({ refreshTick }) {
                         <CheckCircle2 size={12} /> Approve
                       </button>
                       <button
-                        onClick={() => handleReject(amendment.id)}
+                        onClick={() => setRejectModal(amendment.id)}
                         className="px-2 py-1 text-[11px] rounded bg-red-600 text-white hover:opacity-90 flex items-center gap-1"
                       >
                         <X size={12} /> Reject
