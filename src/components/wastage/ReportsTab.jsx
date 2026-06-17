@@ -15,8 +15,10 @@ export default function ReportsTab({ refreshTick }) {
   const [filterLocation, setFilterLocation] = useState('ALL');
   const [filterDepartment, setFilterDepartment] = useState('ALL');
   const [filterSource, setFilterSource] = useState('ALL');
+  const [filterCostCentre, setFilterCostCentre] = useState('ALL');
+  const [filterUser, setFilterUser] = useState('ALL');
 
-  // Load all relevant record statuses: DRAFT, SUBMITTED, POSTED, REVERSED, REJECTED
+  // Load all relevant record statuses: DRAFT, SUBMITTED, POSTED, REVERSED, REJECTED, AMENDED
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -40,13 +42,18 @@ export default function ReportsTab({ refreshTick }) {
         status: 'REJECTED',
         environment: 'LIVE',
       }, '-created_date', 200),
-    ]).then(([draft, submitted, posted, reversed, rejected]) => {
+      base44.entities.StockOutRecord.filter({
+        status: 'AMENDED',
+        environment: 'LIVE',
+      }, '-created_date', 200),
+    ]).then(([draft, submitted, posted, reversed, rejected, amended]) => {
       const allRecords = [
         ...(draft || []),
         ...(submitted || []),
         ...(posted || []),
         ...(reversed || []),
         ...(rejected || []),
+        ...(amended || []),
       ];
       setRecords(allRecords);
       setLoading(false);
@@ -65,22 +72,25 @@ export default function ReportsTab({ refreshTick }) {
     }
 
     return records.filter(r => {
-      const createdDate = new Date(r.created_date);
-      return (
-        createdDate >= cutoff &&
-        (filterType === 'ALL' || r.stock_out_class === filterType) &&
-        (filterStatus === 'ALL' || r.status === filterStatus) &&
-        (filterLocation === 'ALL' || (r.location === filterLocation)) &&
-        (filterDepartment === 'ALL' || (r.department === filterDepartment)) &&
-        (filterSource === 'ALL' || (r.source === filterSource)) &&
-        (r.sku.toLowerCase().includes(q) ||
-          r.item_name.toLowerCase().includes(q) ||
-          r.reason_category.toLowerCase().includes(q) ||
-          (r.location && r.location.toLowerCase().includes(q)) ||
-          (r.department && r.department.toLowerCase().includes(q)))
-      );
-    });
-  }, [records, query, window, filterType, filterStatus, filterLocation, filterDepartment, filterSource]);
+       const createdDate = new Date(r.created_date);
+       const recordUser = r.submitted_by || r.approved_by || 'Unknown';
+       return (
+         createdDate >= cutoff &&
+         (filterType === 'ALL' || r.stock_out_class === filterType) &&
+         (filterStatus === 'ALL' || r.status === filterStatus) &&
+         (filterLocation === 'ALL' || (r.location === filterLocation)) &&
+         (filterDepartment === 'ALL' || (r.department === filterDepartment)) &&
+         (filterSource === 'ALL' || (r.source === filterSource)) &&
+         (filterCostCentre === 'ALL' || (r.cost_centre === filterCostCentre)) &&
+         (filterUser === 'ALL' || (recordUser === filterUser)) &&
+         (r.sku.toLowerCase().includes(q) ||
+           r.item_name.toLowerCase().includes(q) ||
+           r.reason_category.toLowerCase().includes(q) ||
+           (r.location && r.location.toLowerCase().includes(q)) ||
+           (r.department && r.department.toLowerCase().includes(q)))
+       );
+     });
+    }, [records, query, window, filterType, filterStatus, filterLocation, filterDepartment, filterSource, filterCostCentre, filterUser]);
 
   const grouped = useMemo(() => {
     const groups = {};
@@ -100,6 +110,8 @@ export default function ReportsTab({ refreshTick }) {
         key = r.source;
       } else if (groupBy === 'department') {
         key = r.department || 'N/A';
+      } else if (groupBy === 'costcentre') {
+        key = r.cost_centre || 'N/A';
       } else if (groupBy === 'status') {
         key = r.status;
       } else if (groupBy === 'type') {
@@ -107,7 +119,7 @@ export default function ReportsTab({ refreshTick }) {
       } else {
         key = r.reason_category;
       }
-      
+
       if (!groups[key]) {
         groups[key] = [];
       }
@@ -117,8 +129,8 @@ export default function ReportsTab({ refreshTick }) {
   }, [filteredRecords, groupBy]);
 
   const summary = useMemo(() => {
-    // Gross: includes POSTED and REVERSED (records that originally posted stock out)
-    const grossRecords = filteredRecords.filter(r => r.status === 'POSTED' || r.status === 'REVERSED');
+    // Gross: includes POSTED, REVERSED, and AMENDED (records that originally posted stock out)
+    const grossRecords = filteredRecords.filter(r => r.status === 'POSTED' || r.status === 'REVERSED' || r.status === 'AMENDED');
     const grossQty = grossRecords.reduce((s, r) => s + (r.quantity || 0), 0);
     const grossValue = grossRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
 
@@ -187,26 +199,81 @@ export default function ReportsTab({ refreshTick }) {
   }, [filteredRecords]);
 
   // Extract unique values for filters
-  const uniqueLocations = [...new Set(records.filter(r => r.location).map(r => r.location))];
-  const uniqueDepartments = [...new Set(records.filter(r => r.department).map(r => r.department))];
-  const uniqueSources = [...new Set(records.map(r => r.source))];
+   const uniqueLocations = [...new Set(records.filter(r => r.location).map(r => r.location))];
+   const uniqueDepartments = [...new Set(records.filter(r => r.department).map(r => r.department))];
+   const uniqueSources = [...new Set(records.map(r => r.source))];
+   const uniqueCostCentres = [...new Set(records.filter(r => r.cost_centre).map(r => r.cost_centre))];
+   const uniqueUsers = [...new Set(records.map(r => r.submitted_by || r.approved_by || 'Unknown'))];
 
   const handleExport = async () => {
     try {
-      // Create CSV from filtered records
-      const headers = ['SKU', 'Item Name', 'Quantity', 'Reason', 'Location', 'Department', 'Status', 'Type', 'Value', 'Created Date'];
-      const rows = filteredRecords.map(r => [
-        r.sku,
-        r.item_name,
-        r.quantity,
-        r.reason_category,
-        r.location || '',
-        r.department || '',
-        r.status,
-        r.stock_out_class,
-        r.estimated_value.toFixed(2),
-        new Date(r.created_date).toLocaleDateString(),
-      ]);
+      // Create CSV from filtered records with complete columns
+      const headers = [
+        'Record ID',
+        'Type',
+        'Status',
+        'SKU',
+        'Item Name',
+        'Quantity',
+        'Unit Cost',
+        'Total Value',
+        'Gross Value',
+        'Reversed Value',
+        'Net Value',
+        'Reason',
+        'User',
+        'Location',
+        'Department',
+        'Cost Centre',
+        'Source',
+        'Created Date',
+        'Submitted Date',
+        'Posted Date',
+        'Reversed Date',
+      ];
+
+      const rows = filteredRecords.map(r => {
+        const costPerUnit = r.estimated_value && r.quantity ? (r.estimated_value / r.quantity) : 0;
+        const recordUser = r.submitted_by || r.approved_by || 'Unknown';
+        
+        // For gross/reversed/net: calculate if this record is reversed
+        let grossValue = 0;
+        let reversedValue = 0;
+        let netValue = 0;
+        if (r.status === 'POSTED' || r.status === 'REVERSED' || r.status === 'AMENDED') {
+          grossValue = r.estimated_value || 0;
+          if (r.status === 'REVERSED') {
+            reversedValue = r.estimated_value || 0;
+            netValue = 0;
+          } else {
+            netValue = r.estimated_value || 0;
+          }
+        }
+
+        return [
+          r.id,
+          r.stock_out_class,
+          r.status,
+          r.sku,
+          r.item_name,
+          r.quantity,
+          costPerUnit.toFixed(2),
+          (r.estimated_value || 0).toFixed(2),
+          grossValue.toFixed(2),
+          reversedValue.toFixed(2),
+          netValue.toFixed(2),
+          r.reason_category,
+          recordUser,
+          r.location || '',
+          r.department || '',
+          r.cost_centre || '',
+          r.source,
+          new Date(r.created_date).toLocaleDateString(),
+          r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : '',
+          r.posted_at ? new Date(r.posted_at).toLocaleDateString() : '',
+          r.status === 'REVERSED' && r.posted_at ? new Date(r.posted_at).toLocaleDateString() : '',
+        ];
+      });
 
       const csvContent = [
         headers.join(','),
@@ -311,7 +378,7 @@ export default function ReportsTab({ refreshTick }) {
               />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-8 gap-2">
               <select
                 value={window}
                 onChange={(e) => setWindow(e.target.value)}
@@ -342,6 +409,7 @@ export default function ReportsTab({ refreshTick }) {
                 <option value="SUBMITTED">Submitted</option>
                 <option value="POSTED">Posted</option>
                 <option value="REVERSED">Reversed</option>
+                <option value="AMENDED">Amended</option>
                 <option value="REJECTED">Rejected</option>
               </select>
 
@@ -377,7 +445,29 @@ export default function ReportsTab({ refreshTick }) {
                   <option key={src} value={src}>{src}</option>
                 ))}
               </select>
-            </div>
+
+              <select
+                value={filterCostCentre}
+                onChange={(e) => setFilterCostCentre(e.target.value)}
+                className="h-9 px-2 rounded border border-input bg-background text-xs"
+              >
+                <option value="ALL">Cost Centre: All</option>
+                {uniqueCostCentres.map(cc => (
+                  <option key={cc} value={cc}>{cc}</option>
+                ))}
+              </select>
+
+              <select
+                value={filterUser}
+                onChange={(e) => setFilterUser(e.target.value)}
+                className="h-9 px-2 rounded border border-input bg-background text-xs"
+              >
+                <option value="ALL">User: All</option>
+                {uniqueUsers.map(user => (
+                  <option key={user} value={user}>{user}</option>
+                ))}
+              </select>
+              </div>
 
             <select
               value={groupBy}
@@ -391,6 +481,7 @@ export default function ReportsTab({ refreshTick }) {
               <option value="location">Group by Location</option>
               <option value="source">Group by Source</option>
               <option value="department">Group by Department</option>
+              <option value="costcentre">Group by Cost Centre</option>
               <option value="status">Group by Status</option>
               <option value="type">Group by Type</option>
             </select>

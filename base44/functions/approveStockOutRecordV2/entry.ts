@@ -7,11 +7,12 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  * 1. Only SUBMITTED records can be approved
  * 2. Check available stock BEFORE posting
  * 3. Block if qty > available stock (unless config allows negative)
- * 4. Do NOT silently clamp stock
- * 5. Create StockMovement on approval
- * 6. Update InventoryItem.stock
- * 7. Update AuditLog
- * 8. Link StockMovement back to record
+ * 4. Check site-level stock if site_id exists
+ * 5. Do NOT silently clamp stock
+ * 6. Create StockMovement on approval
+ * 7. Update InventoryItem.stock and stock_per_site
+ * 8. Update AuditLog
+ * 9. Link StockMovement back to record
  */
 
 Deno.serve(async (req) => {
