@@ -1,5 +1,6 @@
 import { useAuth } from '@/lib/AuthContext';
 import { canAccessRoute } from '@/lib/permissions';
+import { resolveEffectiveRole } from '@/lib/devRoleOverride';
 import AccessDenied from '@/components/AccessDenied';
 import { useLocation } from 'react-router-dom';
 
@@ -10,7 +11,7 @@ import { useLocation } from 'react-router-dom';
 export default function RoleGuard({ children }) {
   const { user } = useAuth();
   const location = useLocation();
-  const userRole = user?.role ?? 'staff';
+  const userRole = resolveEffectiveRole(user?.role);
 
   if (!canAccessRoute(userRole, location.pathname)) {
     return <AccessDenied userRole={userRole} />;
