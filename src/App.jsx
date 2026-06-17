@@ -39,6 +39,7 @@ import Movements from './pages/Movements';
 import Exceptions from './pages/Exceptions';
 import InventoryRoadmap from './pages/InventoryRoadmap';
 import LocalForecastVerification from './pages/LocalForecastVerification';
+import InventorySettings from './pages/InventorySettings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -91,6 +92,7 @@ const AuthenticatedApp = () => {
         <Route path="/Movements"             element={<RoleGuard><Movements /></RoleGuard>} />
         <Route path="/Exceptions"            element={<RoleGuard><Exceptions /></RoleGuard>} />
         <Route path="/LocalForecastVerification" element={<RoleGuard><LocalForecastVerification /></RoleGuard>} />
+        <Route path="/InventorySettings"        element={<RoleGuard><InventorySettings /></RoleGuard>} />
         {/* Training routes — RoleGuard enforces RBAC; TrainingProvider scopes DB to environment:"TRAINING" */}
         <Route path="/Training/Staff"      element={<RoleGuard><TrainingProvider><TrainingStaff /></TrainingProvider></RoleGuard>} />
         <Route path="/Training/Supervisor" element={<RoleGuard><TrainingProvider><TrainingSupervisor /></TrainingProvider></RoleGuard>} />

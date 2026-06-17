@@ -1,0 +1,160 @@
+{
+  "name": "SystemConfiguration",
+  "type": "object",
+  "properties": {
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE",
+      "description": "Environment this configuration record belongs to"
+    },
+    "business_defaults": {
+      "type": "object",
+      "description": "Regional and business identity defaults",
+      "properties": {
+        "currency_code": {
+          "type": "string",
+          "default": "PHP"
+        },
+        "timezone": {
+          "type": "string",
+          "default": "Asia/Manila"
+        },
+        "date_format": {
+          "type": "string",
+          "default": "YYYY-MM-DD"
+        },
+        "default_uom": {
+          "type": "string",
+          "default": "pcs"
+        }
+      }
+    },
+    "inventory_rules": {
+      "type": "object",
+      "description": "Operational inventory behaviour defaults",
+      "properties": {
+        "allow_negative_stock": {
+          "type": "boolean",
+          "default": false
+        },
+        "require_reason_for_adjustments": {
+          "type": "boolean",
+          "default": true
+        },
+        "track_stock_by_default": {
+          "type": "boolean",
+          "default": true
+        },
+        "ref_requirements": {
+          "type": "string",
+          "description": "PLANNED \u2014 reference requirements policy"
+        }
+      }
+    },
+    "reorder_behavior": {
+      "type": "object",
+      "description": "Reorder calculation defaults",
+      "properties": {
+        "coverage_days_default": {
+          "type": "number",
+          "default": 14
+        },
+        "safety_stock_percent": {
+          "type": "number",
+          "description": "PLANNED \u2014 safety stock percentage"
+        },
+        "rounding_rule": {
+          "type": "string",
+          "enum": [
+            "none",
+            "pack_size"
+          ],
+          "description": "PLANNED \u2014 pack-size rounding rule"
+        },
+        "recommendation_rules": {
+          "type": "string",
+          "description": "PLANNED \u2014 reorder recommendation ruleset"
+        }
+      }
+    },
+    "compliance": {
+      "type": "object",
+      "description": "Audit retention and compliance controls",
+      "properties": {
+        "audit_retention_days": {
+          "type": "number",
+          "default": 365
+        },
+        "locked_supplier_disclaimer_version": {
+          "type": "string",
+          "description": "Read-only: current locked supplier disclaimer version"
+        }
+      }
+    },
+    "notifications": {
+      "type": "object",
+      "description": "Alert channel toggles",
+      "properties": {
+        "low_stock_enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "wastage_enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "discrepancy_enabled": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "hardware_readiness": {
+      "type": "object",
+      "description": "PLANNED \u2014 Sync & Devices placeholder. Not active in v1.",
+      "properties": {
+        "handheld_sync_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "PLANNED"
+        },
+        "sync_bridge_endpoint": {
+          "type": "string",
+          "description": "PLANNED"
+        },
+        "allowed_device_list": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "PLANNED"
+        },
+        "sync_inbox_policy": {
+          "type": "string",
+          "description": "PLANNED"
+        }
+      }
+    },
+    "config_version": {
+      "type": "number",
+      "default": 1,
+      "description": "Increments on each save for optimistic concurrency awareness"
+    },
+    "last_saved_by": {
+      "type": "string",
+      "description": "Email of last admin who saved any section"
+    },
+    "last_saved_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "environment"
+  ]
+}
