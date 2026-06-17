@@ -1,26 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowRight, BellRing, Download, Filter, History, Plus, ScanLine, Search, ShieldCheck } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { envFilter } from '@/lib/envFilter';
-import {
-  createAlertRule,
-  evaluateAlertRules,
-  getAlertApiPosture,
-  getAlertInstances,
-  getAlertRuleReadinessRows,
-  getAlertRules,
-  getAlertSummary,
-  getBarcodeMappings,
-  getGovernanceSummary,
-  getLastAlertEvaluation,
-  getLiveKpiSummary,
-  getReasonGovernanceRows,
-  getReportingPrototype,
-  getUnresolvedScans,
-  reasonOptions,
-} from '../lib/wastageData.js';
 import RecordStockOutModal from '@/components/wastage/RecordStockOutModal';
 import WastageTab from '@/components/wastage/WastageTab';
 import StoreUseTab from '@/components/wastage/StoreUseTab';
@@ -52,7 +33,6 @@ function PillTab({ active, onClick, label }) {
 }
 
 export default function Wastage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (() => {
     const tab = searchParams.get('tab');
