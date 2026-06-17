@@ -1,29 +1,50 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ChevronDown, ChevronUp, CheckCircle, Tag } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, Tag, Printer, SkipForward, RotateCcw, ArrowDownToLine } from 'lucide-react';
+import ApproveBatchModal from './ApproveBatchModal';
+import ProgressRoundModal from './ProgressRoundModal';
+import PrintLabelModal from './PrintLabelModal';
+import ReprintModal from './ReprintModal';
+import RemoveFromFloorModal from './RemoveFromFloorModal';
 
 export default function MarkdownBatchCard({ batch, onRefresh, statusStyle }) {
   const [expanded, setExpanded] = useState(false);
-  const [approving, setApproving] = useState(false);
+  const [modal, setModal] = useState(null); // 'approve' | 'progress' | 'print' | 'reprint' | 'floor'
+  const [rounds, setRounds] = useState(null);
+  const [loadingRounds, setLoadingRounds] = useState(false);
 
   const st = statusStyle[batch.status] || 'bg-slate-100 text-slate-600 border-slate-200';
   const sellPct = batch.sell_through_pct || 0;
 
-  const handleApprove = async () => {
-    setApproving(true);
-    await base44.functions.invoke('approveMarkdownBatch', { batch_id: batch.id });
-    setApproving(false);
-    onRefresh();
+  const loadRounds = async () => {
+    if (rounds) return rounds;
+    setLoadingRounds(true);
+    const data = await base44.entities.MarkdownRound.filter({ batch_id: batch.id }, 'round_number', 10);
+    setRounds(data || []);
+    setLoadingRounds(false);
+    return data || [];
   };
+
+  const handleExpand = async () => {
+    const next = !expanded;
+    setExpanded(next);
+    if (next) loadRounds();
+  };
+
+  const openModal = async (type) => {
+    await loadRounds();
+    setModal(type);
+  };
+
+  const activeRound = rounds?.find(r => r.status === 'Active');
 
   return (
     <div className="border border-border rounded-lg bg-card overflow-hidden">
       <div
         className="flex items-center gap-4 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
-        onClick={() => setExpanded(e => !e)}
+        onClick={handleExpand}
       >
         <Tag size={15} className="text-primary flex-shrink-0" />
-
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs font-semibold text-foreground">{batch.batch_ref || batch.id.slice(-8)}</span>
@@ -40,7 +61,9 @@ export default function MarkdownBatchCard({ batch, onRefresh, statusStyle }) {
             <p>Remaining</p>
           </div>
           <div className="text-center">
-            <p className={`font-bold text-sm ${sellPct >= 80 ? 'text-green-700' : sellPct >= 50 ? 'text-amber-700' : 'text-red-700'}`}>{sellPct.toFixed(1)}%</p>
+            <p className={`font-bold text-sm ${sellPct >= 80 ? 'text-green-700' : sellPct >= 50 ? 'text-amber-700' : 'text-red-700'}`}>
+              {sellPct.toFixed(1)}%
+            </p>
             <p>Sell-Through</p>
           </div>
           <div className="text-center">
@@ -54,6 +77,7 @@ export default function MarkdownBatchCard({ batch, onRefresh, statusStyle }) {
 
       {expanded && (
         <div className="px-4 pb-4 pt-2 border-t border-border space-y-3">
+          {/* Details grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             {[
               { label: 'SKU', val: batch.sku },
@@ -72,19 +96,86 @@ export default function MarkdownBatchCard({ batch, onRefresh, statusStyle }) {
             ))}
           </div>
 
-          {batch.status === 'Pending_Approval' && (
-            <div className="flex items-center justify-between p-3 rounded-lg border border-amber-200 bg-amber-50">
-              <p className="text-xs text-amber-700">Awaiting Supervisor/Manager approval before labels can be printed.</p>
-              <button
-                onClick={handleApprove}
-                disabled={approving}
-                className="flex items-center gap-1.5 h-7 px-3 text-xs bg-green-600 text-white rounded hover:opacity-90 disabled:opacity-50"
-              >
-                <CheckCircle size={12} /> {approving ? 'Approving…' : 'Approve'}
-              </button>
+          {/* Active round info */}
+          {loadingRounds && <p className="text-xs text-muted-foreground">Loading rounds…</p>}
+          {activeRound && (
+            <div className="p-3 rounded-lg border border-green-200 bg-green-50 text-xs">
+              <p className="font-semibold text-green-800 mb-1">Active Round {activeRound.round_number}</p>
+              <div className="flex gap-4 text-green-700">
+                <span>Price: ₱{activeRound.markdown_unit_price?.toFixed(2)}</span>
+                <span>Discount: {activeRound.discount_percent?.toFixed(0)}%</span>
+                <span>Expiry: {activeRound.expiry_date}</span>
+                <span>Barcode: <span className="font-mono">{activeRound.markdown_barcode}</span></span>
+                <span>Prints: {activeRound.print_count || 0}</span>
+              </div>
             </div>
           )}
+          {!loadingRounds && !activeRound && batch.status === 'Active' && (
+            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
+              No active round found. Round 1 is created during batch approval.
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {batch.status === 'Pending_Approval' && (
+              <button
+                onClick={() => openModal('approve')}
+                className="flex items-center gap-1.5 h-7 px-3 text-xs bg-green-600 text-white rounded hover:opacity-90"
+              >
+                <CheckCircle size={12} /> Approve Batch
+              </button>
+            )}
+
+            {batch.status === 'Active' && activeRound && (
+              <>
+                <button
+                  onClick={() => openModal('print')}
+                  disabled={activeRound.print_count > 0}
+                  className="flex items-center gap-1.5 h-7 px-3 text-xs bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-40"
+                  title={activeRound.print_count > 0 ? 'Initial print done — use Reprint' : 'Print initial label'}
+                >
+                  <Printer size={12} /> Print Label
+                </button>
+                <button
+                  onClick={() => openModal('reprint')}
+                  className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted text-foreground"
+                >
+                  <Printer size={12} /> Reprint
+                </button>
+                <button
+                  onClick={() => openModal('progress')}
+                  className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted text-foreground"
+                >
+                  <SkipForward size={12} /> Progress Round
+                </button>
+                <button
+                  onClick={() => openModal('floor')}
+                  className="flex items-center gap-1.5 h-7 px-3 text-xs border border-orange-200 rounded bg-orange-50 text-orange-700 hover:opacity-90"
+                >
+                  <ArrowDownToLine size={12} /> Remove from Floor
+                </button>
+              </>
+            )}
+          </div>
         </div>
+      )}
+
+      {/* Modals */}
+      {modal === 'approve' && (
+        <ApproveBatchModal batch={batch} onClose={() => setModal(null)} onDone={() => { setModal(null); setRounds(null); onRefresh(); }} />
+      )}
+      {modal === 'print' && activeRound && (
+        <PrintLabelModal batch={batch} round={activeRound} onClose={() => setModal(null)} onDone={() => { setModal(null); setRounds(null); onRefresh(); }} />
+      )}
+      {modal === 'reprint' && activeRound && (
+        <ReprintModal batch={batch} round={activeRound} onClose={() => setModal(null)} onDone={() => { setModal(null); setRounds(null); onRefresh(); }} />
+      )}
+      {modal === 'progress' && activeRound && (
+        <ProgressRoundModal batch={batch} currentRound={activeRound} onClose={() => setModal(null)} onDone={() => { setModal(null); setRounds(null); onRefresh(); }} />
+      )}
+      {modal === 'floor' && (
+        <RemoveFromFloorModal batch={batch} onClose={() => setModal(null)} onDone={() => { setModal(null); onRefresh(); }} />
       )}
     </div>
   );
