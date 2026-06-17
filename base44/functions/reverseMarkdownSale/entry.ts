@@ -85,8 +85,11 @@ Deno.serve(async (req) => {
     '-created_date',
     1
   );
-  const items = await base44.asServiceRole.entities.InventoryItem.filter({ id: batch.item_id });
-  const item = items[0];
+  let item = null;
+  try {
+    const items = await base44.asServiceRole.entities.InventoryItem.filter({ id: batch.item_id });
+    item = items[0] || null;
+  } catch (_) { item = null; }
   const balanceBefore = recentMovements[0] ? recentMovements[0].balance_after : (item ? (item.stock || 0) : 0);
   const balanceAfter = balanceBefore + qty;
 

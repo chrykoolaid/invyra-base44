@@ -35,30 +35,22 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'markdown_batch_id, markdown_round_id, qty, unit_price, and pos_transaction_id are required.' }, { status: 400 });
   }
 
-  // Re-validate before posting (fail-closed)
-  const validationRes = await base44.functions.invoke('validateMarkdownPOSSale', {
-    markdown_batch_id,
-    markdown_round_id,
-    markdown_barcode_scanned,
-    markdown_price_offered: unit_price,
-    qty_requested: qty,
-    environment,
-  });
-
-  if (!validationRes?.data?.sale_allowed) {
-    return Response.json({
-      error: 'POS sale blocked by validation.',
-      validation_detail: validationRes?.data,
-    }, { status: 409 });
-  }
-
+  // Inline re-validation (fail-closed) — avoids server-to-server auth issue with functions.invoke
   const batches = await base44.asServiceRole.entities.MarkdownBatch.filter({ id: markdown_batch_id });
   const batch = batches[0];
   if (!batch) return Response.json({ error: 'Batch not found.' }, { status: 404 });
+  if (batch.status !== 'Active') return Response.json({ error: `Sale blocked: batch status is ${batch.status}.` }, { status: 409 });
 
   const rounds = await base44.asServiceRole.entities.MarkdownRound.filter({ id: markdown_round_id });
   const round = rounds[0];
   if (!round) return Response.json({ error: 'Round not found.' }, { status: 404 });
+  if (round.status !== 'Active') return Response.json({ error: `Sale blocked: round status is ${round.status}.` }, { status: 409 });
+  if (!['Active', 'Reprinted'].includes(round.barcode_status)) return Response.json({ error: `Sale blocked: barcode status is ${round.barcode_status}.` }, { status: 409 });
+
+  const today = new Date().toISOString().slice(0, 10);
+  if (round.expiry_date < today) return Response.json({ error: `Sale blocked: round expired on ${round.expiry_date}.` }, { status: 409 });
+  if (Math.abs(round.markdown_unit_price - unit_price) > 0.001) return Response.json({ error: `Sale blocked: price mismatch. Expected ₱${round.markdown_unit_price}, offered ₱${unit_price}.` }, { status: 409 });
+  if (batch.current_remaining_qty < qty) return Response.json({ error: `Sale blocked: insufficient remaining qty (${batch.current_remaining_qty} available, ${qty} requested).` }, { status: 409 });
 
   const now = new Date().toISOString();
   const newSoldQty = (batch.sold_qty || 0) + qty;
@@ -82,7 +74,7 @@ Deno.serve(async (req) => {
     markdown_round_id,
     markdown_barcode_scanned: markdown_barcode_scanned || '',
     pos_validation_status: 'Validated',
-    pos_validation_detail: validationRes?.data || {},
+    pos_validation_detail: { inline_validation: true, batch_status: batch.status, round_status: round.status, barcode_status: round.barcode_status },
     is_reversed: false,
     site_id: site_id || batch.site_id || '',
     served_by: user.id || user.email,
@@ -107,8 +99,11 @@ Deno.serve(async (req) => {
     '-created_date',
     1
   );
-  const items = await base44.asServiceRole.entities.InventoryItem.filter({ id: batch.item_id });
-  const item = items[0];
+  let item = null;
+  try {
+    const items = await base44.asServiceRole.entities.InventoryItem.filter({ id: batch.item_id });
+    item = items[0] || null;
+  } catch (_) { item = null; }
   const balanceBefore = recentMovements[0] ? recentMovements[0].balance_after : (item ? (item.stock || 0) : 0);
   const balanceAfter = Math.max(0, balanceBefore - qty);
 

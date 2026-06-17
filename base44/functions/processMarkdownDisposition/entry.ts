@@ -87,8 +87,11 @@ Deno.serve(async (req) => {
   }
 
   const now = new Date().toISOString();
-  const items = await base44.asServiceRole.entities.InventoryItem.filter({ id: batch.item_id });
-  const item = items[0];
+  let item = null;
+  try {
+    const items = await base44.asServiceRole.entities.InventoryItem.filter({ id: batch.item_id });
+    item = items[0] || null;
+  } catch (_) { item = null; }
   const costPerUnit = item ? (item.cost_per_unit || 0) : 0;
   const costImpact = qty * costPerUnit;
 
@@ -169,8 +172,10 @@ Deno.serve(async (req) => {
   const isFullyDisposed = totalConfirmedQty >= totalAvailable;
 
   if (isFullyDisposed) {
-    const finalBatchStatus = outcome_type === 'Recover' ? 'Recovered' : 'Disposition_Complete';
-    const finalQueueStatus = outcome_type === 'Recover' ? 'Recovered' : 'Disposition_Complete';
+    const confirmedDispositions = refreshedDispositions.filter(d => d.disposition_status === 'Confirmed');
+    const allRecovered = confirmedDispositions.every(d => d.outcome_type === 'Recover');
+    const finalBatchStatus = allRecovered ? 'Recovered' : 'Disposition_Complete';
+    const finalQueueStatus = allRecovered ? 'Recovered' : 'Disposition_Complete';
     await Promise.all([
       base44.asServiceRole.entities.MarkdownBatch.update(reviewEntry.batch_id, { status: finalBatchStatus }),
       base44.asServiceRole.entities.MarkdownReviewQueue.update(review_queue_id, { status: finalQueueStatus }),
