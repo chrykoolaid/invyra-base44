@@ -13,6 +13,12 @@ import {
   RefreshCw,
   TrendingUp,
 } from 'lucide-react';
+import {
+  getLocalDevStockMovements,
+  isLocalDevInventoryFallbackEnabled,
+  localDevInventoryFallbackNotice,
+  withLocalDevTimeout,
+} from '@/lib/localDevInventoryFallback';
 
 const TYPE_LABELS = {
   RECEIVE: 'Stock In',
@@ -177,7 +183,8 @@ export default function ItemDetailsWorkspace({ item, onBack }) {
 
     try {
       // Read-only and intentionally aligned with the existing Movements/Stock History ledger path.
-      const rows = await base44.entities.StockMovement.filter(envFilter(), '-created_date', 500);
+      const request = base44.entities.StockMovement.filter(envFilter(), '-created_date', 500);
+      const rows = await withLocalDevTimeout(request, 4000, 'StockMovement.filter');
       const targetSku = (item?.sku || '').toLowerCase();
       const targetId = item?.id || '';
       const itemRows = (rows || []).filter(row =>
@@ -186,11 +193,16 @@ export default function ItemDetailsWorkspace({ item, onBack }) {
       );
       setMovements(itemRows);
     } catch (err) {
-      setError(err?.message || 'Could not load item movement summary.');
+      if (isLocalDevInventoryFallbackEnabled()) {
+        setMovements(getLocalDevStockMovements(item));
+        setError(localDevInventoryFallbackNotice('Stock movements'));
+      } else {
+        setError(err?.message || 'Could not load item movement summary.');
+      }
     } finally {
       setLoadingMovements(false);
     }
-  }, [item?.id, item?.sku]);
+  }, [item]);
 
   useEffect(() => { loadMovements(); }, [loadMovements]);
 
@@ -290,7 +302,7 @@ export default function ItemDetailsWorkspace({ item, onBack }) {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {error}
         </div>
       )}
