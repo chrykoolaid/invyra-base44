@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Minus, Trash2, ShoppingBag, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
+import { Plus, Minus, Trash2, ShoppingBag, CheckCircle2, AlertCircle, RotateCcw, Tag } from 'lucide-react';
+import MarkdownSalePanel from './MarkdownSalePanel';
 
 const CATEGORY_COLORS = {
   'Wash & Dry':  'bg-blue-50 text-blue-700 border-blue-200',
@@ -10,6 +11,7 @@ const CATEGORY_COLORS = {
 };
 
 export default function POSRegister({ services, inventoryItems }) {
+  const [registerTab, setRegisterTab] = useState('services'); // 'services' | 'markdown'
   const [sites, setSites] = useState([]);
   const [selectedSiteId, setSelectedSiteId] = useState('');
   const [cart, setCart] = useState([]); // [{ service, qty }]
@@ -109,9 +111,30 @@ export default function POSRegister({ services, inventoryItems }) {
 
   return (
     <div className="grid grid-cols-[1fr_300px] h-full divide-x divide-border">
-      {/* Left: Service catalogue */}
+      {/* Left: Service catalogue or Markdown */}
       <div className="flex flex-col h-full overflow-hidden">
-        {/* Site selector + category filter */}
+        {/* Tab switcher */}
+        <div className="flex border-b border-border">
+          <button
+            onClick={() => setRegisterTab('services')}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${registerTab === 'services' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            <ShoppingBag size={14} /> Services
+          </button>
+          <button
+            onClick={() => setRegisterTab('markdown')}
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${registerTab === 'markdown' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            <Tag size={14} /> Markdown Sale
+          </button>
+        </div>
+
+        {registerTab === 'markdown' && (
+          <MarkdownSalePanel siteId={selectedSiteId} />
+        )}
+
+        {registerTab === 'services' && (
+        <>{/* Site selector + category filter */}
         <div className="px-4 py-3 border-b border-border space-y-2">
           <div className="flex items-center gap-2">
             <label className="text-xs text-muted-foreground font-medium shrink-0">Site:</label>
@@ -176,6 +199,7 @@ export default function POSRegister({ services, inventoryItems }) {
             </div>
           )}
         </div>
+        </> )}
       </div>
 
       {/* Right: Cart / order summary */}

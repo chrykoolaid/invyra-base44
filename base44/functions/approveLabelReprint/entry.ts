@@ -3,15 +3,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 /**
  * approveLabelReprint
  * Manager/Supervisor approves an escalated reprint request.
- * Updates the MarkdownPrintEvent and increments the round print_count.
+ * Role normalised to lowercase.
  */
+
+function normaliseRole(role) {
+  return (role || '').toLowerCase().trim();
+}
+
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const isPrivileged = ['supervisor', 'manager', 'admin'].includes(user.role);
-  if (!isPrivileged) return Response.json({ error: 'Forbidden: Supervisor or Manager role required to approve reprints.' }, { status: 403 });
+  const role = normaliseRole(user.role);
+  if (!['supervisor', 'manager', 'admin'].includes(role)) {
+    return Response.json({ error: 'Forbidden: Supervisor or Manager role required to approve reprints.' }, { status: 403 });
+  }
 
   const { print_event_id, approval_notes } = await req.json();
   if (!print_event_id) return Response.json({ error: 'print_event_id is required.' }, { status: 400 });
@@ -31,7 +38,6 @@ Deno.serve(async (req) => {
     printed_at: now,
   });
 
-  // Increment print count on the round
   const rounds = await base44.asServiceRole.entities.MarkdownRound.filter({ id: printEvent.round_id });
   const round = rounds[0];
   if (round) {
@@ -46,7 +52,7 @@ Deno.serve(async (req) => {
     round_id: printEvent.round_id,
     event_type: 'LABEL_REPRINTED',
     user_id: user.id || user.email,
-    user_role: user.role,
+    user_role: role,
     payload: {
       before: { print_status: 'Pending', is_escalated: true },
       after: { print_status: 'Success', approved_by: user.id || user.email },
