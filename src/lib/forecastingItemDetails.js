@@ -1,6 +1,7 @@
 import { ENV_LIVE } from '@/lib/envFilter';
 
 const FORECASTING_API_BASE_URL = (import.meta.env?.VITE_INVYRA_FORECASTING_API_BASE_URL || '').replace(/\/$/, '');
+const FORECAST_REQUEST_TIMEOUT_MS = 8000;
 
 const FIELD_ORDER = [
   'forecast_demand_next_30_days',
@@ -60,6 +61,12 @@ function locationIdForItem(item) {
 
 function locationNameForItem(item) {
   return item?.site_name || item?.location_name || 'Primary Location';
+}
+
+function createTimeoutSignal(timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  return { controller, timeoutId };
 }
 
 export function isForecastingApiConfigured() {
@@ -160,11 +167,14 @@ export async function requestItemDetailsForecast({ item, movements = [], environ
     });
   }
 
+  const { controller, timeoutId } = createTimeoutSignal(FORECAST_REQUEST_TIMEOUT_MS);
+
   try {
     const response = await fetch(`${FORECASTING_API_BASE_URL}/inventory/item-details/forecast`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(buildItemDetailsForecastRequest({ item, movements, environment })),
+      signal: controller.signal,
     });
 
     if (!response.ok) {
@@ -180,8 +190,12 @@ export async function requestItemDetailsForecast({ item, movements = [], environ
     return unavailableForecastPanel({
       item,
       environment,
-      reason: error?.message || 'Forecasting API request failed.',
+      reason: error?.name === 'AbortError'
+        ? `Forecasting API request timed out after ${FORECAST_REQUEST_TIMEOUT_MS}ms.`
+        : error?.message || 'Forecasting API request failed.',
     });
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
