@@ -35,6 +35,7 @@ export const ROUTE_PERMISSIONS = {
   '/InventoryAdmin':        'admin',
   '/ExportsIntegrations':   'admin',
   '/InventoryRoadmap':      'admin',
+  '/LocalForecastVerification': 'admin',
   '/Training/Staff':        'staff',
   '/Training/Supervisor':   'supervisor',
   '/Training/Manager':      'manager',
