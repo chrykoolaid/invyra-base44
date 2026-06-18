@@ -2,9 +2,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
  * createMarkdownBatch
- * Creates a new MarkdownBatch (Pending_Approval or Active depending on role/settings).
- * Supports store-floor markdown request evidence: capture method, reason,
- * proposed Round 1 price, expiry/sell-by date, and notes.
+ * Creates a new MarkdownBatch. Standard markdowns become Active immediately so
+ * labels can be printed without slowing the floor workflow. Exception cases
+ * (bulk/high quantity, custom price override, or explicit configured rules)
+ * require Supervisor/Manager handling. Supports store-floor markdown request
+ * evidence from ScanOps/manual fallback.
  * Role normalised to lowercase before all comparisons.
  */
 
@@ -35,6 +37,11 @@ Deno.serve(async (req) => {
     markdown_reason = '',
     initial_markdown_price,
     initial_original_price,
+    markdown_discount_percent,
+    price_entry_mode = 'discount_percent',
+    manual_price_override = false,
+    high_qty_threshold,
+    threshold_exceeded = false,
     initial_expiry_date,
     label_qty,
     request_notes = '',
@@ -48,16 +55,26 @@ Deno.serve(async (req) => {
   }
 
   const originalPrice = optionalNumber(initial_original_price);
-  const markdownPrice = optionalNumber(initial_markdown_price);
+  const requestedDiscount = optionalNumber(markdown_discount_percent);
+  let markdownPrice = optionalNumber(initial_markdown_price);
   const expiryDate = initial_expiry_date || '';
-  const hasRoundProposal = Boolean(markdownPrice || originalPrice || expiryDate);
-
-  if (hasRoundProposal && (!markdownPrice || markdownPrice <= 0 || !expiryDate)) {
-    return Response.json({ error: 'initial_markdown_price and initial_expiry_date are required when submitting markdown label details.' }, { status: 400 });
-  }
 
   if (originalPrice !== null && originalPrice <= 0) {
     return Response.json({ error: 'initial_original_price must be greater than 0 when supplied.' }, { status: 400 });
+  }
+
+  if (!markdownPrice && originalPrice && requestedDiscount && requestedDiscount > 0) {
+    markdownPrice = Math.round((originalPrice * (1 - requestedDiscount / 100)) * 100) / 100;
+  }
+
+  const hasRoundProposal = Boolean(markdownPrice || originalPrice || expiryDate || requestedDiscount);
+
+  if (hasRoundProposal && (!markdownPrice || markdownPrice <= 0 || !expiryDate)) {
+    return Response.json({ error: 'A calculated markdown price and initial_expiry_date are required when submitting markdown label details.' }, { status: 400 });
+  }
+
+  if (requestedDiscount !== null && (requestedDiscount <= 0 || requestedDiscount >= 100)) {
+    return Response.json({ error: 'markdown_discount_percent must be greater than 0 and less than 100 when supplied.' }, { status: 400 });
   }
 
   if (originalPrice !== null && markdownPrice !== null && markdownPrice > originalPrice) {
@@ -73,10 +90,21 @@ Deno.serve(async (req) => {
     review_warning_hours: 24,
     review_escalation_hours: 72,
     review_critical_hours: 96,
+    high_quantity_markdown_threshold: 20,
   };
 
   const isPrivileged = ['supervisor', 'manager', 'admin'].includes(role);
-  const requiresApproval = settings.require_approval_for_new_batch && !isPrivileged;
+  const highQtyThreshold = Number(
+    high_qty_threshold ||
+    settings.high_quantity_markdown_threshold ||
+    settings.bulk_markdown_qty_threshold ||
+    20
+  );
+  const isHighQtyException = Boolean(threshold_exceeded) || allocatedQty > highQtyThreshold;
+  const isCustomPriceOverride = Boolean(manual_price_override) || price_entry_mode === 'custom_price';
+  const forceApprovalForAll = settings.require_manager_approval_for_all_markdowns === true;
+  const exceptionRequiresManager = forceApprovalForAll || isHighQtyException || isCustomPriceOverride;
+  const requiresApproval = exceptionRequiresManager && !isPrivileged;
   const initialStatus = requiresApproval ? 'Pending_Approval' : 'Active';
   const batchRef = `MB-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase().slice(-6)}`;
   const now = new Date().toISOString();
@@ -86,6 +114,13 @@ Deno.serve(async (req) => {
     markdown_reason,
     initial_original_price: originalPrice,
     initial_markdown_price: markdownPrice,
+    calculated_markdown_price: markdownPrice,
+    markdown_discount_percent: requestedDiscount,
+    price_entry_mode,
+    manual_price_override: isCustomPriceOverride,
+    high_qty_threshold: highQtyThreshold,
+    threshold_exceeded: isHighQtyException,
+    exception_requires_manager: exceptionRequiresManager,
     initial_expiry_date: expiryDate,
     label_qty: Number(label_qty || allocatedQty),
     request_notes,
@@ -123,9 +158,9 @@ Deno.serve(async (req) => {
   let round1 = null;
   if (initialStatus === 'Active' && markdownPrice && expiryDate) {
     const origPrice = originalPrice || markdownPrice;
-    const discountPct = origPrice > 0
+    const discountPct = requestedDiscount || (origPrice > 0
       ? Math.round((1 - markdownPrice / origPrice) * 10000) / 100
-      : 0;
+      : 0);
     const barcode = `MD-${batch.id.slice(-6).toUpperCase()}-R1-${Date.now().toString(36).toUpperCase()}`;
 
     round1 = await base44.asServiceRole.entities.MarkdownRound.create({
@@ -163,6 +198,8 @@ Deno.serve(async (req) => {
       },
       meta: {
         requires_approval: requiresApproval,
+        exception_requires_manager: exceptionRequiresManager,
+        high_qty_threshold: highQtyThreshold,
         request_metadata: requestMetadata,
       }
     },
@@ -177,16 +214,16 @@ Deno.serve(async (req) => {
     change_type: 'STOCK_ADJUST',
     field_name: 'markdown_batch',
     old_value: '',
-    new_value: JSON.stringify({ batch_id: batch.id, status: initialStatus, allocated_qty: allocatedQty, round1_id: round1?.id || null }),
+    new_value: JSON.stringify({ batch_id: batch.id, status: initialStatus, allocated_qty: allocatedQty, round1_id: round1?.id || null, exception_requires_manager: exceptionRequiresManager }),
     changed_by: user.email || user.id,
     actor_role: role,
     source_module: 'Markdown',
     action_type: 'MARKDOWN_CREATED',
     linked_source_record: batch.id,
     source_record_id: round1?.id || batch.id,
-    notes: `Markdown batch ${batchRef} created with ${allocatedQty} units. Status: ${initialStatus}. Reason: ${markdown_reason || 'not supplied'}.`,
+    notes: `Markdown batch ${batchRef} created with ${allocatedQty} units. Status: ${initialStatus}. Reason: ${markdown_reason || 'not supplied'}. ${exceptionRequiresManager ? 'Exception guardrail applied.' : 'Standard markdown label printable immediately.'}`,
     environment,
   });
 
-  return Response.json({ success: true, batch, round1, requires_approval: requiresApproval });
+  return Response.json({ success: true, batch, round1, requires_approval: requiresApproval, exception_requires_manager: exceptionRequiresManager, high_qty_threshold: highQtyThreshold });
 });

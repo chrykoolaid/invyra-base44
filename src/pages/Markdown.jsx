@@ -97,11 +97,17 @@ function pickField(source, names, fallback = '—') {
   return fallback;
 }
 
+function parseBool(value) {
+  if (value === true || value === false) return value;
+  if (typeof value === 'string') return ['true', 'yes', '1'].includes(value.toLowerCase());
+  return Boolean(value);
+}
+
 function getScanRequestModel(row) {
   const payload = unwrapPayload(row);
   const originalPrice = pickField(payload, ['original_shelf_price', 'original_unit_price', 'current_price', 'shelf_price'], null);
-  const proposedPrice = pickField(payload, ['proposed_markdown_price', 'markdown_unit_price', 'markdown_price', 'label_price'], null);
-  const suppliedDiscount = pickField(payload, ['calculated_discount_percent', 'discount_percent'], null);
+  const proposedPrice = pickField(payload, ['calculated_markdown_price', 'proposed_markdown_price', 'initial_markdown_price', 'markdown_unit_price', 'markdown_price', 'label_price'], null);
+  const suppliedDiscount = pickField(payload, ['markdown_discount_percent', 'calculated_discount_percent', 'discount_percent'], null);
   const calculatedDiscount = suppliedDiscount !== null
     ? Number(suppliedDiscount)
     : (originalPrice && proposedPrice ? ((Number(originalPrice) - Number(proposedPrice)) / Number(originalPrice)) * 100 : null);
@@ -125,6 +131,9 @@ function getScanRequestModel(row) {
     capturedAt: pickField(payload, ['captured_at', 'submitted_at'], row?.created_date || null),
     syncStatus: row?.sync_status || pickField(payload, ['sync_status'], 'Queued'),
     approvalStatus: pickField(payload, ['approval_status', 'status'], 'Pending_Approval'),
+    priceEntryMode: pickField(payload, ['price_entry_mode'], 'discount_percent'),
+    manualPriceOverride: parseBool(pickField(payload, ['manual_price_override'], false)),
+    thresholdExceeded: parseBool(pickField(payload, ['threshold_exceeded', 'exception_requires_manager'], false)),
     eventType: row?.event_type || pickField(payload, ['event_type'], 'MARKDOWN_REQUEST'),
   };
 }
@@ -291,6 +300,9 @@ function ScanOpsRequestRow({ request }) {
       <div className="col-span-12 md:col-span-4 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap bg-indigo-50 text-indigo-700 border-indigo-200">ScanOps</span>
+          {(model.thresholdExceeded || model.manualPriceOverride) && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200">Manager handling</span>
+          )}
           <span className="font-mono text-xs text-muted-foreground truncate">{model.id}</span>
         </div>
         <p className="text-sm font-medium text-foreground truncate mt-1">{model.itemName}</p>
@@ -303,9 +315,9 @@ function ScanOpsRequestRow({ request }) {
       </div>
 
       <div className="col-span-6 md:col-span-2 text-xs">
-        <p className="text-muted-foreground">Price request</p>
+        <p className="text-muted-foreground">Discount / Label price</p>
         <p className="font-semibold text-foreground mt-0.5">{formatMoney(model.originalPrice)} → {formatMoney(model.proposedPrice)}</p>
-        {model.discount !== null && <p className="text-[11px] text-muted-foreground mt-0.5">{model.discount.toFixed(1)}% discount</p>}
+        {model.discount !== null && <p className="text-[11px] text-muted-foreground mt-0.5">{model.discount.toFixed(1)}% off{model.manualPriceOverride ? ' · custom price' : ''}</p>}
       </div>
 
       <div className="col-span-6 md:col-span-2 text-xs">

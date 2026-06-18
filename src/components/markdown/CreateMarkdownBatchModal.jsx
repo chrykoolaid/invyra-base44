@@ -24,6 +24,15 @@ const CAPTURE_METHODS = [
   { key: 'manual_fallback', label: 'Manual fallback' },
 ];
 
+const DISCOUNT_OPTIONS = [
+  { key: '25', label: '25% off', value: 25 },
+  { key: '50', label: '50% off', value: 50 },
+  { key: '75', label: '75% off', value: 75 },
+  { key: 'custom', label: 'Custom / manager override', value: null },
+];
+
+const HIGH_QTY_REVIEW_THRESHOLD = 20;
+
 const moneyFields = ['retail_price', 'sale_price', 'unit_price', 'price', 'cost_per_unit'];
 
 function formatMoney(value) {
@@ -67,6 +76,7 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
     capture_method: 'handheld_scan',
     markdown_reason: 'near_expiry',
     initial_original_price: '',
+    markdown_discount_percent: '50',
     initial_markdown_price: '',
     initial_expiry_date: '',
     request_notes: '',
@@ -100,11 +110,21 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
   }, [items, query]);
 
   const selectedStock = getStock(selectedItem);
+  const allocatedQtyPreview = Number(form.allocated_qty || 0);
   const originalPrice = Number(form.initial_original_price || 0);
-  const markdownPrice = Number(form.initial_markdown_price || 0);
+  const selectedDiscount = form.markdown_discount_percent === 'custom'
+    ? null
+    : Number(form.markdown_discount_percent || 0);
+  const customMarkdownPrice = Number(form.initial_markdown_price || 0);
+  const calculatedMarkdownPrice = originalPrice > 0 && selectedDiscount > 0
+    ? Math.round((originalPrice * (1 - selectedDiscount / 100)) * 100) / 100
+    : 0;
+  const markdownPrice = form.markdown_discount_percent === 'custom' ? customMarkdownPrice : calculatedMarkdownPrice;
   const discountPercent = originalPrice > 0 && markdownPrice > 0
     ? Math.max(0, Math.round((1 - markdownPrice / originalPrice) * 10000) / 100)
     : null;
+  const isCustomPriceOverride = form.markdown_discount_percent === 'custom';
+  const isHighQtyException = allocatedQtyPreview > HIGH_QTY_REVIEW_THRESHOLD;
 
   const selectItem = (item) => {
     const fallbackPrice = getItemPrice(item);
@@ -141,13 +161,18 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
       return;
     }
 
-    if (!originalPrice || originalPrice <= 0 || !markdownPrice || markdownPrice <= 0) {
-      setError('Enter both the original price and the proposed markdown price.');
+    if (!originalPrice || originalPrice <= 0) {
+      setError('Enter the original shelf price.');
+      return;
+    }
+
+    if (!markdownPrice || markdownPrice <= 0) {
+      setError(isCustomPriceOverride ? 'Enter the manager override label price.' : 'Select a markdown discount so the label price can be calculated.');
       return;
     }
 
     if (markdownPrice > originalPrice) {
-      setError('Markdown price cannot be higher than the original price.');
+      setError('Markdown label price cannot be higher than the original shelf price.');
       return;
     }
 
@@ -166,6 +191,11 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
         markdown_reason: form.markdown_reason,
         initial_original_price: originalPrice,
         initial_markdown_price: markdownPrice,
+        markdown_discount_percent: discountPercent,
+        price_entry_mode: isCustomPriceOverride ? 'custom_price' : 'discount_percent',
+        manual_price_override: isCustomPriceOverride,
+        high_qty_threshold: HIGH_QTY_REVIEW_THRESHOLD,
+        threshold_exceeded: isHighQtyException,
         initial_expiry_date: form.initial_expiry_date,
         label_qty: allocatedQty,
         request_notes: form.request_notes,
@@ -204,11 +234,11 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
           </div>
           {result.requires_approval ? (
             <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
-              This request is staged for Supervisor/Manager approval before labels can be printed.
+              Exception captured. Supervisor/Manager handling is required because this request exceeded the normal markdown guardrail.
             </div>
           ) : (
             <div className="mb-4 p-3 rounded-lg border border-green-200 bg-green-50 text-xs text-green-700">
-              Approved-role request created. Round 1 is ready for controlled label printing.
+              Standard markdown created. Round 1 label is printable immediately; the event remains visible for desktop audit and monitoring.
             </div>
           )}
           <button onClick={onClose} className="h-9 px-6 bg-primary text-primary-foreground rounded hover:opacity-90 text-sm">
@@ -243,8 +273,8 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
               <p className="text-xs text-muted-foreground mt-1">Only counted units enter the markdown request.</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/20 p-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Tag size={16} /> 3. Price/date label</div>
-              <p className="text-xs text-muted-foreground mt-1">Approval controls Round 1 before printing.</p>
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Tag size={16} /> 3. Discount/date label</div>
+              <p className="text-xs text-muted-foreground mt-1">Standard labels print immediately; exceptions route to manager.</p>
             </div>
           </div>
 
@@ -333,21 +363,50 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Proposed markdown price (₱) *</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                value={form.initial_markdown_price}
-                onChange={(event) => { setForm((current) => ({ ...current, initial_markdown_price: event.target.value })); setError(''); }}
-                placeholder="New label price"
-                className="w-full h-10 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring"
-                required
-              />
-              {discountPercent !== null && <p className="text-xs text-muted-foreground">Calculated markdown: {discountPercent.toFixed(1)}% off</p>}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Markdown discount *</label>
+              <div className="flex flex-wrap gap-2">
+                {DISCOUNT_OPTIONS.map((option) => (
+                  <PillButton
+                    key={option.key}
+                    active={form.markdown_discount_percent === option.key}
+                    onClick={() => setForm((current) => ({
+                      ...current,
+                      markdown_discount_percent: option.key,
+                      initial_markdown_price: option.key === 'custom' ? current.initial_markdown_price : '',
+                    }))}
+                  >
+                    {option.label}
+                  </PillButton>
+                ))}
+              </div>
+              {isCustomPriceOverride ? (
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={form.initial_markdown_price}
+                  onChange={(event) => { setForm((current) => ({ ...current, initial_markdown_price: event.target.value })); setError(''); }}
+                  placeholder="Manager override label price"
+                  className="w-full h-10 border border-amber-300 rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-amber-400"
+                  required
+                />
+              ) : (
+                <div className="h-10 rounded-lg border border-border bg-muted/30 px-3 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Calculated label price</span>
+                  <span className="font-semibold text-foreground">{markdownPrice > 0 ? formatMoney(markdownPrice) : '—'}</span>
+                </div>
+              )}
+              {discountPercent !== null && <p className="text-xs text-muted-foreground">Markdown discount: {discountPercent.toFixed(1)}% off · Label price: {formatMoney(markdownPrice)}</p>}
             </div>
           </section>
+
+          {(isHighQtyException || isCustomPriceOverride) && (
+            <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800">
+              <strong>Exception guardrail:</strong> {isHighQtyException ? `Line quantity is over ${HIGH_QTY_REVIEW_THRESHOLD}; supervisor/manager handling is required. ` : ''}{isCustomPriceOverride ? 'Custom label price is a manager override. ' : ''}
+              Standard markdowns within the guardrail can print immediately.
+            </div>
+          )}
 
           <section className="space-y-3">
             <div>
@@ -393,7 +452,7 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
           </div>
 
           <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800">
-            <strong>Governance:</strong> This stages a controlled markdown request. KPI cards remain read-only. Stock is not deducted at request stage; final stock movement still depends on POS sale, recovery, or confirmed disposition.
+            <strong>Governance:</strong> Standard markdown labels are printable immediately within configured guardrails. Supervisor/Manager handling is only required for high-quantity lines, custom price overrides, or other exception rules. Stock is not deducted at request/label stage; final stock movement still depends on POS sale, recovery, or confirmed disposition.
           </div>
 
           {error && (
@@ -406,7 +465,7 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
           <div className="flex justify-end gap-2 pt-1 border-t border-border pt-4">
             <button type="button" onClick={onClose} className="h-9 px-4 text-sm border border-border rounded hover:bg-muted">Cancel</button>
             <button type="submit" disabled={saving} className="h-9 px-4 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-50">
-              {saving ? 'Submitting…' : 'Submit Markdown Request'}
+              {saving ? 'Submitting…' : 'Create Markdown Label Request'}
             </button>
           </div>
         </form>
