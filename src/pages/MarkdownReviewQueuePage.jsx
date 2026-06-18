@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { ClipboardList, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
+import { ClipboardList, AlertTriangle, Clock, RefreshCw, ArrowLeft } from 'lucide-react';
 import ReviewQueueEntry from '@/components/markdown/ReviewQueueEntry';
 
 const SLA_STATUS = (entry) => {
@@ -54,9 +55,14 @@ export default function MarkdownReviewQueuePage() {
           <h1 className="text-xl font-semibold text-foreground">Review Queue</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{open.length} open entries</p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
-        </button>
+        <div className="flex gap-2">
+          <Link to="/Markdown" className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
+            <ArrowLeft size={13} /> Back to Markdown
+          </Link>
+          <button onClick={load} className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </div>
       </div>
 
       {criticalCount > 0 && (

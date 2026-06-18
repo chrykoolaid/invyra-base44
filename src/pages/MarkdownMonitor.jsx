@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Printer, RefreshCw, Download } from 'lucide-react';
+import { Printer, RefreshCw, Download, ArrowLeft } from 'lucide-react';
 
 const statusStyle = {
   Active:               { dot: 'bg-green-500',  label: 'Active' },
@@ -70,6 +71,9 @@ export default function MarkdownMonitor() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link to="/Markdown" className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
+            <ArrowLeft size={13} /> Back to Markdown
+          </Link>
           <button onClick={load} className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>

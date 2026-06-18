@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { BarChart3, RefreshCw, TrendingDown, Package, CheckCircle, AlertTriangle } from 'lucide-react';
+import { BarChart3, RefreshCw, TrendingDown, Package, CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const PIE_COLORS = ['#22c55e', '#f59e0b', '#ef4444', '#6366f1', '#8b5cf6', '#06b6d4'];
@@ -73,9 +74,14 @@ export default function MarkdownReports() {
           <h1 className="text-xl font-semibold text-foreground">Markdown Reports</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Phase 1 sell-through, disposition, and event analytics</p>
         </div>
-        <button onClick={load} className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
-        </button>
+        <div className="flex gap-2">
+          <Link to="/Markdown" className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
+            <ArrowLeft size={13} /> Back to Markdown
+          </Link>
+          <button onClick={load} className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* KPI row */}

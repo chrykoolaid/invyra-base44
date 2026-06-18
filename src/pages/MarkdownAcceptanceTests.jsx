@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { CheckCircle, Circle, ChevronDown, ChevronUp, AlertTriangle, Info } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckCircle, Circle, ChevronDown, ChevronUp, AlertTriangle, Info, ArrowLeft } from 'lucide-react';
 
 const TESTS = [
   {
@@ -265,7 +266,10 @@ export default function MarkdownAcceptanceTests() {
           <h1 className="text-xl font-semibold text-foreground">Phase 1 Acceptance Tests</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Manual verification checklist for all locked Phase 1 workflows</p>
         </div>
-        <div className="flex gap-3 text-xs">
+        <div className="flex items-center gap-2 text-xs">
+          <Link to="/Markdown" className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
+            <ArrowLeft size={13} /> Back to Markdown
+          </Link>
           <span className="px-2.5 py-1 rounded-full bg-green-50 text-green-700 border border-green-200 font-semibold">{passed} Passed</span>
           <span className="px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 font-semibold">{failed} Failed</span>
           <span className="px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border font-semibold">{total - passed - failed} Pending</span>

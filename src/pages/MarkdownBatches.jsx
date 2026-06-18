@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Plus, RefreshCw, Tag, ChevronRight } from 'lucide-react';
+import { Plus, RefreshCw, Tag, ChevronRight, ArrowLeft } from 'lucide-react';
 import CreateMarkdownBatchModal from '@/components/markdown/CreateMarkdownBatchModal';
 import MarkdownBatchCard from '@/components/markdown/MarkdownBatchCard';
 
@@ -53,6 +54,9 @@ export default function MarkdownBatches() {
           <p className="text-sm text-muted-foreground mt-0.5">{batches.length} total batches</p>
         </div>
         <div className="flex gap-2">
+          <Link to="/Markdown" className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
+            <ArrowLeft size={13} /> Back to Markdown
+          </Link>
           <button onClick={load} className="flex items-center gap-1.5 h-8 px-3 text-sm border border-border rounded bg-card hover:bg-muted text-foreground">
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Refresh
           </button>
