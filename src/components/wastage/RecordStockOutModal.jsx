@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
-import { X } from 'lucide-react';
+import { CheckCircle2, Search, X } from 'lucide-react';
 
 export default function RecordStockOutModal({ onClose, onSuccess }) {
   const [step, setStep] = useState('class'); // 'class', 'details'
@@ -9,11 +9,13 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
   const [items, setItems] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [itemSearch, setItemSearch] = useState('');
 
   const [form, setForm] = useState({
     item_id: '',
     item_name: '',
     sku: '',
+    available_stock: 0,
     quantity: '',
     reason_category: '',
     reason_notes: '',
@@ -32,18 +34,81 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
       .catch(() => setSites([]));
   }, []);
 
+  const selectedItem = useMemo(
+    () => items.find(item => item.id === form.item_id),
+    [items, form.item_id]
+  );
+
+  const filteredItems = useMemo(() => {
+    const query = itemSearch.trim().toLowerCase();
+
+    if (!query) {
+      return items;
+    }
+
+    return items.filter(item => {
+      const searchText = [
+        item.name,
+        item.sku,
+        item.barcode,
+        item.item_barcode,
+        item.upc,
+        item.category,
+        item.category_name,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchText.includes(query);
+    });
+  }, [items, itemSearch]);
+
+  const selectedAvailableStock = Number(form.available_stock ?? selectedItem?.stock ?? 0);
+  const quantityNumber = Number(form.quantity);
+  const hasQuantity = form.quantity !== '';
+  const quantityInvalid = hasQuantity && (
+    Number.isNaN(quantityNumber) ||
+    quantityNumber <= 0 ||
+    (selectedAvailableStock > 0 && quantityNumber > selectedAvailableStock)
+  );
+  const canCreateDraft = Boolean(
+    form.item_id &&
+    hasQuantity &&
+    !quantityInvalid &&
+    form.reason_category &&
+    !loading
+  );
+
   const handleSelectItem = (item) => {
     setForm(prev => ({
       ...prev,
       item_id: item.id,
       item_name: item.name,
       sku: item.sku,
+      available_stock: Number(item.stock || 0),
+    }));
+  };
+
+  const handleChangeItem = () => {
+    setForm(prev => ({
+      ...prev,
+      item_id: '',
+      item_name: '',
+      sku: '',
+      available_stock: 0,
+      quantity: '',
     }));
   };
 
   const handleSubmit = async () => {
     if (!form.item_id || !form.quantity || !form.reason_category) {
       alert('Please fill in required fields');
+      return;
+    }
+
+    if (quantityInvalid) {
+      alert('Please enter a valid quantity that does not exceed available stock');
       return;
     }
 
@@ -116,7 +181,7 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
       <div className="bg-card rounded-2xl border border-border max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-lg">
-        <div className="sticky top-0 flex items-center justify-between p-4 border-b border-border bg-card">
+        <div className="sticky top-0 flex items-center justify-between p-4 border-b border-border bg-card z-10">
           <div>
             <h2 className="text-base font-semibold text-foreground">Record {stockOutClass === 'WASTAGE' ? 'Wastage' : 'Store Use'}</h2>
             <p className="text-xs text-muted-foreground mt-1">Create a draft stock-out record</p>
@@ -129,24 +194,81 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
         <div className="p-4 space-y-4">
           {/* Item selection */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-2">Item</label>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <label className="text-xs font-medium text-muted-foreground block">Item</label>
+              {form.item_id && (
+                <button
+                  type="button"
+                  onClick={handleChangeItem}
+                  className="text-xs font-medium text-primary hover:underline"
+                >
+                  Change item
+                </button>
+              )}
+            </div>
+
             {form.item_id ? (
-              <div className="p-3 rounded-xl border border-border bg-background/40">
-                <p className="text-sm font-medium text-foreground">{form.item_name}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">{form.sku}</p>
+              <div className="p-3 rounded-xl border border-primary bg-primary/5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{form.item_name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {form.sku || 'No SKU'} · Stock: {selectedAvailableStock}
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
+                    <CheckCircle2 size={13} />
+                    Selected
+                  </span>
+                </div>
               </div>
             ) : (
-              <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                {items.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleSelectItem(item)}
-                    className="w-full p-3 rounded-xl border border-border hover:bg-muted/50 text-left transition-colors"
-                  >
-                    <p className="text-sm font-medium text-foreground">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{item.sku} · Stock: {item.stock}</p>
-                  </button>
-                ))}
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={16} />
+                  <Input
+                    value={itemSearch}
+                    onChange={(e) => setItemSearch(e.target.value)}
+                    placeholder="Search by item name, SKU, or barcode..."
+                    className="pl-9"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{filteredItems.length} {filteredItems.length === 1 ? 'item' : 'items'} found</span>
+                  {itemSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setItemSearch('')}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      Clear search
+                    </button>
+                  )}
+                </div>
+
+                {filteredItems.length > 0 ? (
+                  <div className="space-y-2 max-h-[240px] overflow-y-auto pr-1">
+                    {filteredItems.map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleSelectItem(item)}
+                        className="w-full p-3 rounded-xl border border-border hover:border-primary hover:bg-primary/5 text-left transition-colors"
+                      >
+                        <p className="text-sm font-medium text-foreground">{item.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.sku || 'No SKU'} · Stock: {item.stock ?? 0}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
+                    <p className="text-sm font-medium text-foreground">No items found</p>
+                    <p className="text-xs text-muted-foreground mt-1">Try searching by item name, SKU, or barcode.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -159,10 +281,17 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
                   <Input
                     type="number"
                     min="1"
+                    max={selectedAvailableStock || undefined}
                     value={form.quantity}
                     onChange={(e) => setForm(prev => ({ ...prev, quantity: e.target.value }))}
                     placeholder="0"
+                    className={quantityInvalid ? 'border-destructive focus-visible:ring-destructive' : ''}
                   />
+                  {quantityInvalid && (
+                    <p className="text-[11px] text-destructive mt-1">
+                      Quantity must be 1{selectedAvailableStock > 0 ? `–${selectedAvailableStock}` : ' or more'}.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1.5">Reason</label>
@@ -262,14 +391,14 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
 
         <div className="sticky bottom-0 flex items-center justify-between gap-3 p-4 border-t border-border bg-card">
           <button
-            onClick={() => form.item_id ? setForm(prev => ({ ...prev, item_id: '' })) : onClose()}
+            onClick={() => form.item_id ? handleChangeItem() : onClose()}
             className="px-4 h-9 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
           >
             {form.item_id ? 'Change Item' : 'Cancel'}
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!form.item_id || !form.quantity || !form.reason_category || loading}
+            disabled={!canCreateDraft}
             className="px-4 h-9 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
           >
             {loading ? 'Creating...' : 'Create Draft'}
