@@ -4,11 +4,9 @@ import { Search, Download, TrendingUp } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { stockOutRepository } from '@/services/wasteEngine/stockOutRepository.js';
-import { isBase44Mode } from '@/services/wasteEngine/wasteEngineConfig.js';
 
 export default function ReportsTab({ refreshTick }) {
   const [records, setRecords] = useState([]);
-  const [engineSummary, setEngineSummary] = useState(null); // non-null only in engine/hybrid mode
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [groupBy, setGroupBy] = useState('reason');
@@ -24,21 +22,12 @@ export default function ReportsTab({ refreshTick }) {
   // Load records via repository (base44 mode = direct entity queries; engine/hybrid = Waste Engine)
   useEffect(() => {
     setLoading(true);
-    setEngineSummary(null);
-
     stockOutRepository.loadAllRecordsForReports('LIVE')
       .then(allRecords => {
         setRecords(allRecords || []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
-
-    // Opportunistically fetch engine summary (no-op / returns null in base44 mode)
-    if (!isBase44Mode()) {
-      stockOutRepository.getReportSummary()
-        .then(summary => { if (summary) setEngineSummary(summary); })
-        .catch(() => {}); // silent — base44 calc used as fallback
-    }
   }, [refreshTick]);
 
   const filteredRecords = useMemo(() => {
@@ -110,10 +99,6 @@ export default function ReportsTab({ refreshTick }) {
   }, [filteredRecords, groupBy]);
 
   const summary = useMemo(() => {
-    // If the Waste Engine returned a pre-calculated summary, use it directly.
-    // The engine summary is already in the same shape as the local calculation result.
-    if (engineSummary) return engineSummary;
-
     // Gross: includes POSTED, REVERSED, and AMENDED (records that originally posted stock out)
     const grossRecords = filteredRecords.filter(r => r.status === 'POSTED' || r.status === 'REVERSED' || r.status === 'AMENDED');
     const grossQty = grossRecords.reduce((s, r) => s + (r.quantity || 0), 0);

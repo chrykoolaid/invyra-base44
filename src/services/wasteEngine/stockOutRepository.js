@@ -12,7 +12,7 @@
  */
 
 import { base44 } from '@/api/base44Client';
-import { isBase44Mode, isEngineMode, isHybridMode } from './wasteEngineConfig.js';
+import { isBase44Mode, isHybridMode } from './wasteEngineConfig.js';
 import { stockOutAdapter } from './stockOutAdapter.js';
 import { isFallbackSafe } from './wasteEngineErrors.js';
 
@@ -45,6 +45,7 @@ async function _b44ListByClass(stockOutClass, environment = 'LIVE') {
 
 async function withHybridFallback(engineFn, fallbackFn) {
   if (isBase44Mode()) return fallbackFn();
+
   try {
     return await engineFn();
   } catch (err) {
@@ -71,13 +72,13 @@ async function healthCheck() {
 
 /**
  * Load all stock-out records across all statuses for the Reports tab.
- * In base44 mode: 6 parallel entity queries (same as before this layer existed).
- * In engine mode: single /review/stock-out-ledger call.
+ * In base44 mode: 6 parallel entity queries.
+ * In engine mode: single /review/stock-out-ledger call with mapped UI records.
  * In hybrid: engine first, Base44 fallback.
  */
-async function loadAllRecordsForReports(environment = 'LIVE') {
+async function loadAllRecordsForReports(environment = 'LIVE', filters = {}) {
   return withHybridFallback(
-    () => stockOutAdapter.listAllRecords(),
+    () => stockOutAdapter.listAllRecords(filters),
     () => _b44LoadAllRecordsForReports(environment),
   );
 }
@@ -126,30 +127,30 @@ async function updateDraft(recordId, payload) {
   );
 }
 
-async function submitRecord(recordId) {
+async function submitRecord(recordId, payload = {}) {
   return withHybridFallback(
-    () => stockOutAdapter.submitRecord(recordId),
+    () => stockOutAdapter.submitRecord(recordId, payload),
     () => base44.functions.invoke('submitStockOutRecord', { record_id: recordId }),
   );
 }
 
-async function approveRecord(recordId) {
+async function approveRecord(recordId, payload = {}) {
   return withHybridFallback(
-    () => stockOutAdapter.approveRecord(recordId),
+    () => stockOutAdapter.approveRecord(recordId, payload),
     () => base44.functions.invoke('approveStockOutRecordV2', { record_id: recordId }),
   );
 }
 
-async function rejectRecord(recordId, reason) {
+async function rejectRecord(recordId, reason, payload = {}) {
   return withHybridFallback(
-    () => stockOutAdapter.rejectRecord(recordId, reason),
+    () => stockOutAdapter.rejectRecord(recordId, reason, payload),
     () => base44.functions.invoke('rejectStockOutRecord', { record_id: recordId, reason }),
   );
 }
 
-async function reverseRecord(recordId, reason) {
+async function reverseRecord(recordId, reason, payload = {}) {
   return withHybridFallback(
-    () => stockOutAdapter.reverseRecord(recordId, reason),
+    () => stockOutAdapter.reverseRecord(recordId, reason, payload),
     () => base44.functions.invoke('reverseStockOutRecord', { record_id: recordId, reason }),
   );
 }
@@ -198,7 +199,7 @@ async function listAlerts(filters = {}) {
 }
 
 async function evaluateAlerts(payload = {}) {
-  // Engine-only; no Base44 equivalent for on-demand evaluation
+  // Engine-only; no Base44 equivalent for on-demand evaluation.
   if (isBase44Mode()) return { message: 'Alert evaluation only available in engine mode' };
   return stockOutAdapter.evaluateAlerts(payload);
 }
@@ -222,8 +223,9 @@ async function resolveAlert(alertId, notes = '') {
 // ---------------------------------------------------------------------------
 
 /**
- * Returns a pre-calculated finance summary from the engine (engine/hybrid modes),
- * or null in base44 mode (ReportsTab falls back to its local useMemo calculation).
+ * Supplemental engine summary for future use. ReportsTab v1 calculates displayed
+ * KPIs locally from mapped records so UI filters/search remain accurate and so
+ * pending/rejected values remain visible until the engine summary contract grows.
  */
 async function getReportSummary(filters = {}) {
   if (isBase44Mode()) return null;
@@ -231,24 +233,20 @@ async function getReportSummary(filters = {}) {
     return await stockOutAdapter.getReportSummary(filters);
   } catch (err) {
     if (isHybridMode() && isFallbackSafe(err)) {
-      console.warn('[WasteEngine] getReportSummary falling back to null (Base44 calc):', err.message);
+      console.warn('[WasteEngine] getReportSummary falling back to null:', err.message);
       return null;
     }
     throw err;
   }
 }
 
-/**
- * Returns pre-calculated breakdown rows from the engine (engine/hybrid modes),
- * or null in base44 mode (ReportsTab keeps its local grouped useMemo).
- */
 async function getReportBreakdown(filters = {}) {
   if (isBase44Mode()) return null;
   try {
     return await stockOutAdapter.getReportBreakdown(filters);
   } catch (err) {
     if (isHybridMode() && isFallbackSafe(err)) {
-      console.warn('[WasteEngine] getReportBreakdown falling back to null (Base44 calc):', err.message);
+      console.warn('[WasteEngine] getReportBreakdown falling back to null:', err.message);
       return null;
     }
     throw err;
@@ -285,7 +283,7 @@ async function getScannerIntakeDetail(sessionId) {
 }
 
 async function syncScannerSession(sessionId, payload) {
-  // Not wired to Base44 in v1; action endpoints need confirmation first
+  // Not wired to Base44 in v1; action endpoints need confirmation first.
   if (isBase44Mode()) throw new Error('syncScannerSession is not available in base44 mode');
   return stockOutAdapter.syncScannerSession(sessionId, payload);
 }

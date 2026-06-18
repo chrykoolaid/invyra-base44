@@ -17,6 +17,61 @@ import {
 } from './stockOutMappers.js';
 
 // ---------------------------------------------------------------------------
+// Response helpers
+// ---------------------------------------------------------------------------
+
+function unwrapList(data, keys = []) {
+  if (Array.isArray(data)) return data;
+
+  for (const key of keys) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+
+  return [];
+}
+
+function unwrapRecord(data, keys = []) {
+  if (!data || Array.isArray(data)) return data;
+
+  for (const key of keys) {
+    if (data?.[key] && !Array.isArray(data[key])) return data[key];
+  }
+
+  return data;
+}
+
+function actorPayload(payload = {}) {
+  return {
+    actor_user_id: payload.actor_user_id || payload.user_id || undefined,
+    actor_username: payload.actor_username || payload.username || payload.created_by_email || payload.created_by || undefined,
+  };
+}
+
+function roleForEngine(role, fallback = undefined) {
+  const r = (role || fallback || '').toString().trim().toUpperCase();
+  return r === 'OWNER' ? 'ADMIN' : r || undefined;
+}
+
+function amendmentPayload(payload = {}) {
+  const mapped = mapDraftToEngine(payload);
+  delete mapped.stock_out_class;
+  delete mapped.source;
+  delete mapped.recorded_by_username;
+  delete mapped.recorded_by_user_id;
+  delete mapped.actor_username;
+  delete mapped.actor_user_id;
+  delete mapped.actor_role;
+
+  return {
+    ...mapped,
+    amendment_reason: payload.amendment_reason || payload.reason || payload.amendment_notes || 'Stock-out amendment requested',
+    requested_by_user_id: payload.requested_by_user_id || payload.actor_user_id || payload.user_id || undefined,
+    requested_by_username: payload.requested_by_username || payload.actor_username || payload.username || payload.created_by_email || payload.created_by || undefined,
+    requested_by_role: roleForEngine(payload.requested_by_role || payload.actor_role, 'MANAGER'),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Health
 // ---------------------------------------------------------------------------
 
@@ -30,22 +85,22 @@ async function healthCheck() {
 
 async function listWastageRecords(filters = {}) {
   const data = await wasteEngineClient.get('/review/wastage-ledger', mapFiltersToEngineParams(filters));
-  return (data.items || data.records || data || []).map(mapEngineRecordToUI);
+  return unwrapList(data, ['events', 'items', 'records']).map(mapEngineRecordToUI);
 }
 
 async function listStoreUseRecords(filters = {}) {
   const data = await wasteEngineClient.get('/review/store-use-ledger', mapFiltersToEngineParams(filters));
-  return (data.items || data.records || data || []).map(mapEngineRecordToUI);
+  return unwrapList(data, ['events', 'items', 'records']).map(mapEngineRecordToUI);
 }
 
 async function listAllRecords(filters = {}) {
   const data = await wasteEngineClient.get('/review/stock-out-ledger', mapFiltersToEngineParams(filters));
-  return (data.items || data.records || data || []).map(mapEngineRecordToUI);
+  return unwrapList(data, ['events', 'items', 'records']).map(mapEngineRecordToUI);
 }
 
 async function getRecord(eventId) {
   const data = await wasteEngineClient.get(`/review/record/${eventId}`);
-  return mapEngineRecordToUI(data);
+  return mapEngineRecordToUI(unwrapRecord(data, ['event', 'record', 'item']));
 }
 
 // ---------------------------------------------------------------------------
@@ -54,37 +109,37 @@ async function getRecord(eventId) {
 
 async function createWastageDraft(payload) {
   const data = await wasteEngineClient.post('/wastage', mapDraftToEngine({ ...payload, stock_out_class: 'WASTAGE' }));
-  return mapEngineRecordToUI(data);
+  return mapEngineRecordToUI(unwrapRecord(data, ['event', 'record']));
 }
 
 async function createStoreUseDraft(payload) {
   const data = await wasteEngineClient.post('/store-use', mapDraftToEngine({ ...payload, stock_out_class: 'STORE_USE' }));
-  return mapEngineRecordToUI(data);
+  return mapEngineRecordToUI(unwrapRecord(data, ['event', 'record']));
 }
 
 async function updateDraft(eventId, payload) {
   const data = await wasteEngineClient.patch(`/stock-out/${eventId}/draft`, mapDraftToEngine(payload));
-  return mapEngineRecordToUI(data);
+  return mapEngineRecordToUI(unwrapRecord(data, ['event', 'record']));
 }
 
-async function submitRecord(eventId) {
-  const data = await wasteEngineClient.post(`/stock-out/${eventId}/submit`, {});
-  return mapEngineRecordToUI(data);
+async function submitRecord(eventId, payload = {}) {
+  const data = await wasteEngineClient.post(`/stock-out/${eventId}/submit`, actorPayload(payload));
+  return mapEngineRecordToUI(unwrapRecord(data, ['event', 'record']));
 }
 
-async function approveRecord(eventId, notes = '') {
-  const data = await wasteEngineClient.post(`/stock-out/${eventId}/approve`, { notes });
-  return mapEngineRecordToUI(data);
+async function approveRecord(eventId, payload = {}) {
+  const data = await wasteEngineClient.post(`/stock-out/${eventId}/approve`, actorPayload(payload));
+  return mapEngineRecordToUI(unwrapRecord(data, ['event', 'record']));
 }
 
-async function rejectRecord(eventId, reason) {
-  const data = await wasteEngineClient.post(`/stock-out/${eventId}/reject`, { reason });
-  return mapEngineRecordToUI(data);
+async function rejectRecord(eventId, reason, payload = {}) {
+  const data = await wasteEngineClient.post(`/stock-out/${eventId}/reject`, { reason, ...actorPayload(payload) });
+  return mapEngineRecordToUI(unwrapRecord(data, ['event', 'record']));
 }
 
-async function reverseRecord(eventId, reason) {
-  const data = await wasteEngineClient.post(`/stock-out/${eventId}/reverse`, { reason });
-  return mapEngineRecordToUI(data);
+async function reverseRecord(eventId, reason, payload = {}) {
+  const data = await wasteEngineClient.post(`/stock-out/${eventId}/reverse`, { reason, ...actorPayload(payload) });
+  return mapEngineRecordToUI(unwrapRecord(data, ['event', 'record']));
 }
 
 // ---------------------------------------------------------------------------
@@ -93,19 +148,27 @@ async function reverseRecord(eventId, reason) {
 
 async function listAmendments(filters = {}) {
   const data = await wasteEngineClient.get('/review/amendments', mapFiltersToEngineParams(filters));
-  return data.items || data.records || data || [];
+  return unwrapList(data, ['amendments', 'items', 'records']);
 }
 
 async function requestAmendment(eventId, payload) {
-  return wasteEngineClient.post(`/stock-out/${eventId}/amendments`, payload);
+  return wasteEngineClient.post(`/stock-out/${eventId}/amendments`, amendmentPayload(payload));
 }
 
-async function approveAmendment(amendmentId, notes = '') {
-  return wasteEngineClient.post(`/amendments/${amendmentId}/approve`, { notes });
+async function approveAmendment(amendmentId, notes = '', payload = {}) {
+  return wasteEngineClient.post(`/amendments/${amendmentId}/approve`, {
+    ...actorPayload(payload),
+    actor_role: roleForEngine(payload.actor_role, 'MANAGER'),
+    notes,
+  });
 }
 
-async function rejectAmendment(amendmentId, reason) {
-  return wasteEngineClient.post(`/amendments/${amendmentId}/reject`, { reason });
+async function rejectAmendment(amendmentId, reason, payload = {}) {
+  return wasteEngineClient.post(`/amendments/${amendmentId}/reject`, {
+    reason,
+    ...actorPayload(payload),
+    actor_role: roleForEngine(payload.actor_role, 'MANAGER'),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -114,19 +177,25 @@ async function rejectAmendment(amendmentId, reason) {
 
 async function listAlerts(filters = {}) {
   const data = await wasteEngineClient.get('/alerts', mapFiltersToEngineParams(filters));
-  return data.items || data.alerts || data || [];
+  return unwrapList(data, ['alerts', 'items', 'records']);
 }
 
 async function evaluateAlerts(payload = {}) {
   return wasteEngineClient.post('/alerts/evaluate', payload);
 }
 
-async function acknowledgeAlert(alertId, notes = '') {
-  return wasteEngineClient.post(`/alerts/${alertId}/acknowledge`, { notes });
+async function acknowledgeAlert(alertId, notes = '', payload = {}) {
+  return wasteEngineClient.post(`/alerts/${alertId}/acknowledge`, {
+    actor_username: payload.actor_username || payload.username || payload.created_by_email || payload.created_by || undefined,
+    note: notes,
+  });
 }
 
-async function resolveAlert(alertId, notes = '') {
-  return wasteEngineClient.post(`/alerts/${alertId}/resolve`, { notes });
+async function resolveAlert(alertId, notes = '', payload = {}) {
+  return wasteEngineClient.post(`/alerts/${alertId}/resolve`, {
+    actor_username: payload.actor_username || payload.username || payload.created_by_email || payload.created_by || undefined,
+    resolution_note: notes,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -145,7 +214,7 @@ async function getReportBreakdown(filters = {}) {
 
 async function getReportMovements(filters = {}) {
   const data = await wasteEngineClient.get('/reports/finance/movements', mapFiltersToEngineParams(filters));
-  return data.items || data.movements || data || [];
+  return unwrapList(data, ['movements', 'items', 'records']);
 }
 
 // ---------------------------------------------------------------------------
@@ -154,7 +223,7 @@ async function getReportMovements(filters = {}) {
 
 async function listScannerIntake(filters = {}) {
   const data = await wasteEngineClient.get('/review/scanner-intake', mapFiltersToEngineParams(filters));
-  return data.items || data.records || data || [];
+  return unwrapList(data, ['sessions', 'items', 'records']);
 }
 
 async function getScannerIntakeDetail(sessionId) {
