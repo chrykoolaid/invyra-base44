@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import CreateMarkdownBatchModal from '@/components/markdown/CreateMarkdownBatchModal';
+import ScannerExceptionReviewModal from '@/components/markdown/ScannerExceptionReviewModal';
 
 const SECONDARY_LINKS = [
   { id: 'batches', label: 'Active Batches', icon: Tag, path: '/Markdown/Batches' },
@@ -116,6 +117,8 @@ function getScanRequestModel(row) {
 
   return {
     id: row?.id || row?.local_event_id || pickField(payload, ['request_id', 'local_event_id'], '—'),
+    itemId: pickField(payload, ['item_id', 'inventory_item_id', 'itemId'], ''),
+    siteId: pickField(payload, ['site_id', 'location_id', 'store_id'], ''),
     itemName: pickField(payload, ['item_name_snapshot', 'item_name', 'name', 'product_name'], 'Unknown item'),
     sku: pickField(payload, ['sku', 'item_sku'], 'No SKU'),
     barcode: pickField(payload, ['barcode', 'item_barcode'], ''),
@@ -129,6 +132,7 @@ function getScanRequestModel(row) {
     captureMethod: pickField(payload, ['capture_method', 'method'], 'ScanOps'),
     deviceId: row?.device_id || pickField(payload, ['device_id'], 'Unknown device'),
     sessionId: pickField(payload, ['scan_session_id', 'session_id'], ''),
+    notes: pickField(payload, ['operator_notes', 'request_notes', 'notes'], ''),
     operatorId: row?.submitted_by || pickField(payload, ['operator_id', 'captured_by'], '—'),
     capturedAt: pickField(payload, ['captured_at', 'submitted_at'], row?.created_date || null),
     syncStatus: row?.sync_status || pickField(payload, ['sync_status'], 'Queued'),
@@ -286,7 +290,7 @@ function SyncStatusBadge({ syncStatus, approvalStatus }) {
   );
 }
 
-function ScanOpsRequestRow({ request }) {
+function ScanOpsRequestRow({ request, onReview }) {
   const model = getScanRequestModel(request);
   const expiryDays = daysUntil(model.expiryDate);
   const expiryTone = expiryDays === null
@@ -330,9 +334,16 @@ function ScanOpsRequestRow({ request }) {
         <p className="text-[11px] text-muted-foreground mt-0.5">{model.capturedAt ? formatDate(model.capturedAt) : '—'} · {model.deviceId}</p>
       </div>
 
-      <div className="col-span-6 md:col-span-2 text-xs space-y-1.5">
+      <div className="col-span-12 md:col-span-2 text-xs space-y-2">
         <SyncStatusBadge syncStatus={model.syncStatus} approvalStatus={model.approvalStatus} />
         <p className="text-[11px] text-muted-foreground truncate">{model.captureMethod} · {model.reason}</p>
+        <button
+          type="button"
+          onClick={() => onReview?.(request)}
+          className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90"
+        >
+          Review
+        </button>
       </div>
     </div>
   );
@@ -362,6 +373,7 @@ function AttentionItem({ tone, count, title, description, to }) {
 
 export default function Markdown() {
   const [showCreate, setShowCreate] = useState(false);
+  const [selectedScanRequest, setSelectedScanRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
   const [batches, setBatches] = useState([]);
@@ -520,6 +532,19 @@ export default function Markdown() {
 
   return (
     <div className="p-6 space-y-5">
+
+      {selectedScanRequest && (
+        <ScannerExceptionReviewModal
+          request={selectedScanRequest}
+          model={getScanRequestModel(selectedScanRequest)}
+          onClose={() => setSelectedScanRequest(null)}
+          onProcessed={() => {
+            setSelectedScanRequest(null);
+            load();
+          }}
+        />
+      )}
+
       {showCreate && (
         <CreateMarkdownBatchModal
           onClose={() => setShowCreate(false)}
@@ -619,7 +644,7 @@ export default function Markdown() {
                     <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">ScanOps markdown sync / exception intake</div>
                     <div className="divide-y divide-border bg-card">
                       {computed.openScannerRequests.slice(0, 8).map((request, index) => (
-                        <ScanOpsRequestRow key={request.id || request.local_event_id || index} request={request} />
+                        <ScanOpsRequestRow key={request.id || request.local_event_id || index} request={request} onReview={setSelectedScanRequest} />
                       ))}
                     </div>
                   </div>
