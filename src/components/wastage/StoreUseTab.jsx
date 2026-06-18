@@ -52,15 +52,21 @@ export default function StoreUseTab({ refreshTick }) {
     REJECTED: 'bg-red-50 text-red-700 border-red-200',
   };
 
+  const ACTIVE_WORKFLOW_STATUSES = ['DRAFT', 'SUBMITTED', 'REJECTED'];
+
   const filteredRecords = useMemo(() => {
     const q = query.toLowerCase();
     return records.filter(r =>
-      (r.sku || '').toLowerCase().includes(q) ||
+      ACTIVE_WORKFLOW_STATUSES.includes(r.status) &&
+      ((r.sku || '').toLowerCase().includes(q) ||
       (r.item_name || '').toLowerCase().includes(q) ||
       (r.reason_category || '').toLowerCase().includes(q) ||
-      (r.department || '').toLowerCase().includes(q)
+      (r.department || '').toLowerCase().includes(q))
     );
   }, [records, query]);
+
+  const activeRecords = useMemo(() => records.filter(r => ACTIVE_WORKFLOW_STATUSES.includes(r.status)), [records]);
+  const archivedRecords = useMemo(() => records.filter(r => ['POSTED', 'REVERSED', 'AMENDED'].includes(r.status)), [records]);
 
   const role = (user?.role || '').toLowerCase();
   const isStaff = role === 'staff';
@@ -196,24 +202,24 @@ export default function StoreUseTab({ refreshTick }) {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Store Use</p>
-          <p className="text-2xl font-bold text-foreground">{records.length}</p>
-          <p className="text-xs text-muted-foreground mt-2">Internal consumption records</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Active Store Use</p>
+          <p className="text-2xl font-bold text-foreground">{activeRecords.length}</p>
+          <p className="text-xs text-muted-foreground mt-2">Active workflow records</p>
         </div>
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Pending Approval</p>
-          <p className="text-2xl font-bold text-amber-700">{records.filter(r => r.status === 'SUBMITTED').length}</p>
+          <p className="text-2xl font-bold text-amber-700">{activeRecords.filter(r => r.status === 'SUBMITTED').length}</p>
           <p className="text-xs text-muted-foreground mt-2">Awaiting decision</p>
         </div>
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Posted</p>
-          <p className="text-2xl font-bold text-green-700">{records.filter(r => r.status === 'POSTED').length}</p>
-          <p className="text-xs text-muted-foreground mt-2">Stock impact recorded</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Archived</p>
+          <p className="text-2xl font-bold text-green-700">{archivedRecords.length}</p>
+          <p className="text-xs text-muted-foreground mt-2">Posted/reversed history</p>
         </div>
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Value</p>
-          <p className="text-2xl font-bold text-foreground">{isStaff ? 'Restricted' : `₱${records.reduce((s, r) => s + (r.estimated_value || 0), 0).toFixed(0)}`}</p>
-          <p className="text-xs text-muted-foreground mt-2">{isStaff ? 'Manager-only value' : 'Estimated cost'}</p>
+          <p className="text-2xl font-bold text-foreground">{isStaff ? 'Restricted' : `₱${activeRecords.reduce((s, r) => s + (r.estimated_value || 0), 0).toFixed(0)}`}</p>
+          <p className="text-xs text-muted-foreground mt-2">{isStaff ? 'Manager-only value' : 'Active estimated cost'}</p>
         </div>
       </div>
 
@@ -221,8 +227,8 @@ export default function StoreUseTab({ refreshTick }) {
         <div className="px-4 py-3 border-b border-border bg-muted/20">
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Store Use Ledger</p>
-              <p className="text-xs text-muted-foreground mt-1">All legitimate internal consumption across all stages</p>
+              <p className="text-sm font-medium text-foreground">Active Store Use</p>
+              <p className="text-xs text-muted-foreground mt-1">Draft, submitted, and rejected store use records requiring action</p>
             </div>
             <span className="text-xs text-muted-foreground">{filteredRecords.length} visible</span>
           </div>
@@ -245,8 +251,8 @@ export default function StoreUseTab({ refreshTick }) {
             </div>
           ) : filteredRecords.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm font-medium text-foreground mb-1">No store use records</p>
-              <p className="text-xs text-muted-foreground">Start by creating a new store use record</p>
+              <p className="text-sm font-medium text-foreground mb-1">No active store use records</p>
+              <p className="text-xs text-muted-foreground">Posted and reversed store use records are now held in Archive</p>
             </div>
           ) : (
             <div className="space-y-3">

@@ -10,6 +10,7 @@ import AmendmentsTab from '@/components/wastage/AmendmentsTab';
 import AlertsTab from '@/components/wastage/AlertsTab';
 import ReportsTab from '@/components/wastage/ReportsTab';
 import OverviewTab from '@/components/wastage/OverviewTab';
+import ArchiveTab from '@/components/wastage/ArchiveTab';
 
 const mainTabs = [
   { key: 'OVERVIEW', label: 'Overview' },
@@ -18,6 +19,7 @@ const mainTabs = [
   { key: 'SCANNER_INTAKE', label: 'Scanner Intake' },
   { key: 'AMENDMENTS', label: 'Amendments' },
   { key: 'ALERTS', label: 'Alerts' },
+  { key: 'ARCHIVE', label: 'Archive' },
   { key: 'REPORTS', label: 'Reports' },
 ];
 
@@ -53,6 +55,7 @@ export default function Wastage() {
     if (tab.key === 'SCANNER_INTAKE' && isSupervisor) return true;
     if (tab.key === 'AMENDMENTS' && isManager) return true;
     if (tab.key === 'ALERTS' && isManager) return true;
+    if (tab.key === 'ARCHIVE' && isManager) return true;
     if (tab.key === 'REPORTS' && isManager) return true;
     return false;
   });
@@ -117,6 +120,7 @@ export default function Wastage() {
       {activeTab === 'SCANNER_INTAKE' && isSupervisor && <ScannerIntakeTab refreshTick={refreshTick} />}
       {activeTab === 'AMENDMENTS' && isManager && <AmendmentsTab refreshTick={refreshTick} />}
       {activeTab === 'ALERTS' && isManager && <AlertsTab refreshTick={refreshTick} />}
+      {activeTab === 'ARCHIVE' && isManager && <ArchiveTab refreshTick={refreshTick} />}
       {activeTab === 'REPORTS' && isManager && <ReportsTab refreshTick={refreshTick} />}
     </div>
   );
