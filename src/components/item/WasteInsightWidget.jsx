@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Trash2 } from 'lucide-react';
 
 const REASON_COLORS = {
@@ -131,9 +131,15 @@ export default function WasteInsightWidget({ item }) {
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_240px] gap-4">
         {/* Weekly trend bar chart */}
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">Weekly Loss (Units)</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">Wastage Volume Trend (Units / Week)</p>
           <ResponsiveContainer width="100%" height={140}>
-            <BarChart data={weeklyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+            <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="wasteTrendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#ef4444" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
               <XAxis
                 dataKey="label"
                 tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
@@ -149,15 +155,19 @@ export default function WasteInsightWidget({ item }) {
               />
               <Tooltip
                 contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
-                formatter={(value, name) => [value, name === 'qty' ? 'Units' : 'Value']}
+                formatter={(value) => [value, 'Units']}
                 labelFormatter={(label) => `Week of ${label}`}
               />
-              <Bar dataKey="qty" radius={[3, 3, 0, 0]} maxBarSize={20}>
-                {weeklyData.map((entry, i) => (
-                  <Cell key={i} fill={entry.qty > 0 ? '#ef4444' : 'hsl(var(--muted))'} fillOpacity={entry.qty > 0 ? 0.75 : 0.3} />
-                ))}
-              </Bar>
-            </BarChart>
+              <Area
+                type="monotone"
+                dataKey="qty"
+                stroke="#ef4444"
+                strokeWidth={2}
+                fill="url(#wasteTrendFill)"
+                dot={{ r: 2, fill: '#ef4444' }}
+                activeDot={{ r: 4 }}
+              />
+            </AreaChart>
           </ResponsiveContainer>
         </div>
 
