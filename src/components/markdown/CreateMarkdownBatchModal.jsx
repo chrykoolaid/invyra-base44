@@ -224,8 +224,8 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
       <div className="w-full max-w-3xl bg-card border border-border rounded-xl shadow-xl max-h-[92vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Start Markdown Request</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">Scan/select item → confirm shelf count → propose label price/date → submit for approval</p>
+            <h2 className="text-base font-semibold text-foreground">Manual Markdown Request</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Fallback/admin entry only — normal markdown captures come from ScanOps sync</p>
           </div>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground">
             <X size={15} />
@@ -236,7 +236,7 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
             <div className="rounded-xl border border-border bg-muted/20 p-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><ScanLine size={16} /> 1. Identify item</div>
-              <p className="text-xs text-muted-foreground mt-1">Use scanner input, SKU, barcode, or item name.</p>
+              <p className="text-xs text-muted-foreground mt-1">Manual fallback: select SKU, barcode, or item name.</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/20 p-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><ClipboardCheck size={16} /> 2. Count floor qty</div>

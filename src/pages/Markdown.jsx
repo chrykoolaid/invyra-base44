@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import {
   AlertTriangle,
   ArrowRight,
@@ -28,6 +28,9 @@ const OPEN_REVIEW_STATUSES = [
   'Manager_Auth',
   'Ready_For_Disposition',
 ];
+
+const OPEN_SYNC_STATUSES = ['Queued', 'Failed', 'Conflict'];
+const OPEN_APPROVAL_STATUSES = ['Submitted', 'Pending', 'Pending_Approval', 'Awaiting_Approval', 'Review_Required', 'Queued'];
 
 const batchStatusStyle = {
   Draft: 'bg-slate-100 text-slate-600 border-slate-200',
@@ -70,6 +73,71 @@ function daysUntil(dateString) {
   const end = new Date(dateString);
   if (Number.isNaN(end.getTime())) return null;
   return Math.ceil((end - start) / 86400000);
+}
+
+
+function parsePayload(value) {
+  if (!value) return {};
+  if (typeof value === 'string') {
+    try { return JSON.parse(value); } catch { return {}; }
+  }
+  return typeof value === 'object' ? value : {};
+}
+
+function unwrapPayload(row) {
+  const payload = parsePayload(row?.payload);
+  return payload.markdown_request || payload.markdownRequest || payload.request || payload.data || payload;
+}
+
+function pickField(source, names, fallback = '—') {
+  for (const name of names) {
+    const value = source?.[name];
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return fallback;
+}
+
+function getScanRequestModel(row) {
+  const payload = unwrapPayload(row);
+  const originalPrice = pickField(payload, ['original_shelf_price', 'original_unit_price', 'current_price', 'shelf_price'], null);
+  const proposedPrice = pickField(payload, ['proposed_markdown_price', 'markdown_unit_price', 'markdown_price', 'label_price'], null);
+  const suppliedDiscount = pickField(payload, ['calculated_discount_percent', 'discount_percent'], null);
+  const calculatedDiscount = suppliedDiscount !== null
+    ? Number(suppliedDiscount)
+    : (originalPrice && proposedPrice ? ((Number(originalPrice) - Number(proposedPrice)) / Number(originalPrice)) * 100 : null);
+
+  return {
+    id: row?.id || row?.local_event_id || pickField(payload, ['request_id', 'local_event_id'], '—'),
+    itemName: pickField(payload, ['item_name_snapshot', 'item_name', 'name', 'product_name'], 'Unknown item'),
+    sku: pickField(payload, ['sku', 'item_sku'], 'No SKU'),
+    barcode: pickField(payload, ['barcode', 'item_barcode'], ''),
+    qty: pickField(payload, ['counted_markdown_qty', 'allocated_qty', 'quantity_to_allocate', 'qty', 'quantity'], 0),
+    onHand: pickField(payload, ['on_hand_snapshot', 'on_hand_qty', 'current_on_hand', 'on_hand'], null),
+    expiryDate: pickField(payload, ['expiry_date', 'sell_by_date', 'initial_expiry_date'], null),
+    originalPrice,
+    proposedPrice,
+    discount: Number.isFinite(calculatedDiscount) ? calculatedDiscount : null,
+    reason: pickField(payload, ['reason_code', 'reason', 'markdown_reason'], 'Near expiry'),
+    captureMethod: pickField(payload, ['capture_method', 'method'], 'ScanOps'),
+    deviceId: row?.device_id || pickField(payload, ['device_id'], 'Unknown device'),
+    sessionId: pickField(payload, ['scan_session_id', 'session_id'], ''),
+    operatorId: row?.submitted_by || pickField(payload, ['operator_id', 'captured_by'], '—'),
+    capturedAt: pickField(payload, ['captured_at', 'submitted_at'], row?.created_date || null),
+    syncStatus: row?.sync_status || pickField(payload, ['sync_status'], 'Queued'),
+    approvalStatus: pickField(payload, ['approval_status', 'status'], 'Pending_Approval'),
+    eventType: row?.event_type || pickField(payload, ['event_type'], 'MARKDOWN_REQUEST'),
+  };
+}
+
+function isOpenScanRequest(row) {
+  const model = getScanRequestModel(row);
+  if (OPEN_SYNC_STATUSES.includes(model.syncStatus)) return true;
+  if (OPEN_APPROVAL_STATUSES.includes(model.approvalStatus)) return true;
+  return model.syncStatus !== 'Processed' && model.approvalStatus !== 'Approved';
+}
+
+function scrollToScannerIntake() {
+  document.getElementById('markdown-scanner-intake')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function safeFilter(entityName, query, sort, limit) {
@@ -181,6 +249,79 @@ function ActiveBatchRow({ batch, round }) {
   );
 }
 
+
+function SyncStatusBadge({ syncStatus, approvalStatus }) {
+  const status = syncStatus || 'Queued';
+  const statusStyles = {
+    Queued: 'bg-amber-50 text-amber-700 border-amber-200',
+    Failed: 'bg-red-50 text-red-700 border-red-200',
+    Conflict: 'bg-orange-50 text-orange-700 border-orange-200',
+    Processed: 'bg-green-50 text-green-700 border-green-200',
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap ${statusStyles[status] || 'bg-muted text-muted-foreground border-border'}`}>
+        Sync {status}
+      </span>
+      {approvalStatus && (
+        <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap bg-blue-50 text-blue-700 border-blue-200">
+          {String(approvalStatus).replace(/_/g, ' ')}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ScanOpsRequestRow({ request }) {
+  const model = getScanRequestModel(request);
+  const expiryDays = daysUntil(model.expiryDate);
+  const expiryTone = expiryDays === null
+    ? 'text-muted-foreground'
+    : expiryDays < 0
+      ? 'text-red-700 font-semibold'
+      : expiryDays <= 1
+        ? 'text-red-600 font-semibold'
+        : expiryDays <= 3
+          ? 'text-amber-700 font-medium'
+          : 'text-muted-foreground';
+
+  return (
+    <div className="grid grid-cols-12 gap-3 px-4 py-3 items-center hover:bg-muted/30 transition-colors">
+      <div className="col-span-12 md:col-span-4 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap bg-indigo-50 text-indigo-700 border-indigo-200">ScanOps</span>
+          <span className="font-mono text-xs text-muted-foreground truncate">{model.id}</span>
+        </div>
+        <p className="text-sm font-medium text-foreground truncate mt-1">{model.itemName}</p>
+        <p className="text-xs font-mono text-muted-foreground truncate">{model.sku}{model.barcode ? ` · ${model.barcode}` : ''}</p>
+      </div>
+
+      <div className="col-span-6 md:col-span-2 text-xs">
+        <p className="text-muted-foreground">Count / On hand</p>
+        <p className="font-semibold text-foreground mt-0.5">{formatQty(model.qty)}{model.onHand !== null ? ` / ${formatQty(model.onHand)}` : ''}</p>
+      </div>
+
+      <div className="col-span-6 md:col-span-2 text-xs">
+        <p className="text-muted-foreground">Price request</p>
+        <p className="font-semibold text-foreground mt-0.5">{formatMoney(model.originalPrice)} → {formatMoney(model.proposedPrice)}</p>
+        {model.discount !== null && <p className="text-[11px] text-muted-foreground mt-0.5">{model.discount.toFixed(1)}% discount</p>}
+      </div>
+
+      <div className="col-span-6 md:col-span-2 text-xs">
+        <p className="text-muted-foreground">Expiry / Captured</p>
+        <p className={`mt-0.5 ${expiryTone}`}>{model.expiryDate ? formatDate(model.expiryDate) : '—'}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{model.capturedAt ? formatDate(model.capturedAt) : '—'} · {model.deviceId}</p>
+      </div>
+
+      <div className="col-span-6 md:col-span-2 text-xs space-y-1.5">
+        <SyncStatusBadge syncStatus={model.syncStatus} approvalStatus={model.approvalStatus} />
+        <p className="text-[11px] text-muted-foreground truncate">{model.captureMethod} · {model.reason}</p>
+      </div>
+    </div>
+  );
+}
+
 function AttentionItem({ tone, count, title, description, to }) {
   const toneStyles = {
     red: 'border-red-100 bg-red-50/60 text-red-700',
@@ -204,7 +345,6 @@ function AttentionItem({ tone, count, title, description, to }) {
 }
 
 export default function Markdown() {
-  const navigate = useNavigate();
   const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
@@ -212,16 +352,19 @@ export default function Markdown() {
   const [reviewEntries, setReviewEntries] = useState([]);
   const [roundsByBatch, setRoundsByBatch] = useState({});
   const [printEvents, setPrintEvents] = useState([]);
+  const [scanRequests, setScanRequests] = useState([]);
   const [printEventsAvailable, setPrintEventsAvailable] = useState(true);
+  const [scanRequestsAvailable, setScanRequestsAvailable] = useState(true);
 
   const load = async () => {
     setLoading(true);
 
-    const [batchResult, reviewResult, roundResult, printResult] = await Promise.all([
+    const [batchResult, reviewResult, roundResult, printResult, syncResult] = await Promise.all([
       safeFilter('MarkdownBatch', { environment: 'LIVE' }, '-created_date', 200),
       safeFilter('MarkdownReviewQueue', { environment: 'LIVE' }, '-entered_review_at', 100),
       safeFilter('MarkdownRound', { environment: 'LIVE' }, '-created_date', 500),
       safeFilter('MarkdownPrintEvent', { environment: 'LIVE' }, '-printed_at', 200),
+      safeFilter('MarkdownSyncQueue', { environment: 'LIVE' }, '-created_date', 100),
     ]);
 
     const roundMap = {};
@@ -239,7 +382,9 @@ export default function Markdown() {
     setReviewEntries(reviewResult.data || []);
     setRoundsByBatch(roundMap);
     setPrintEvents(printResult.data || []);
+    setScanRequests(syncResult.data || []);
     setPrintEventsAvailable(printResult.ok);
+    setScanRequestsAvailable(syncResult.ok);
     setLastRefresh(new Date());
     setLoading(false);
   };
@@ -248,6 +393,9 @@ export default function Markdown() {
 
   const computed = useMemo(() => {
     const active = batches.filter((batch) => ['Active', 'Pending_Approval', 'Review_Queue'].includes(batch.status));
+    const openScannerRequests = scanRequests.filter(isOpenScanRequest);
+    const failedScannerRequests = openScannerRequests.filter((request) => getScanRequestModel(request).syncStatus === 'Failed');
+    const conflictScannerRequests = openScannerRequests.filter((request) => getScanRequestModel(request).syncStatus === 'Conflict');
     const openReview = reviewEntries.filter((entry) => OPEN_REVIEW_STATUSES.includes(entry.status));
     const criticalReview = openReview.filter((entry) => getSlaStatus(entry) === 'critical');
     const warningReview = openReview.filter((entry) => ['warning', 'escalation'].includes(getSlaStatus(entry)));
@@ -273,6 +421,9 @@ export default function Markdown() {
     return {
       active,
       activeSorted,
+      openScannerRequests,
+      failedScannerRequests,
+      conflictScannerRequests,
       openReview,
       criticalReview,
       warningReview,
@@ -283,9 +434,30 @@ export default function Markdown() {
       expiringSoon,
       inReviewCount: Math.max(openReview.length, batches.filter((batch) => batch.status === 'Review_Queue').length),
     };
-  }, [batches, reviewEntries, roundsByBatch, printEvents]);
+  }, [batches, reviewEntries, roundsByBatch, printEvents, scanRequests]);
 
   const attentionItems = [
+    computed.failedScannerRequests.length > 0 && {
+      tone: 'red',
+      count: computed.failedScannerRequests.length,
+      title: 'ScanOps sync failures',
+      description: 'Scanner markdown requests need sync recovery before approval.',
+      to: '/Markdown',
+    },
+    computed.conflictScannerRequests.length > 0 && {
+      tone: 'orange',
+      count: computed.conflictScannerRequests.length,
+      title: 'Scanner request conflicts',
+      description: 'Review item, quantity, or price snapshot mismatches.',
+      to: '/Markdown',
+    },
+    computed.openScannerRequests.length > 0 && {
+      tone: 'blue',
+      count: computed.openScannerRequests.length,
+      title: 'ScanOps requests awaiting intake',
+      description: 'Review synced floor captures before label approval.',
+      to: '/Markdown',
+    },
     computed.criticalReview.length > 0 && {
       tone: 'red',
       count: computed.criticalReview.length,
@@ -357,10 +529,10 @@ export default function Markdown() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-        <SummaryCard icon={Tag} label="Active Batches" value={batches.filter((batch) => batch.status === 'Active').length} tone="green" />
+        <SummaryCard icon={ClipboardList} label="Scanner Requests" value={scanRequestsAvailable ? computed.openScannerRequests.length : '—'} tone="blue" />
         <SummaryCard icon={Clock} label="Pending Approval" value={computed.pendingApproval.length} tone="amber" />
-        <SummaryCard icon={ClipboardList} label="In Review" value={computed.inReviewCount} tone="orange" />
-        <SummaryCard icon={CheckCircle2} label="Ready for Disposition" value={computed.readyForDisposition.length} tone="blue" />
+        <SummaryCard icon={Tag} label="Active Batches" value={batches.filter((batch) => batch.status === 'Active').length} tone="green" />
+        <SummaryCard icon={AlertTriangle} label="In Review" value={computed.inReviewCount} tone="orange" />
         <SummaryCard icon={Printer} label="Labels Printed Today" value={printEventsAvailable ? computed.printedToday.length : '—'} tone="default" />
       </div>
 
@@ -368,14 +540,20 @@ export default function Markdown() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Workflow Tabs</p>
-            <p className="text-xs text-muted-foreground mt-0.5">KPI cards are read-only. Use these actions to move between markdown work areas.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">ScanOps requests sync into intake. Manual Request is fallback entry only.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setShowCreate(true)}
+              onClick={scrollToScannerIntake}
               className="flex items-center gap-1.5 h-9 px-3 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90"
             >
-              <Plus size={14} /> Start Markdown Request
+              <ClipboardList size={14} /> Scanner Intake
+            </button>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 h-9 px-3 text-sm border border-border rounded-lg bg-background hover:bg-muted text-foreground"
+            >
+              <Plus size={14} /> Manual Request
             </button>
             {SECONDARY_LINKS.map((link) => {
               const Icon = link.icon;
@@ -399,31 +577,49 @@ export default function Markdown() {
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-          <section className="xl:col-span-2 border border-border rounded-2xl bg-card overflow-hidden">
+          <section id="markdown-scanner-intake" className="xl:col-span-2 border border-border rounded-2xl bg-card overflow-hidden scroll-mt-6">
             <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/20">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Active Markdown Work</p>
-                <p className="text-sm text-muted-foreground mt-0.5">Latest active, approval, and review batches.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Scanner Intake & Active Markdown Work</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Synced ScanOps requests, pending approval, and active batches.</p>
               </div>
               <Link to="/Markdown/Batches" className="hidden sm:flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
-                View all <ArrowRight size={12} />
+                View batches <ArrowRight size={12} />
               </Link>
             </div>
 
-            {computed.activeSorted.length === 0 ? (
+            {computed.openScannerRequests.length === 0 && computed.activeSorted.length === 0 ? (
               <div className="p-4">
                 <EmptyState
-                  icon={Tag}
-                  title="No active markdown batches"
-                  description="Create a new batch when near-expiry stock is ready for controlled markdown."
+                  icon={ClipboardList}
+                  title="No synced ScanOps markdown requests"
+                  description="Floor-captured markdown requests will appear here after handheld ScanOps sync."
                 />
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {computed.activeSorted.slice(0, 8).map((batch) => {
-                  const activeRound = (roundsByBatch[batch.id] || []).find((round) => round.status === 'Active') || roundsByBatch[batch.id]?.[0];
-                  return <ActiveBatchRow key={batch.id} batch={batch} round={activeRound} />;
-                })}
+                {computed.openScannerRequests.length > 0 && (
+                  <div className="bg-indigo-50/40 border-b border-border">
+                    <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">ScanOps markdown sync</div>
+                    <div className="divide-y divide-border bg-card">
+                      {computed.openScannerRequests.slice(0, 8).map((request, index) => (
+                        <ScanOpsRequestRow key={request.id || request.local_event_id || index} request={request} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {computed.activeSorted.length > 0 && (
+                  <div>
+                    <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground bg-muted/20">Approved / in-progress batches</div>
+                    <div className="divide-y divide-border">
+                      {computed.activeSorted.slice(0, 8).map((batch) => {
+                        const activeRound = (roundsByBatch[batch.id] || []).find((round) => round.status === 'Active') || roundsByBatch[batch.id]?.[0];
+                        return <ActiveBatchRow key={batch.id} batch={batch} round={activeRound} />;
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -433,7 +629,7 @@ export default function Markdown() {
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Needs Attention</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">Approval, review, and label issues.</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Scanner sync, approval, review, and label issues.</p>
                 </div>
                 <AlertTriangle size={16} className={attentionItems.length ? 'text-amber-600' : 'text-green-600'} />
               </div>
