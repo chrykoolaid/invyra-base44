@@ -19,7 +19,6 @@ import ScannerExceptionReviewModal from '@/components/markdown/ScannerExceptionR
 const SECONDARY_LINKS = [
   { id: 'batches', label: 'Active Batches', icon: Tag, path: '/Markdown/Batches' },
   { id: 'review', label: 'Review Queue', icon: ClipboardList, path: '/Markdown/ReviewQueue' },
-  { id: 'monitor', label: 'Monitor Sheet', icon: Printer, path: '/Markdown/Monitor' },
   { id: 'reports', label: 'Reports', icon: BarChart3, path: '/Markdown/Reports' },
 ];
 
@@ -511,8 +510,8 @@ export default function Markdown() {
       tone: 'red',
       count: computed.failedPrints.length,
       title: 'Fallback label failures',
-      description: 'Check printer/device for fallback label workflows only.',
-      to: '/Markdown/Monitor',
+      description: 'Check printer/device issues from Reports and Take-Off Sheet outputs.',
+      to: '/Markdown/Reports',
     },
     computed.warningReview.length > 0 && {
       tone: 'amber',
@@ -525,8 +524,8 @@ export default function Markdown() {
       tone: 'blue',
       count: computed.expiringSoon.length,
       title: 'Overlays expiring soon',
-      description: 'Check active scoped overlays and monitor sheet.',
-      to: '/Markdown/Monitor',
+      description: 'Check active scoped overlays in Reports and printable Take-Off Sheets.',
+      to: '/Markdown/Reports',
     },
   ].filter(Boolean);
 
@@ -574,14 +573,14 @@ export default function Markdown() {
         <SummaryCard icon={Clock} label="Overlay Approval" value={computed.pendingApproval.length} tone="amber" />
         <SummaryCard icon={Tag} label="Active Batches" value={batches.filter((batch) => batch.status === 'Active').length} tone="green" />
         <SummaryCard icon={AlertTriangle} label="In Review" value={computed.inReviewCount} tone="orange" />
-        <SummaryCard icon={Printer} label="Fallback Labels Today" value={printEventsAvailable ? computed.printedToday.length : '—'} tone="default" />
+        <SummaryCard icon={Printer} label="Report Prints Today" value={printEventsAvailable ? computed.printedToday.length : '—'} tone="default" />
       </div>
 
       <section className="border border-border rounded-2xl bg-card p-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Workflow Tabs</p>
-            <p className="text-xs text-muted-foreground mt-0.5">ScanOps requests sync into intake. Manual entry is for manager/admin exception fallback only.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">ScanOps requests sync into intake. Printable monitoring, take-off sheets, and holiday planning now live in Reports.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -670,7 +669,7 @@ export default function Markdown() {
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Needs Attention</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">Scanner sync, overlay approval, review, and fallback label issues.</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Scanner sync, overlay approval, review, and report/take-off follow-up issues.</p>
                 </div>
                 <AlertTriangle size={16} className={attentionItems.length ? 'text-amber-600' : 'text-green-600'} />
               </div>
