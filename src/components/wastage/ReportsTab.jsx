@@ -150,9 +150,10 @@ export default function ReportsTab({ refreshTick }) {
 
     const wastageReversedRecords = reversedRecords.filter(r => r.stock_out_class === 'WASTAGE');
     const wastageReversedValue = wastageReversedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const wastageReversedQty = wastageReversedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
 
     const wastageNetValue = wastageGrossValue - wastageReversedValue;
-    const wastageNetQty = wastageGrossQty - wastageReversedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const wastageNetQty = wastageGrossQty - wastageReversedQty;
     const wastagePendingRecords = filteredRecords.filter(r => r.stock_out_class === 'WASTAGE' && (r.status === 'DRAFT' || r.status === 'SUBMITTED'));
     const wastagePendingValue = wastagePendingRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
     const wastagePendingQty = wastagePendingRecords.reduce((s, r) => s + (r.quantity || 0), 0);
@@ -167,9 +168,10 @@ export default function ReportsTab({ refreshTick }) {
 
     const storeUseReversedRecords = reversedRecords.filter(r => r.stock_out_class === 'STORE_USE');
     const storeUseReversedValue = storeUseReversedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const storeUseReversedQty = storeUseReversedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
 
     const storeUseNetValue = storeUseGrossValue - storeUseReversedValue;
-    const storeUseNetQty = storeUseGrossQty - storeUseReversedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const storeUseNetQty = storeUseGrossQty - storeUseReversedQty;
     const storeUsePendingRecords = filteredRecords.filter(r => r.stock_out_class === 'STORE_USE' && (r.status === 'DRAFT' || r.status === 'SUBMITTED'));
     const storeUsePendingValue = storeUsePendingRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
     const storeUsePendingQty = storeUsePendingRecords.reduce((s, r) => s + (r.quantity || 0), 0);
@@ -200,15 +202,21 @@ export default function ReportsTab({ refreshTick }) {
       netQty,
       netValue,
       wastageGrossValue,
+      wastageGrossQty,
       wastageReversedValue,
+      wastageReversedQty,
       wastageNetValue,
+      wastageNetQty,
       wastagePendingQty,
       wastagePendingValue,
       wastageRejectedQty,
       wastageRejectedValue,
       storeUseGrossValue,
+      storeUseGrossQty,
       storeUseReversedValue,
+      storeUseReversedQty,
       storeUseNetValue,
+      storeUseNetQty,
       storeUsePendingQty,
       storeUsePendingValue,
       storeUseRejectedQty,
@@ -325,89 +333,136 @@ export default function ReportsTab({ refreshTick }) {
     }
   };
 
+  const formatCurrency = (value) => `₱${Number(value || 0).toFixed(0)}`;
+
+  const breakdownRows = [
+    {
+      type: 'Wastage',
+      grossValue: summary.wastageGrossValue,
+      grossQty: summary.wastageGrossQty,
+      reversedValue: summary.wastageReversedValue,
+      reversedQty: summary.wastageReversedQty,
+      netValue: summary.wastageNetValue,
+      netQty: summary.wastageNetQty,
+      pendingValue: summary.wastagePendingValue,
+      pendingQty: summary.wastagePendingQty,
+      rejectedValue: summary.wastageRejectedValue,
+      rejectedQty: summary.wastageRejectedQty,
+    },
+    {
+      type: 'Store Use',
+      grossValue: summary.storeUseGrossValue,
+      grossQty: summary.storeUseGrossQty,
+      reversedValue: summary.storeUseReversedValue,
+      reversedQty: summary.storeUseReversedQty,
+      netValue: summary.storeUseNetValue,
+      netQty: summary.storeUseNetQty,
+      pendingValue: summary.storeUsePendingValue,
+      pendingQty: summary.storeUsePendingQty,
+      rejectedValue: summary.storeUseRejectedValue,
+      rejectedQty: summary.storeUseRejectedQty,
+    },
+    {
+      type: 'Combined',
+      grossValue: summary.grossValue,
+      grossQty: summary.grossQty,
+      reversedValue: summary.reversedValue,
+      reversedQty: summary.reversedQty,
+      netValue: summary.netValue,
+      netQty: summary.netQty,
+      pendingValue: summary.pendingValue,
+      pendingQty: summary.pendingQty,
+      rejectedValue: summary.rejectedValue,
+      rejectedQty: summary.rejectedQty,
+      combined: true,
+    },
+  ];
+
+  const renderBreakdownValue = (value, quantity, tone = 'default') => {
+    const toneClass = tone === 'reversed'
+      ? 'text-red-700'
+      : tone === 'net'
+        ? 'text-green-700'
+        : tone === 'pending'
+          ? 'text-amber-700'
+          : 'text-foreground';
+
+    return (
+      <div>
+        <p className={`font-semibold ${toneClass}`}>{formatCurrency(value)}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{quantity || 0} units</p>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[116px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Gross Value</p>
-          <p className="text-2xl font-bold text-foreground">₱{summary.grossValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.grossQty} units posted</p>
+          <p className="text-2xl font-bold text-foreground">{formatCurrency(summary.grossValue)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Original posted value, including records later reversed</p>
         </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[116px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Reversed Value</p>
-          <p className="text-2xl font-bold text-red-700">₱{summary.reversedValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.reversedQty} units reversed</p>
+          <p className="text-2xl font-bold text-red-700">{formatCurrency(summary.reversedValue)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Value restored through reversal actions</p>
         </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[116px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Net Value</p>
-          <p className="text-2xl font-bold text-green-700">₱{summary.netValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.netQty} units after reversals</p>
+          <p className="text-2xl font-bold text-green-700">{formatCurrency(summary.netValue)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Gross minus reversed</p>
         </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Pending Approval</p>
-          <p className="text-2xl font-bold text-amber-700">₱{summary.pendingValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.pendingQty} units awaiting</p>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[116px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Pending Value</p>
+          <p className="text-2xl font-bold text-amber-700">{formatCurrency(summary.pendingValue)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Draft and submitted records not yet posted</p>
         </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[116px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Rejected Value</p>
-          <p className="text-2xl font-bold text-muted-foreground">₱{summary.rejectedValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.rejectedQty} units rejected</p>
+          <p className="text-2xl font-bold text-muted-foreground">{formatCurrency(summary.rejectedValue)}</p>
+          <p className="text-xs text-muted-foreground mt-2">Rejected records, excluded from net</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Gross</p>
-          <p className="text-2xl font-bold text-foreground">₱{summary.wastageGrossValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">Posted + reversed</p>
+      <div className="border border-border rounded-2xl bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b border-border bg-muted/20">
+          <p className="text-sm font-medium text-foreground">Breakdown by Type</p>
+          <p className="text-xs text-muted-foreground mt-1">Wastage and Store Use values separated without adding extra KPI cards.</p>
         </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Reversed</p>
-          <p className="text-2xl font-bold text-red-700">₱{summary.wastageReversedValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">Restored</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Net</p>
-          <p className="text-2xl font-bold text-green-700">₱{summary.wastageNetValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">After reversals</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Gross</p>
-          <p className="text-2xl font-bold text-foreground">₱{summary.storeUseGrossValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">Posted + reversed</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Reversed</p>
-          <p className="text-2xl font-bold text-red-700">₱{summary.storeUseReversedValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">Restored</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Net</p>
-          <p className="text-2xl font-bold text-green-700">₱{summary.storeUseNetValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">After reversals</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Pending</p>
-          <p className="text-2xl font-bold text-amber-700">₱{summary.wastagePendingValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.wastagePendingQty} units draft/submitted</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Rejected</p>
-          <p className="text-2xl font-bold text-muted-foreground">₱{summary.wastageRejectedValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.wastageRejectedQty} units rejected</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Pending</p>
-          <p className="text-2xl font-bold text-amber-700">₱{summary.storeUsePendingValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.storeUsePendingQty} units draft/submitted</p>
-        </div>
-        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Rejected</p>
-          <p className="text-2xl font-bold text-muted-foreground">₱{summary.storeUseRejectedValue.toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">{summary.storeUseRejectedQty} units rejected</p>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[760px] text-sm">
+            <thead className="bg-muted/30 border-b border-border">
+              <tr className="text-left text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                <th className="px-4 py-3 font-semibold">Type</th>
+                <th className="px-4 py-3 font-semibold">Gross</th>
+                <th className="px-4 py-3 font-semibold">Reversed</th>
+                <th className="px-4 py-3 font-semibold">Net</th>
+                <th className="px-4 py-3 font-semibold">Pending</th>
+                <th className="px-4 py-3 font-semibold">Rejected</th>
+                <th className="px-4 py-3 font-semibold">Units</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {breakdownRows.map(row => (
+                <tr key={row.type} className={row.combined ? 'bg-muted/20' : 'bg-card'}>
+                  <td className="px-4 py-3 align-top">
+                    <p className="font-medium text-foreground">{row.type}</p>
+                    {row.combined && <p className="text-[11px] text-muted-foreground mt-0.5">All stock-out types</p>}
+                  </td>
+                  <td className="px-4 py-3 align-top">{renderBreakdownValue(row.grossValue, row.grossQty)}</td>
+                  <td className="px-4 py-3 align-top">{renderBreakdownValue(row.reversedValue, row.reversedQty, 'reversed')}</td>
+                  <td className="px-4 py-3 align-top">{renderBreakdownValue(row.netValue, row.netQty, 'net')}</td>
+                  <td className="px-4 py-3 align-top">{renderBreakdownValue(row.pendingValue, row.pendingQty, 'pending')}</td>
+                  <td className="px-4 py-3 align-top">{renderBreakdownValue(row.rejectedValue, row.rejectedQty)}</td>
+                  <td className="px-4 py-3 align-top">
+                    <p className="font-semibold text-foreground">{row.netQty || 0}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">net units</p>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
