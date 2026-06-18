@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const role = (user.role || '').toLowerCase();
-  const isSupervisorPlus = ['supervisor', 'manager', 'admin'].includes(role);
+  const isSupervisorPlus = ['supervisor', 'manager', 'admin', 'owner'].includes(role);
   if (!isSupervisorPlus) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }

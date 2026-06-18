@@ -10,6 +10,10 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const role = (user.role || '').toLowerCase().trim();
+  if (!['supervisor', 'manager', 'admin', 'owner'].includes(role)) {
+    return Response.json({ error: 'Forbidden: Supervisor, Manager, Admin, or Owner required to request amendments.' }, { status: 403 });
+  }
 
   const {
     record_id,
@@ -87,6 +91,43 @@ Deno.serve(async (req) => {
     linked_source_record: record_id,
     source_record_id: amendment.id,
     notes: `Amendment requested: ${amendment_reason}. Delta: ${quantityDelta > 0 ? '+' : ''}${quantityDelta} units.`,
+    environment,
+  });
+
+  const alert = await base44.asServiceRole.entities.StockOutAlert.create({
+    alert_type: 'AMENDMENT_AFTER_POST',
+    severity: Math.abs(quantityDelta) > 0 ? 'MEDIUM' : 'LOW',
+    status: 'OPEN',
+    linked_record_id: record_id,
+    linked_amendment_id: amendment.id,
+    trigger_reason: `Amendment requested after posting. Reason: ${amendment_reason}. Delta: ${quantityDelta > 0 ? '+' : ''}${quantityDelta} units.`,
+    dedupe_key: `AMENDMENT_AFTER_POST_${record_id}_${amendment.id}`,
+    metadata: {
+      item_id: record.item_id,
+      sku: record.sku,
+      item_name: record.item_name,
+      quantity: record.quantity,
+      quantity_delta: quantityDelta,
+      value: record.estimated_value || 0,
+    },
+    environment,
+  });
+
+  await base44.asServiceRole.entities.AuditLog.create({
+    item_id: record.item_id,
+    sku: record.sku,
+    item_name: record.item_name,
+    change_type: 'STOCK_WASTE',
+    field_name: 'stock_out_alert',
+    old_value: '',
+    new_value: 'AMENDMENT_AFTER_POST',
+    changed_by: user.email || user.id,
+    actor_role: role,
+    source_module: 'StockOutAlerts',
+    action_type: 'STOCK_OUT_ALERT_CREATED',
+    linked_source_record: record_id,
+    source_record_id: alert.id,
+    notes: `Alert created for amendment request ${amendment.id}`,
     environment,
   });
 

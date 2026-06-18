@@ -11,6 +11,11 @@ Deno.serve(async (req) => {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const role = (user.role || '').toLowerCase().trim();
+  if (!['supervisor', 'manager', 'admin', 'owner'].includes(role)) {
+    return Response.json({ error: 'Forbidden: Supervisor, Manager, Admin, or Owner required to process scanner intake.' }, { status: 403 });
+  }
+
   const {
     intake_id,
     accept = true, // true to resolve, false to reject
@@ -73,7 +78,7 @@ Deno.serve(async (req) => {
   }
 
   // Check if this was an unknown barcode (original barcode doesn't match resolved SKU)
-  const wasUnknownBarcode = intake.raw_barcode && intake.resolved_sku && intake.raw_barcode !== intake.resolved_sku;
+  const wasUnknownBarcode = Boolean(intake.raw_barcode && resolved_sku && intake.raw_barcode !== resolved_sku);
 
   // Fetch item for naming and cost
   let item = null;
@@ -107,6 +112,8 @@ Deno.serve(async (req) => {
     source_reference: intake_id,
     status: 'DRAFT',
     site_id: intake.site_id || '',
+    created_by: user.id || user.email,
+    created_by_email: user.email || '',
     environment,
   });
 
@@ -138,23 +145,53 @@ Deno.serve(async (req) => {
     environment,
   });
 
-  // Create alert if this was an unknown barcode
+  // Create alert if this was an unknown barcode, and audit alert creation.
   if (wasUnknownBarcode) {
-    await base44.asServiceRole.entities.StockOutAlert.create({
-      alert_type: 'UNKNOWN_BARCODE',
-      severity: 'LOW',
-      status: 'OPEN',
-      linked_record_id: record.id,
-      trigger_reason: `Unknown barcode resolved: ${intake.raw_barcode} → ${resolved_sku}`,
-      dedupe_key: `UNKNOWN_BARCODE_${intake.raw_barcode}`,
-      metadata: {
+    const existingAlerts = await base44.asServiceRole.entities.StockOutAlert.filter(
+      { dedupe_key: `UNKNOWN_BARCODE_${intake.raw_barcode}`, environment },
+      '-created_date',
+      1,
+    );
+    let alert = existingAlerts?.[0];
+    if (!alert || !['OPEN', 'ACKNOWLEDGED'].includes(alert.status)) {
+      alert = await base44.asServiceRole.entities.StockOutAlert.create({
+        alert_type: 'UNKNOWN_BARCODE',
+        severity: 'MEDIUM',
+        status: 'OPEN',
+        linked_record_id: record.id,
+        linked_intake_id: intake_id,
+        trigger_reason: `Unknown barcode resolved: ${intake.raw_barcode} → ${resolved_sku}`,
+        dedupe_key: `UNKNOWN_BARCODE_${intake.raw_barcode}`,
+        metadata: {
+          item_id: resolved_item_id,
+          sku: resolved_sku,
+          item_name: itemName,
+          quantity: intake.quantity,
+          raw_barcode: intake.raw_barcode,
+          device_id: intake.device_id || '',
+          session_id: intake.session_id || '',
+        },
+        environment,
+      });
+
+      await base44.asServiceRole.entities.AuditLog.create({
+        item_id: resolved_item_id,
         sku: resolved_sku,
         item_name: itemName,
-        quantity: intake.quantity,
-        raw_barcode: intake.raw_barcode,
-      },
-      environment,
-    });
+        change_type: 'STOCK_WASTE',
+        field_name: 'stock_out_alert',
+        old_value: '',
+        new_value: 'UNKNOWN_BARCODE',
+        changed_by: user.email || user.id,
+        actor_role: role,
+        source_module: 'StockOutAlerts',
+        action_type: 'STOCK_OUT_ALERT_CREATED',
+        linked_source_record: record.id,
+        source_record_id: alert.id,
+        notes: `Alert created for unknown barcode ${intake.raw_barcode}`,
+        environment,
+      });
+    }
   }
 
   return Response.json({

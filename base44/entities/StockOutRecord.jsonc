@@ -120,6 +120,22 @@
       "type": "string",
       "description": "Reference to StockMovement.id created on approval/posting"
     },
+    "reversed_by": {
+      "type": "string",
+      "description": "User ID/email who reversed the posted stock-out"
+    },
+    "reversed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reversal_reason": {
+      "type": "string",
+      "description": "Manager/Admin reason captured when reversing a posted stock-out"
+    },
+    "reversal_movement_id": {
+      "type": "string",
+      "description": "Reference to StockMovement.id created by reversal"
+    },
     "site_id": {
       "type": "string",
       "description": "Reference to Site.id"
@@ -132,6 +148,14 @@
         "TEST"
       ],
       "default": "LIVE"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User ID/email who created the draft"
+    },
+    "created_by_email": {
+      "type": "string",
+      "description": "User email who created the draft"
     }
   },
   "required": [

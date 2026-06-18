@@ -4,7 +4,7 @@ import { Search, CheckCircle2, X, Undo2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import RejectReasonModal from './RejectReasonModal';
-import { canApproveStockOut, canRejectStockOut, canReverseStockOut } from '@/lib/rolePermissions';
+import { canApproveStockOut, canRejectStockOut, canReverseStockOut, canSubmitStockOut } from '@/lib/rolePermissions';
 
 export default function StoreUseTab({ refreshTick }) {
   const [user, setUser] = useState(null);
@@ -46,6 +46,18 @@ export default function StoreUseTab({ refreshTick }) {
       (r.department && r.department.toLowerCase().includes(q))
     );
   }, [records, query]);
+
+  const role = (user?.role || '').toLowerCase();
+  const isStaff = role === 'staff';
+
+  const submitRecord = async (recordId) => {
+    try {
+      const response = await base44.functions.invoke('submitStockOutRecord', { record_id: recordId });
+      if (response.data.success) window.location.reload();
+    } catch (e) {
+      toast.error(e.message || 'Submit failed');
+    }
+  };
 
   const handleApprove = async (recordId) => {
     try {
@@ -121,8 +133,8 @@ export default function StoreUseTab({ refreshTick }) {
         </div>
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Value</p>
-          <p className="text-2xl font-bold text-foreground">₱{records.reduce((s, r) => s + (r.estimated_value || 0), 0).toFixed(0)}</p>
-          <p className="text-xs text-muted-foreground mt-2">Estimated cost</p>
+          <p className="text-2xl font-bold text-foreground">{isStaff ? 'Restricted' : `₱${records.reduce((s, r) => s + (r.estimated_value || 0), 0).toFixed(0)}`}</p>
+          <p className="text-xs text-muted-foreground mt-2">{isStaff ? 'Manager-only value' : 'Estimated cost'}</p>
         </div>
       </div>
 
@@ -175,7 +187,7 @@ export default function StoreUseTab({ refreshTick }) {
                     </div>
                     <div className="text-right whitespace-nowrap">
                       <p className="font-semibold text-foreground">{record.quantity} units</p>
-                      <p className="text-xs text-muted-foreground">₱{record.estimated_value?.toFixed(2)}</p>
+                      {!isStaff && <p className="text-xs text-muted-foreground">₱{record.estimated_value?.toFixed(2)}</p>}
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
@@ -184,9 +196,9 @@ export default function StoreUseTab({ refreshTick }) {
                       {record.reason_notes && <span>{record.reason_notes}</span>}
                     </div>
                     <div className="flex items-center gap-2">
-                      {record.status === 'DRAFT' && (
+                      {record.status === 'DRAFT' && canSubmitStockOut(user?.role, user, record) && (
                         <button
-                          onClick={() => base44.functions.invoke('submitStockOutRecord', { record_id: record.id }).then(() => window.location.reload()).catch(e => toast.error(e.message))}
+                          onClick={() => submitRecord(record.id)}
                           className="px-2 py-1 text-[11px] rounded bg-primary text-primary-foreground hover:opacity-90"
                         >
                           Submit

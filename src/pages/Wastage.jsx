@@ -43,8 +43,8 @@ export default function Wastage() {
   }, []);
 
   const role = (user?.role || '').toLowerCase();
-  const isSupervisor = ['supervisor', 'manager', 'admin'].includes(role);
-  const isManager = ['manager', 'admin'].includes(role);
+  const isSupervisor = ['supervisor', 'manager', 'admin', 'owner'].includes(role);
+  const isManager = ['manager', 'admin', 'owner'].includes(role);
 
   const visibleTabs = mainTabs.filter(tab => {
     if (tab.key === 'WASTAGE' || tab.key === 'STORE_USE') return true;

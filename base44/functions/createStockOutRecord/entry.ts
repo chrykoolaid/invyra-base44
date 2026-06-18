@@ -64,6 +64,8 @@ Deno.serve(async (req) => {
     source,
     source_reference: source_reference || '',
     status: 'DRAFT',
+    created_by: user.id || user.email,
+    created_by_email: user.email || '',
     site_id: site_id || '',
     environment,
   });

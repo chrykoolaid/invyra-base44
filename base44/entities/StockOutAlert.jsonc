@@ -93,6 +93,10 @@
         "TEST"
       ],
       "default": "LIVE"
+    },
+    "linked_intake_id": {
+      "type": "string",
+      "description": "Optional reference to ScannerIntakeQueue.id"
     }
   },
   "required": [

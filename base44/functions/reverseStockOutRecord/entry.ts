@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const role = (user.role || '').toLowerCase();
-  const isManager = ['manager', 'admin'].includes(role);
+  const isManager = ['manager', 'admin', 'owner'].includes(role);
   if (!isManager) {
     return Response.json({ error: 'Forbidden: Manager or Admin required to reverse' }, { status: 403 });
   }
@@ -77,9 +77,13 @@ Deno.serve(async (req) => {
     }
     await base44.asServiceRole.entities.InventoryItem.update(record.item_id, updatePayload);
 
-    // Update record to REVERSED
+    // Update record to REVERSED with explicit reversal metadata for reports and audit exports
     await base44.asServiceRole.entities.StockOutRecord.update(record_id, {
       status: 'REVERSED',
+      reversed_by: user.email || user.id,
+      reversed_at: now,
+      reversal_reason: reason,
+      reversal_movement_id: reversalMovement.id,
     });
 
     // Audit
@@ -102,8 +106,8 @@ Deno.serve(async (req) => {
       environment: record.environment || 'LIVE',
     });
 
-    // Create alert for reversal
-    await base44.asServiceRole.entities.StockOutAlert.create({
+    // Create alert for reversal and audit alert creation
+    const reversalAlert = await base44.asServiceRole.entities.StockOutAlert.create({
       alert_type: 'REVERSAL_AFTER_POST',
       severity: 'MEDIUM',
       status: 'OPEN',
@@ -111,12 +115,30 @@ Deno.serve(async (req) => {
       trigger_reason: `Stock-out reversal posted. Reason: ${reason}`,
       dedupe_key: `REVERSAL_${record_id}`,
       metadata: {
+        item_id: record.item_id,
         sku: record.sku,
         item_name: record.item_name,
         quantity: record.quantity,
         value: record.estimated_value,
       },
-      environment: 'LIVE',
+      environment: record.environment || 'LIVE',
+    });
+    await base44.asServiceRole.entities.AuditLog.create({
+      item_id: record.item_id,
+      sku: record.sku,
+      item_name: record.item_name,
+      change_type: 'STOCK_WASTE',
+      field_name: 'stock_out_alert',
+      old_value: '',
+      new_value: 'REVERSAL_AFTER_POST',
+      changed_by: user.email || user.id,
+      actor_role: role,
+      source_module: 'StockOutAlerts',
+      action_type: 'STOCK_OUT_ALERT_CREATED',
+      linked_source_record: record_id,
+      source_record_id: reversalAlert.id,
+      notes: `Alert created for reversal after posting. Reason: ${reason}`,
+      environment: record.environment || 'LIVE',
     });
 
     return Response.json({

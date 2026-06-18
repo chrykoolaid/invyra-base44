@@ -73,11 +73,11 @@ export default function AlertsTab({ refreshTick }) {
     }
   };
 
-  const handleDedupe = async (alertId, dedupeOfId) => {
+  const handleDedupe = async (alertId, dedupeKey) => {
     try {
       const response = await base44.functions.invoke('dedupeStockOutAlert', {
         alert_id: alertId,
-        deduped_of: dedupeOfId,
+        dedupe_key: dedupeKey,
       });
       if (response.data.success) {
         toast.success('Alert marked as duplicate');

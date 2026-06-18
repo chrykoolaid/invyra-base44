@@ -7,6 +7,7 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
   const [step, setStep] = useState('class'); // 'class', 'details'
   const [stockOutClass, setStockOutClass] = useState('WASTAGE');
   const [items, setItems] = useState([]);
+  const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -19,12 +20,16 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
     location: '',
     department: '',
     cost_centre: '',
+    site_id: '',
   });
 
   useEffect(() => {
     base44.entities.InventoryItem.filter({ is_active: true }, '', 100).then(data => {
       setItems(data || []);
     });
+    base44.entities.Site.filter({ is_active: true }, 'name', 100)
+      .then(data => setSites(data || []))
+      .catch(() => setSites([]));
   }, []);
 
   const handleSelectItem = (item) => {
@@ -55,6 +60,7 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
         location: form.location,
         department: form.department,
         cost_centre: form.cost_centre,
+        site_id: form.site_id,
         source: 'MANUAL',
         environment: 'LIVE',
       });
@@ -187,13 +193,36 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1.5">Location</label>
-                <Input
-                  value={form.location}
-                  onChange={(e) => setForm(prev => ({ ...prev, location: e.target.value }))}
-                  placeholder="e.g., Floor 2, Storage A"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Site / Branch</label>
+                  <select
+                    value={form.site_id}
+                    onChange={(e) => {
+                      const selectedSite = sites.find(site => site.id === e.target.value);
+                      setForm(prev => ({
+                        ...prev,
+                        site_id: e.target.value,
+                        location: selectedSite?.name || prev.location,
+                      }));
+                    }}
+                    className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">No site selected</option>
+                    {sites.map(site => (
+                      <option key={site.id} value={site.id}>{site.name}</option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-muted-foreground mt-1">Selecting a site enables site-level stock guards.</p>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Location / Zone</label>
+                  <Input
+                    value={form.location}
+                    onChange={(e) => setForm(prev => ({ ...prev, location: e.target.value }))}
+                    placeholder="e.g., Floor 2, Storage A"
+                  />
+                </div>
               </div>
 
               {stockOutClass === 'STORE_USE' && (

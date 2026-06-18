@@ -21,6 +21,30 @@ Deno.serve(async (req) => {
     return Response.json({ error: `Only DRAFT records can be submitted. Current: ${record.status}` }, { status: 409 });
   }
 
+  const role = (user.role || '').toLowerCase().trim();
+  const actorIds = [user.id, user.email].filter(Boolean);
+  const createdByMatches = actorIds.includes(record.created_by) || actorIds.includes(record.created_by_email);
+  if (role === 'staff' && !createdByMatches) {
+    await base44.asServiceRole.entities.AuditLog.create({
+      item_id: record.item_id,
+      sku: record.sku,
+      item_name: record.item_name,
+      change_type: 'ENVIRONMENT_BLOCKED',
+      field_name: 'status',
+      old_value: record.status,
+      new_value: record.status,
+      changed_by: user.email || user.id,
+      actor_role: role,
+      source_module: 'StockOut',
+      action_type: 'STOCK_OUT_SUBMIT_BLOCKED_NOT_OWNER',
+      linked_source_record: record_id,
+      source_record_id: record_id,
+      notes: 'Staff attempted to submit a draft created by another user.',
+      environment: record.environment || 'LIVE',
+    });
+    return Response.json({ error: 'Staff can only submit stock-out drafts they created.' }, { status: 403 });
+  }
+
   const now = new Date().toISOString();
   await base44.asServiceRole.entities.StockOutRecord.update(record_id, {
     status: 'SUBMITTED',

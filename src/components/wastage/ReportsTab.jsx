@@ -73,7 +73,7 @@ export default function ReportsTab({ refreshTick }) {
 
     return records.filter(r => {
        const createdDate = new Date(r.created_date);
-       const recordUser = r.submitted_by || r.approved_by || 'Unknown';
+       const recordUser = r.submitted_by || r.posted_by || r.approved_by || r.created_by || 'Unknown';
        return (
          createdDate >= cutoff &&
          (filterType === 'ALL' || r.stock_out_class === filterType) &&
@@ -83,9 +83,9 @@ export default function ReportsTab({ refreshTick }) {
          (filterSource === 'ALL' || (r.source === filterSource)) &&
          (filterCostCentre === 'ALL' || (r.cost_centre === filterCostCentre)) &&
          (filterUser === 'ALL' || (recordUser === filterUser)) &&
-         (r.sku.toLowerCase().includes(q) ||
-           r.item_name.toLowerCase().includes(q) ||
-           r.reason_category.toLowerCase().includes(q) ||
+         ((r.sku || '').toLowerCase().includes(q) ||
+           (r.item_name || '').toLowerCase().includes(q) ||
+           (r.reason_category || '').toLowerCase().includes(q) ||
            (r.location && r.location.toLowerCase().includes(q)) ||
            (r.department && r.department.toLowerCase().includes(q)))
        );
@@ -103,7 +103,7 @@ export default function ReportsTab({ refreshTick }) {
       } else if (groupBy === 'reason') {
         key = r.reason_category;
       } else if (groupBy === 'user') {
-        key = r.submitted_by || r.approved_by || 'Unknown';
+        key = r.submitted_by || r.posted_by || r.approved_by || r.created_by || 'Unknown';
       } else if (groupBy === 'location') {
         key = r.location || 'N/A';
       } else if (groupBy === 'source') {
@@ -143,7 +143,7 @@ export default function ReportsTab({ refreshTick }) {
     const netQty = grossQty - reversedQty;
     const netValue = grossValue - reversedValue;
 
-    // Wastage breakdowns (only POSTED and REVERSED)
+    // Wastage breakdowns: gross/reversed/net plus pending/rejected audit visibility
     const wastageGrossRecords = grossRecords.filter(r => r.stock_out_class === 'WASTAGE');
     const wastageGrossValue = wastageGrossRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
     const wastageGrossQty = wastageGrossRecords.reduce((s, r) => s + (r.quantity || 0), 0);
@@ -153,8 +153,14 @@ export default function ReportsTab({ refreshTick }) {
 
     const wastageNetValue = wastageGrossValue - wastageReversedValue;
     const wastageNetQty = wastageGrossQty - wastageReversedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const wastagePendingRecords = filteredRecords.filter(r => r.stock_out_class === 'WASTAGE' && (r.status === 'DRAFT' || r.status === 'SUBMITTED'));
+    const wastagePendingValue = wastagePendingRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const wastagePendingQty = wastagePendingRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const wastageRejectedRecords = filteredRecords.filter(r => r.stock_out_class === 'WASTAGE' && r.status === 'REJECTED');
+    const wastageRejectedValue = wastageRejectedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const wastageRejectedQty = wastageRejectedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
 
-    // Store Use breakdowns (only POSTED and REVERSED)
+    // Store Use breakdowns: gross/reversed/net plus pending/rejected audit visibility
     const storeUseGrossRecords = grossRecords.filter(r => r.stock_out_class === 'STORE_USE');
     const storeUseGrossValue = storeUseGrossRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
     const storeUseGrossQty = storeUseGrossRecords.reduce((s, r) => s + (r.quantity || 0), 0);
@@ -164,6 +170,12 @@ export default function ReportsTab({ refreshTick }) {
 
     const storeUseNetValue = storeUseGrossValue - storeUseReversedValue;
     const storeUseNetQty = storeUseGrossQty - storeUseReversedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const storeUsePendingRecords = filteredRecords.filter(r => r.stock_out_class === 'STORE_USE' && (r.status === 'DRAFT' || r.status === 'SUBMITTED'));
+    const storeUsePendingValue = storeUsePendingRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const storeUsePendingQty = storeUsePendingRecords.reduce((s, r) => s + (r.quantity || 0), 0);
+    const storeUseRejectedRecords = filteredRecords.filter(r => r.stock_out_class === 'STORE_USE' && r.status === 'REJECTED');
+    const storeUseRejectedValue = storeUseRejectedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const storeUseRejectedQty = storeUseRejectedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
 
     // Pending approval (not in gross/net)
     const pendingRecords = filteredRecords.filter(r => r.status === 'SUBMITTED' || r.status === 'DRAFT');
@@ -172,6 +184,7 @@ export default function ReportsTab({ refreshTick }) {
 
     // Rejected (not in gross/net)
     const rejectedRecords = filteredRecords.filter(r => r.status === 'REJECTED');
+    const rejectedQty = rejectedRecords.reduce((s, r) => s + (r.quantity || 0), 0);
     const rejectedValue = rejectedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
 
     // Total quantity across all
@@ -189,11 +202,20 @@ export default function ReportsTab({ refreshTick }) {
       wastageGrossValue,
       wastageReversedValue,
       wastageNetValue,
+      wastagePendingQty,
+      wastagePendingValue,
+      wastageRejectedQty,
+      wastageRejectedValue,
       storeUseGrossValue,
       storeUseReversedValue,
       storeUseNetValue,
+      storeUsePendingQty,
+      storeUsePendingValue,
+      storeUseRejectedQty,
+      storeUseRejectedValue,
       pendingQty,
       pendingValue,
+      rejectedQty,
       rejectedValue,
     };
   }, [filteredRecords]);
@@ -203,7 +225,7 @@ export default function ReportsTab({ refreshTick }) {
    const uniqueDepartments = [...new Set(records.filter(r => r.department).map(r => r.department))];
    const uniqueSources = [...new Set(records.map(r => r.source))];
    const uniqueCostCentres = [...new Set(records.filter(r => r.cost_centre).map(r => r.cost_centre))];
-   const uniqueUsers = [...new Set(records.map(r => r.submitted_by || r.approved_by || 'Unknown'))];
+   const uniqueUsers = [...new Set(records.map(r => r.submitted_by || r.posted_by || r.approved_by || r.created_by || 'Unknown'))];
 
   const handleExport = async () => {
     try {
@@ -234,7 +256,7 @@ export default function ReportsTab({ refreshTick }) {
 
       const rows = filteredRecords.map(r => {
         const costPerUnit = r.estimated_value && r.quantity ? (r.estimated_value / r.quantity) : 0;
-        const recordUser = r.submitted_by || r.approved_by || 'Unknown';
+        const recordUser = r.submitted_by || r.posted_by || r.approved_by || r.created_by || 'Unknown';
         
         // For gross/reversed/net: calculate if this record is reversed
         let grossValue = 0;
@@ -270,8 +292,8 @@ export default function ReportsTab({ refreshTick }) {
           r.source,
           new Date(r.created_date).toLocaleDateString(),
           r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : '',
-          r.posted_at ? new Date(r.posted_at).toLocaleDateString() : '',
-          r.status === 'REVERSED' && r.posted_at ? new Date(r.posted_at).toLocaleDateString() : '',
+          (r.posted_at || r.approved_at) ? new Date(r.posted_at || r.approved_at).toLocaleDateString() : '',
+          r.reversed_at ? new Date(r.reversed_at).toLocaleDateString() : '',
         ];
       });
 
@@ -286,6 +308,17 @@ export default function ReportsTab({ refreshTick }) {
       link.href = URL.createObjectURL(blob);
       link.download = `stock-out-report-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
+      try {
+        const me = await base44.auth.me();
+        await base44.entities.AuditLog.create({
+          item_id: '', sku: '', item_name: '', change_type: 'STOCK_WASTE', field_name: 'report_export',
+          old_value: '', new_value: `${filteredRecords.length} rows`, changed_by: me?.email || me?.id || 'current_user',
+          actor_role: me?.role || 'unknown', source_module: 'StockOutReports', action_type: 'REPORT_EXPORTED',
+          linked_source_record: 'stock-out-report', source_record_id: 'stock-out-report',
+          notes: `CSV export generated from filtered Stock-Out report dataset. Rows: ${filteredRecords.length}`,
+          environment: 'LIVE',
+        });
+      } catch (_) {}
       toast.success('CSV exported successfully');
     } catch (error) {
       toast.error(`Export failed: ${error.message}`);
@@ -294,7 +327,7 @@ export default function ReportsTab({ refreshTick }) {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Gross Value</p>
           <p className="text-2xl font-bold text-foreground">₱{summary.grossValue.toFixed(0)}</p>
@@ -314,6 +347,11 @@ export default function ReportsTab({ refreshTick }) {
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Pending Approval</p>
           <p className="text-2xl font-bold text-amber-700">₱{summary.pendingValue.toFixed(0)}</p>
           <p className="text-xs text-muted-foreground mt-2">{summary.pendingQty} units awaiting</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Rejected Value</p>
+          <p className="text-2xl font-bold text-muted-foreground">₱{summary.rejectedValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.rejectedQty} units rejected</p>
         </div>
       </div>
 
@@ -347,6 +385,29 @@ export default function ReportsTab({ refreshTick }) {
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Net</p>
           <p className="text-2xl font-bold text-green-700">₱{summary.storeUseNetValue.toFixed(0)}</p>
           <p className="text-xs text-muted-foreground mt-2">After reversals</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Pending</p>
+          <p className="text-2xl font-bold text-amber-700">₱{summary.wastagePendingValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.wastagePendingQty} units draft/submitted</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Wastage Rejected</p>
+          <p className="text-2xl font-bold text-muted-foreground">₱{summary.wastageRejectedValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.wastageRejectedQty} units rejected</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Pending</p>
+          <p className="text-2xl font-bold text-amber-700">₱{summary.storeUsePendingValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.storeUsePendingQty} units draft/submitted</p>
+        </div>
+        <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Store Use Rejected</p>
+          <p className="text-2xl font-bold text-muted-foreground">₱{summary.storeUseRejectedValue.toFixed(0)}</p>
+          <p className="text-xs text-muted-foreground mt-2">{summary.storeUseRejectedQty} units rejected</p>
         </div>
       </div>
 

@@ -181,6 +181,7 @@ export default function ScannerIntakeTab({ refreshTick }) {
   const [loading, setLoading] = useState(false);
   const [resolveModal, setResolveModal] = useState(null);
   const [rejectModal, setRejectModal] = useState(null);
+  const [duplicateModal, setDuplicateModal] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -245,33 +246,18 @@ export default function ScannerIntakeTab({ refreshTick }) {
     }
   };
 
-  const handleMarkDuplicate = async (entryId) => {
+  const handleMarkDuplicate = async (reason) => {
+    if (!duplicateModal) return;
     try {
-      await base44.asServiceRole.entities.ScannerIntakeQueue.update(entryId, {
-        sync_status: 'DUPLICATE',
-        is_duplicate: true,
+      const response = await base44.functions.invoke('markScannerIntakeDuplicate', {
+        intake_id: duplicateModal.id,
+        duplicate_reason: reason,
       });
-
-      await base44.asServiceRole.entities.AuditLog.create({
-        item_id: '',
-        sku: entries.find(e => e.id === entryId)?.resolved_sku || '',
-        item_name: '',
-        change_type: 'STOCK_WASTE',
-        field_name: 'sync_status',
-        old_value: 'QUEUED',
-        new_value: 'DUPLICATE',
-        changed_by: 'current_user',
-        actor_role: 'supervisor',
-        source_module: 'Scanner',
-        action_type: 'SCANNER_MARKED_DUPLICATE',
-        linked_source_record: entryId,
-        source_record_id: entryId,
-        notes: `Scanner intake marked as duplicate`,
-        environment: 'LIVE',
-      });
-
-      toast.success('Marked as duplicate');
-      setEntries(entries.filter(e => e.id !== entryId));
+      if (response.data.success) {
+        toast.success('Marked as duplicate');
+        setDuplicateModal(null);
+        setEntries(entries.filter(e => e.id !== duplicateModal.id));
+      }
     } catch (error) {
       toast.error(`Mark duplicate failed: ${error.message}`);
     }
@@ -290,6 +276,13 @@ export default function ScannerIntakeTab({ refreshTick }) {
           title="Reject Scanner Intake"
           onConfirm={handleReject}
           onCancel={() => setRejectModal(null)}
+        />
+      )}
+      {duplicateModal && (
+        <RejectReasonModal
+          title="Mark Scanner Intake Duplicate"
+          onConfirm={handleMarkDuplicate}
+          onCancel={() => setDuplicateModal(null)}
         />
       )}
       {resolveModal && (
@@ -422,7 +415,7 @@ export default function ScannerIntakeTab({ refreshTick }) {
                         </button>
                       )}
                       <button
-                        onClick={() => handleMarkDuplicate(entry.id)}
+                        onClick={() => setDuplicateModal(entry)}
                         className="px-2 py-1 rounded bg-slate-600 text-white text-[11px] hover:opacity-90 flex items-center gap-1"
                       >
                         <Copy size={12} /> Duplicate

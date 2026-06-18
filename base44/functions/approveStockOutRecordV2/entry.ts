@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const role = (user.role || '').toLowerCase();
-  const isSupervisorPlus = ['supervisor', 'manager', 'admin'].includes(role);
+  const isSupervisorPlus = ['supervisor', 'manager', 'admin', 'owner'].includes(role);
   if (!isSupervisorPlus) {
     return Response.json({ error: 'Forbidden: Supervisor or Manager required' }, { status: 403 });
   }
@@ -128,6 +128,8 @@ Deno.serve(async (req) => {
       status: 'POSTED',
       approved_by: user.id || user.email,
       approved_at: now,
+      posted_by: user.email || user.id,
+      posted_at: now,
       linked_movement_id: movement.id,
     });
 
@@ -151,10 +153,24 @@ Deno.serve(async (req) => {
       environment: record.environment || 'LIVE',
     });
 
-    // Create alert for high-value records (threshold: ₱10,000)
-    if (estimatedValue > 10000) {
+    // Create alerts for high-value records and repeated SKU patterns (default threshold: ₱5,000)
+    const createAlertWithAudit = async (payload) => {
+      const existing = await base44.asServiceRole.entities.StockOutAlert.filter({ dedupe_key: payload.dedupe_key, environment: record.environment || 'LIVE' }, '-created_date', 1);
+      if (existing?.[0] && ['OPEN', 'ACKNOWLEDGED'].includes(existing[0].status)) return existing[0];
+      const alert = await base44.asServiceRole.entities.StockOutAlert.create({ ...payload, status: 'OPEN', environment: record.environment || 'LIVE' });
+      await base44.asServiceRole.entities.AuditLog.create({
+        item_id: record.item_id, sku: record.sku, item_name: record.item_name,
+        change_type: 'STOCK_WASTE', field_name: 'stock_out_alert', old_value: '', new_value: alert.alert_type,
+        changed_by: user.email || user.id, actor_role: role, source_module: 'StockOutAlerts',
+        action_type: 'STOCK_OUT_ALERT_CREATED', linked_source_record: record_id, source_record_id: alert.id,
+        notes: `Alert created: ${alert.alert_type}. ${payload.trigger_reason}`, environment: record.environment || 'LIVE',
+      });
+      return alert;
+    };
+
+    if (estimatedValue > 5000) {
       const alertType = record.stock_out_class === 'WASTAGE' ? 'HIGH_VALUE_WASTAGE' : 'HIGH_VALUE_STORE_USE';
-      await base44.asServiceRole.entities.StockOutAlert.create({
+      await createAlertWithAudit({
         alert_type: alertType,
         severity: estimatedValue > 50000 ? 'CRITICAL' : 'HIGH',
         status: 'OPEN',
@@ -169,7 +185,28 @@ Deno.serve(async (req) => {
           reason: record.reason_category,
           location: record.location,
         },
-        environment: 'LIVE',
+              });
+    }
+
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const recentSameSku = await base44.asServiceRole.entities.StockOutRecord.filter({
+      sku: record.sku,
+      stock_out_class: record.stock_out_class,
+      environment: record.environment || 'LIVE',
+    }, '-created_date', 25);
+    const repeatedCount = (recentSameSku || []).filter((r) =>
+      ['POSTED', 'REVERSED', 'AMENDED'].includes(r.status) && new Date(r.created_date || r.posted_at || now) >= since
+    ).length;
+    if (repeatedCount >= 3) {
+      const repeatedType = record.stock_out_class === 'WASTAGE' ? 'REPEATED_SKU_WASTAGE' : 'REPEATED_SKU_STORE_USE';
+      const windowKey = since.toISOString().slice(0, 10);
+      await createAlertWithAudit({
+        alert_type: repeatedType,
+        severity: 'MEDIUM',
+        linked_record_id: record_id,
+        trigger_reason: `${repeatedCount} ${record.stock_out_class.toLowerCase()} records for SKU ${record.sku} within 7 days`,
+        dedupe_key: `${repeatedType}_${record.sku}_${windowKey}`,
+        metadata: { item_id: record.item_id, sku: record.sku, item_name: record.item_name, quantity: qty, count_7d: repeatedCount, value: estimatedValue },
       });
     }
 

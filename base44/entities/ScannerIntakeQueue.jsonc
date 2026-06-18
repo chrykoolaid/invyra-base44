@@ -105,6 +105,10 @@
         "TEST"
       ],
       "default": "LIVE"
+    },
+    "duplicate_reason": {
+      "type": "string",
+      "description": "Reviewer-entered reason when marked duplicate"
     }
   },
   "required": [
