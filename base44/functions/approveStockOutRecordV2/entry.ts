@@ -61,21 +61,43 @@ Deno.serve(async (req) => {
     }, { status: 409 });
   }
 
-  // GUARD: Check site-level stock if location/site is specified
-  if (record.site_id) {
-    const sitePerStock = item.stock_per_site || {};
-    const siteStockBefore = sitePerStock[record.site_id] || 0;
-    const siteStockAfter = siteStockBefore - qty;
-
-    if (siteStockAfter < 0 && !allowNegative) {
-      return Response.json({
-        error: `Insufficient stock at site/location. Site: ${record.site_id}, Current: ${siteStockBefore}, Requested: ${qty}, Projected: ${siteStockAfter}. Negative stock not allowed.`,
-        site_id: record.site_id,
-        site_stock_before: siteStockBefore,
-        requested_qty: qty,
-        site_stock_after: siteStockAfter,
-      }, { status: 409 });
+  // GUARD: Check site-level stock if location/site is specified.
+  // Prototype seed data can have item.stock populated before stock_per_site is initialized.
+  // In that single-site fallback case, use total stock as the site stock baseline instead
+  // of treating a missing site key as zero. If stock_per_site already has other site
+  // keys, a missing selected site remains zero and is blocked normally.
+  const getSiteStockContext = () => {
+    if (!record.site_id) {
+      return null;
     }
+
+    const sitePerStock = item.stock_per_site || {};
+    const siteKeys = Object.keys(sitePerStock);
+    const hasExplicitSiteStock = Object.prototype.hasOwnProperty.call(sitePerStock, record.site_id);
+    const siteStockBefore = hasExplicitSiteStock
+      ? Number(sitePerStock[record.site_id] || 0)
+      : (siteKeys.length === 0 ? currentStock : 0);
+
+    return {
+      sitePerStock,
+      siteStockBefore,
+      siteStockAfter: siteStockBefore - qty,
+      stockSource: hasExplicitSiteStock
+        ? 'stock_per_site'
+        : (siteKeys.length === 0 ? 'global_stock_single_site_fallback' : 'missing_site_stock'),
+    };
+  };
+
+  const siteStockContext = getSiteStockContext();
+  if (siteStockContext && siteStockContext.siteStockAfter < 0 && !allowNegative) {
+    return Response.json({
+      error: `Insufficient stock at site/location. Site: ${record.site_id}, Current: ${siteStockContext.siteStockBefore}, Requested: ${qty}, Projected: ${siteStockContext.siteStockAfter}. Negative stock not allowed.`,
+      site_id: record.site_id,
+      site_stock_before: siteStockContext.siteStockBefore,
+      requested_qty: qty,
+      site_stock_after: siteStockContext.siteStockAfter,
+      stock_source: siteStockContext.stockSource,
+    }, { status: 409 });
   }
 
   const now = new Date().toISOString();
@@ -114,9 +136,9 @@ Deno.serve(async (req) => {
     // Update InventoryItem stock and stock_per_site
     const updatePayload = { stock: balanceAfter };
     if (record.site_id) {
-      const currentPerSite = item.stock_per_site || {};
       const siteKey = record.site_id;
-      const siteStockBefore = currentPerSite[siteKey] || 0;
+      const currentPerSite = { ...(item.stock_per_site || {}) };
+      const siteStockBefore = siteStockContext?.siteStockBefore ?? Number(currentPerSite[siteKey] || 0);
       const siteStockAfter = siteStockBefore - qty;
       currentPerSite[siteKey] = siteStockAfter;
       updatePayload.stock_per_site = currentPerSite;

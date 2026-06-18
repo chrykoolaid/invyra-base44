@@ -65,13 +65,20 @@ export default function WastageTab({ refreshTick }) {
   const role = (user?.role || '').toLowerCase();
   const isStaff = role === 'staff';
 
+  const requireSuccess = (response, fallbackMessage) => {
+    const data = response?.data || response || {};
+    if (!data.success) {
+      throw new Error(data.error || data.message || fallbackMessage);
+    }
+    return data;
+  };
+
   const submitRecord = async (recordId) => {
     try {
       const response = await base44.functions.invoke('submitStockOutRecord', { record_id: recordId });
-      if (response.data.success) {
-        toast.success('Draft submitted for approval');
-        setLocalRefreshTick(t => t + 1);
-      }
+      requireSuccess(response, 'Submit failed');
+      toast.success('Draft submitted for approval');
+      setLocalRefreshTick(t => t + 1);
     } catch (e) {
       toast.error(e.message || 'Submit failed');
     }
@@ -80,10 +87,9 @@ export default function WastageTab({ refreshTick }) {
   const handleApprove = async (recordId) => {
     try {
       const response = await base44.functions.invoke('approveStockOutRecordV2', { record_id: recordId });
-      if (response.data.success) {
-        toast.success(`Stock-out approved. Balance: ${response.data.balance_before} → ${response.data.balance_after}`);
-        setLocalRefreshTick(t => t + 1);
-      }
+      const data = requireSuccess(response, 'Approval failed');
+      toast.success(`Stock-out approved. Balance: ${data.balance_before} → ${data.balance_after}`);
+      setLocalRefreshTick(t => t + 1);
     } catch (error) {
       toast.error(`Approval failed: ${error.message}`);
     }
@@ -93,11 +99,10 @@ export default function WastageTab({ refreshTick }) {
     if (!rejectModal) return;
     try {
       const response = await base44.functions.invoke('rejectStockOutRecord', { record_id: rejectModal, reason });
-      if (response.data.success) {
-        toast.success('Record rejected');
-        setRejectModal(null);
-        setLocalRefreshTick(t => t + 1);
-      }
+      requireSuccess(response, 'Rejection failed');
+      toast.success('Record rejected');
+      setRejectModal(null);
+      setLocalRefreshTick(t => t + 1);
     } catch (error) {
       toast.error(`Rejection failed: ${error.message}`);
     }
@@ -107,11 +112,10 @@ export default function WastageTab({ refreshTick }) {
     if (!reverseModal) return;
     try {
       const response = await base44.functions.invoke('reverseStockOutRecord', { record_id: reverseModal, reason });
-      if (response.data.success) {
-        toast.success(`Reversed. Balance: ${response.data.balance_before} → ${response.data.balance_after}`);
-        setReverseModal(null);
-        setLocalRefreshTick(t => t + 1);
-      }
+      const data = requireSuccess(response, 'Reversal failed');
+      toast.success(`Reversed. Balance: ${data.balance_before} → ${data.balance_after}`);
+      setReverseModal(null);
+      setLocalRefreshTick(t => t + 1);
     } catch (error) {
       toast.error(`Reversal failed: ${error.message}`);
     }
