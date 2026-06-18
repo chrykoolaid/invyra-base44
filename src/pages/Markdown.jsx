@@ -39,6 +39,8 @@ const batchStatusStyle = {
   Review_Queue: 'bg-orange-50 text-orange-700 border-orange-200',
   Disposition_Complete: 'bg-blue-50 text-blue-700 border-blue-200',
   Recovered: 'bg-purple-50 text-purple-700 border-purple-200',
+  Completed: 'bg-green-50 text-green-700 border-green-200',
+  Expired: 'bg-slate-100 text-slate-600 border-slate-200',
   Voided: 'bg-red-50 text-red-700 border-red-200',
 };
 
@@ -131,6 +133,8 @@ function getScanRequestModel(row) {
     capturedAt: pickField(payload, ['captured_at', 'submitted_at'], row?.created_date || null),
     syncStatus: row?.sync_status || pickField(payload, ['sync_status'], 'Queued'),
     approvalStatus: pickField(payload, ['approval_status', 'status'], 'Pending_Approval'),
+    overlayScope: pickField(payload, ['price_overlay_scope', 'overlay_scope'], 'EXPIRY_DATE_QTY'),
+    autoCloseRule: pickField(payload, ['auto_close_rule'], 'CLOSE_ON_SOLD_OUT_OR_EXPIRY'),
     priceEntryMode: pickField(payload, ['price_entry_mode'], 'discount_percent'),
     manualPriceOverride: parseBool(pickField(payload, ['manual_price_override'], false)),
     thresholdExceeded: parseBool(pickField(payload, ['threshold_exceeded', 'exception_requires_manager'], false)),
@@ -301,7 +305,7 @@ function ScanOpsRequestRow({ request }) {
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap bg-indigo-50 text-indigo-700 border-indigo-200">ScanOps</span>
           {(model.thresholdExceeded || model.manualPriceOverride) && (
-            <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200">Manager handling</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full border font-semibold whitespace-nowrap bg-amber-50 text-amber-700 border-amber-200">Manager overlay approval</span>
           )}
           <span className="font-mono text-xs text-muted-foreground truncate">{model.id}</span>
         </div>
@@ -315,7 +319,7 @@ function ScanOpsRequestRow({ request }) {
       </div>
 
       <div className="col-span-6 md:col-span-2 text-xs">
-        <p className="text-muted-foreground">Discount / Label price</p>
+        <p className="text-muted-foreground">Discount / Overlay price</p>
         <p className="font-semibold text-foreground mt-0.5">{formatMoney(model.originalPrice)} → {formatMoney(model.proposedPrice)}</p>
         {model.discount !== null && <p className="text-[11px] text-muted-foreground mt-0.5">{model.discount.toFixed(1)}% off{model.manualPriceOverride ? ' · custom price' : ''}</p>}
       </div>
@@ -467,7 +471,7 @@ export default function Markdown() {
       tone: 'blue',
       count: computed.openScannerRequests.length,
       title: 'ScanOps requests awaiting intake',
-      description: 'Review synced floor captures before label approval.',
+      description: 'Review high-quantity or exception floor captures before price overlay activation.',
       to: '/Markdown',
     },
     computed.criticalReview.length > 0 && {
@@ -488,14 +492,14 @@ export default function Markdown() {
       tone: 'amber',
       count: computed.pendingApproval.length,
       title: 'Batches pending approval',
-      description: 'Supervisor or manager approval needed before labels.',
+      description: 'Supervisor or manager approval needed to activate scoped price overlays.',
       to: '/Markdown/Batches',
     },
     computed.failedPrints.length > 0 && {
       tone: 'red',
       count: computed.failedPrints.length,
-      title: 'Label print failures',
-      description: 'Check printer/device before releasing markdown labels.',
+      title: 'Fallback label failures',
+      description: 'Check printer/device for fallback label workflows only.',
       to: '/Markdown/Monitor',
     },
     computed.warningReview.length > 0 && {
@@ -508,8 +512,8 @@ export default function Markdown() {
     computed.expiringSoon.length > 0 && {
       tone: 'blue',
       count: computed.expiringSoon.length,
-      title: 'Labels expiring soon',
-      description: 'Check active floor labels and monitor sheet.',
+      title: 'Overlays expiring soon',
+      description: 'Check active scoped overlays and monitor sheet.',
       to: '/Markdown/Monitor',
     },
   ].filter(Boolean);
@@ -529,7 +533,7 @@ export default function Markdown() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">Markdown Control</h1>
-          <p className="text-sm text-muted-foreground mt-1">Near-expiry price reduction and recovery workflow</p>
+          <p className="text-sm text-muted-foreground mt-1">Near-expiry price overlays, ScanOps intake, and recovery workflow</p>
           <p className="text-xs text-muted-foreground mt-1">
             {lastRefresh ? `Last refreshed ${lastRefresh.toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' })}` : 'Loading live markdown queues'}
           </p>
@@ -541,18 +545,18 @@ export default function Markdown() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-        <SummaryCard icon={ClipboardList} label="Scanner Requests" value={scanRequestsAvailable ? computed.openScannerRequests.length : '—'} tone="blue" />
-        <SummaryCard icon={Clock} label="Pending Approval" value={computed.pendingApproval.length} tone="amber" />
+        <SummaryCard icon={ClipboardList} label="Scanner Intake" value={scanRequestsAvailable ? computed.openScannerRequests.length : '—'} tone="blue" />
+        <SummaryCard icon={Clock} label="Overlay Approval" value={computed.pendingApproval.length} tone="amber" />
         <SummaryCard icon={Tag} label="Active Batches" value={batches.filter((batch) => batch.status === 'Active').length} tone="green" />
         <SummaryCard icon={AlertTriangle} label="In Review" value={computed.inReviewCount} tone="orange" />
-        <SummaryCard icon={Printer} label="Labels Printed Today" value={printEventsAvailable ? computed.printedToday.length : '—'} tone="default" />
+        <SummaryCard icon={Printer} label="Fallback Labels Today" value={printEventsAvailable ? computed.printedToday.length : '—'} tone="default" />
       </div>
 
       <section className="border border-border rounded-2xl bg-card p-3">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Workflow Tabs</p>
-            <p className="text-xs text-muted-foreground mt-0.5">ScanOps requests sync into intake. Manual Request is fallback entry only.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">ScanOps requests sync into intake. Manual entry is for manager/admin exception fallback only.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -565,7 +569,7 @@ export default function Markdown() {
               onClick={() => setShowCreate(true)}
               className="flex items-center gap-1.5 h-9 px-3 text-sm border border-border rounded-lg bg-background hover:bg-muted text-foreground"
             >
-              <Plus size={14} /> Manual Request
+              <Plus size={14} /> Manual Exception
             </button>
             {SECONDARY_LINKS.map((link) => {
               const Icon = link.icon;
@@ -593,7 +597,7 @@ export default function Markdown() {
             <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/20">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Scanner Intake & Active Markdown Work</p>
-                <p className="text-sm text-muted-foreground mt-0.5">Synced ScanOps requests, pending approval, and active batches.</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Synced ScanOps requests, manager overlay approvals, and active scoped markdown batches.</p>
               </div>
               <Link to="/Markdown/Batches" className="hidden sm:flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
                 View batches <ArrowRight size={12} />
@@ -612,7 +616,7 @@ export default function Markdown() {
               <div className="divide-y divide-border">
                 {computed.openScannerRequests.length > 0 && (
                   <div className="bg-indigo-50/40 border-b border-border">
-                    <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">ScanOps markdown sync</div>
+                    <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-700">ScanOps markdown sync / exception intake</div>
                     <div className="divide-y divide-border bg-card">
                       {computed.openScannerRequests.slice(0, 8).map((request, index) => (
                         <ScanOpsRequestRow key={request.id || request.local_event_id || index} request={request} />
@@ -623,7 +627,7 @@ export default function Markdown() {
 
                 {computed.activeSorted.length > 0 && (
                   <div>
-                    <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground bg-muted/20">Approved / in-progress batches</div>
+                    <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground bg-muted/20">Active scoped overlays / in-progress batches</div>
                     <div className="divide-y divide-border">
                       {computed.activeSorted.slice(0, 8).map((batch) => {
                         const activeRound = (roundsByBatch[batch.id] || []).find((round) => round.status === 'Active') || roundsByBatch[batch.id]?.[0];
@@ -641,7 +645,7 @@ export default function Markdown() {
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Needs Attention</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">Scanner sync, approval, review, and label issues.</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Scanner sync, overlay approval, review, and fallback label issues.</p>
                 </div>
                 <AlertTriangle size={16} className={attentionItems.length ? 'text-amber-600' : 'text-green-600'} />
               </div>
@@ -682,7 +686,7 @@ export default function Markdown() {
 
             <section className="border border-dashed border-border rounded-2xl bg-muted/20 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Guardrail</p>
-              <p className="text-sm text-foreground mt-2">Markdown stays separate from Wastage. Final waste, recovery, or store-use outcomes still require controlled review and posting.</p>
+              <p className="text-sm text-foreground mt-2">Markdown price overlays never mutate Item Master price. They are limited to the affected SKU, expiry/date, and quantity, then auto-close when sold out, expired, or manually closed. Wastage remains separate.</p>
             </section>
           </aside>
         </div>

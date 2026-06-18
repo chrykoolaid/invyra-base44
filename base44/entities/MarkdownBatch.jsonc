@@ -31,6 +31,8 @@
         "Review_Queue",
         "Disposition_Complete",
         "Recovered",
+        "Completed",
+        "Expired",
         "Voided"
       ],
       "default": "Draft",
@@ -77,6 +79,48 @@
       "type": "number",
       "default": 1,
       "description": "Active round number (1, 2, or 3)"
+    },
+
+    "price_overlay_scope": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "EXPIRY_DATE_QTY",
+        "CUSTOM_MANAGER_OVERLAY"
+      ],
+      "default": "EXPIRY_DATE_QTY",
+      "description": "Markdowns never mutate Item Master price. Overlay scope controls SKU+expiry/date+quantity-limited pricing at POS."
+    },
+    "overlay_original_unit_price": {
+      "type": "number",
+      "description": "Original shelf price snapshot used when the temporary overlay was created"
+    },
+    "overlay_markdown_unit_price": {
+      "type": "number",
+      "description": "Approved temporary markdown price for the scoped overlay"
+    },
+    "overlay_discount_percent": {
+      "type": "number",
+      "description": "Approved markdown percentage for the scoped overlay"
+    },
+    "overlay_expiry_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expiry/sell-by date limiting this markdown overlay"
+    },
+    "overlay_auto_close_reason": {
+      "type": "string",
+      "description": "Reason the overlay closed, e.g. SOLD_OUT, EXPIRED, MANUAL_CLOSE"
+    },
+    "overlay_closed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when the temporary markdown overlay was closed"
+    },
+    "item_master_price_mutated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Must remain false. Markdown overlays do not change the normal SKU price."
     },
     "site_id": {
       "type": "string",

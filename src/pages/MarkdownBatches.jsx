@@ -5,7 +5,7 @@ import { Plus, RefreshCw, Tag, ChevronRight, ArrowLeft } from 'lucide-react';
 import CreateMarkdownBatchModal from '@/components/markdown/CreateMarkdownBatchModal';
 import MarkdownBatchCard from '@/components/markdown/MarkdownBatchCard';
 
-const STATUS_FILTER_OPTIONS = ['All', 'Draft', 'Pending_Approval', 'Active', 'Review_Queue', 'Disposition_Complete', 'Recovered', 'Voided'];
+const STATUS_FILTER_OPTIONS = ['All', 'Draft', 'Pending_Approval', 'Active', 'Review_Queue', 'Disposition_Complete', 'Recovered', 'Completed', 'Expired', 'Voided'];
 
 const statusStyle = {
   Draft:                'bg-slate-100 text-slate-600 border-slate-200',
@@ -14,6 +14,8 @@ const statusStyle = {
   Review_Queue:         'bg-orange-50 text-orange-700 border-orange-200',
   Disposition_Complete: 'bg-blue-50 text-blue-700 border-blue-200',
   Recovered:            'bg-purple-50 text-purple-700 border-purple-200',
+  Completed:            'bg-green-50 text-green-700 border-green-200',
+  Expired:              'bg-slate-100 text-slate-600 border-slate-200',
   Voided:               'bg-red-50 text-red-700 border-red-200',
 };
 
@@ -64,7 +66,7 @@ export default function MarkdownBatches() {
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 h-8 px-3 text-sm bg-primary text-primary-foreground rounded hover:opacity-90"
           >
-            <Plus size={13} /> New Batch
+            <Plus size={13} /> Manual Exception
           </button>
         </div>
       </div>
@@ -90,7 +92,7 @@ export default function MarkdownBatches() {
         <div className="py-12 text-center border border-dashed border-border rounded-lg bg-card">
           <Tag size={32} className="mx-auto mb-3 text-muted-foreground/40" />
           <p className="text-sm font-medium text-foreground">No batches found</p>
-          <p className="text-xs text-muted-foreground mt-1">Create a new markdown batch to get started</p>
+          <p className="text-xs text-muted-foreground mt-1">ScanOps markdown requests and manual exception entries will appear here.</p>
         </div>
       ) : (
         <div className="grid gap-3">

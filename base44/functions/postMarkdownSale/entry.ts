@@ -10,8 +10,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  * 3. Increments MarkdownBatch.sold_qty
  * 4. Increments MarkdownRound.qty_sold_in_round
  * 5. Recalculates sell_through_pct
- * 6. Creates SALE_POSTED MarkdownEventLog entry
- * 7. Posts StockMovement (SALE / OUT) — no direct InventoryItem.stock mutation
+ * 6. Auto-closes the scoped price overlay when remaining qty reaches zero
+ * 7. Creates SALE_POSTED MarkdownEventLog entry
+ * 8. Posts StockMovement (SALE / OUT) — no direct InventoryItem.stock mutation
  * 
  * Role: Staff and above (any authenticated user who can operate POS).
  */
@@ -81,17 +82,32 @@ Deno.serve(async (req) => {
     environment,
   });
 
-  // 2. Update MarkdownBatch counters
-  await base44.asServiceRole.entities.MarkdownBatch.update(markdown_batch_id, {
+  const overlayClosedBySale = newRemainingQty === 0;
+  const batchUpdate: Record<string, unknown> = {
     sold_qty: newSoldQty,
     current_remaining_qty: newRemainingQty,
     sell_through_pct: sellThroughPct,
-  });
+    item_master_price_mutated: false,
+  };
+  if (overlayClosedBySale) {
+    batchUpdate.status = 'Completed';
+    batchUpdate.overlay_auto_close_reason = 'SOLD_OUT';
+    batchUpdate.overlay_closed_at = now;
+  }
 
-  // 3. Update MarkdownRound qty_sold_in_round
-  await base44.asServiceRole.entities.MarkdownRound.update(markdown_round_id, {
+  // 2. Update MarkdownBatch counters and close overlay when sold out
+  await base44.asServiceRole.entities.MarkdownBatch.update(markdown_batch_id, batchUpdate);
+
+  const roundUpdate: Record<string, unknown> = {
     qty_sold_in_round: (round.qty_sold_in_round || 0) + qty,
-  });
+  };
+  if (overlayClosedBySale) {
+    roundUpdate.status = 'Completed';
+    roundUpdate.barcode_status = 'Expired';
+  }
+
+  // 3. Update MarkdownRound qty_sold_in_round and close barcode/session when sold out
+  await base44.asServiceRole.entities.MarkdownRound.update(markdown_round_id, roundUpdate);
 
   // 4. Post StockMovement (SALE / OUT) — ledger source of truth, no direct stock mutation
   const recentMovements = await base44.asServiceRole.entities.StockMovement.filter(
@@ -135,7 +151,13 @@ Deno.serve(async (req) => {
     user_role: user.role,
     payload: {
       before: { sold_qty: batch.sold_qty || 0, remaining_qty: batch.current_remaining_qty },
-      after: { sold_qty: newSoldQty, remaining_qty: newRemainingQty, sell_through_pct: sellThroughPct },
+      after: {
+        sold_qty: newSoldQty,
+        remaining_qty: newRemainingQty,
+        sell_through_pct: sellThroughPct,
+        batch_status: overlayClosedBySale ? 'Completed' : batch.status,
+        round_status: overlayClosedBySale ? 'Completed' : round.status,
+      },
       meta: {
         pos_transaction_id,
         line_item_id: lineItem.id,
@@ -143,11 +165,31 @@ Deno.serve(async (req) => {
         qty,
         round_number: round.round_number,
         movement_id: stockMovement.id,
+        overlay_closed: overlayClosedBySale,
+        close_reason: overlayClosedBySale ? 'SOLD_OUT' : null,
+        item_master_price_mutated: false,
       }
     },
     created_at: now,
     environment,
   });
+
+  if (overlayClosedBySale) {
+    await base44.asServiceRole.entities.MarkdownEventLog.create({
+      batch_id: markdown_batch_id,
+      round_id: markdown_round_id,
+      event_type: 'OVERLAY_AUTO_CLOSED',
+      user_id: user.id || user.email,
+      user_role: user.role,
+      payload: {
+        before: { batch_status: batch.status, round_status: round.status, remaining_qty: batch.current_remaining_qty },
+        after: { batch_status: 'Completed', round_status: 'Completed', barcode_status: 'Expired', remaining_qty: 0 },
+        meta: { close_reason: 'SOLD_OUT', item_master_price_mutated: false, pos_transaction_id },
+      },
+      created_at: now,
+      environment,
+    });
+  }
 
   return Response.json({
     success: true,
@@ -155,5 +197,7 @@ Deno.serve(async (req) => {
     movement_id: stockMovement.id,
     new_remaining_qty: newRemainingQty,
     sell_through_pct: sellThroughPct,
+    overlay_closed: overlayClosedBySale,
+    fallback_to_original_price: overlayClosedBySale,
   });
 });

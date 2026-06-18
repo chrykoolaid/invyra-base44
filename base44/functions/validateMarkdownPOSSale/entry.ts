@@ -15,6 +15,8 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
  * 6. markdown price matches round's markdown_unit_price
  * 7. expiry_date not passed
  * 8. remaining_qty >= qty_requested
+ * Also auto-closes the temporary overlay when sold out or expired, so POS
+ * falls back to the normal Item Master price without mutating the base price.
  */
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
@@ -71,6 +73,53 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Auto-close scoped overlays before validation. This prevents the Coles-style
+  // failure mode where a temporary markdown price remains active after the
+  // affected expiry/date quantity has sold out or expired. Item Master price is
+  // never changed; closed overlays simply stop validating.
+  if (batch && round && batch.status === 'Active') {
+    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date().toISOString();
+    const remainingQty = Number(batch.current_remaining_qty || 0);
+    const closeReason = round.expiry_date < today
+      ? 'EXPIRED'
+      : remainingQty <= 0
+        ? 'SOLD_OUT'
+        : '';
+
+    if (closeReason) {
+      const nextBatchStatus = closeReason === 'EXPIRED' ? 'Expired' : 'Completed';
+      await Promise.all([
+        base44.asServiceRole.entities.MarkdownBatch.update(batch.id, {
+          status: nextBatchStatus,
+          overlay_auto_close_reason: closeReason,
+          overlay_closed_at: now,
+          item_master_price_mutated: false,
+        }),
+        base44.asServiceRole.entities.MarkdownRound.update(round.id, {
+          status: 'Completed',
+          barcode_status: 'Expired',
+        }),
+        base44.asServiceRole.entities.MarkdownEventLog.create({
+          batch_id: batch.id,
+          round_id: round.id,
+          event_type: 'OVERLAY_AUTO_CLOSED',
+          user_id: user.id || user.email,
+          user_role: user.role,
+          payload: {
+            before: { batch_status: batch.status, round_status: round.status, remaining_qty: batch.current_remaining_qty },
+            after: { batch_status: nextBatchStatus, round_status: 'Completed', barcode_status: 'Expired' },
+            meta: { close_reason: closeReason, item_master_price_mutated: false },
+          },
+          created_at: now,
+          environment,
+        }),
+      ]);
+      batch = { ...batch, status: nextBatchStatus, overlay_auto_close_reason: closeReason, overlay_closed_at: now };
+      round = { ...round, status: 'Completed', barcode_status: 'Expired' };
+    }
+  }
+
   // Check 3: barcode_status
   if (!round) fail('barcode_status', 'Round not found.');
   else if (!['Active', 'Reprinted'].includes(round.barcode_status))
@@ -79,7 +128,7 @@ Deno.serve(async (req) => {
 
   // Check 4: batch status
   if (!batch) fail('batch_status', 'Batch not found.');
-  else if (batch.status !== 'Active') fail('batch_status', `Batch status is ${batch.status} — sale not allowed.`);
+  else if (batch.status !== 'Active') fail('batch_status', `Scoped markdown overlay is ${batch.status}; use normal current price.`);
   else pass('batch_status', 'Active');
 
   // Check 5: round active
@@ -104,7 +153,7 @@ Deno.serve(async (req) => {
   // Check 8: qty eligibility
   if (!batch) fail('sale_eligibility', 'Batch not found — cannot validate remaining quantity.');
   else if (qty_requested && batch.current_remaining_qty < qty_requested)
-    fail('sale_eligibility', `Insufficient remaining qty: ${batch.current_remaining_qty} available, ${qty_requested} requested.`);
+    fail('sale_eligibility', `Markdown overlay has ${batch.current_remaining_qty} units remaining; use normal current price for any excess.`);
   else pass('sale_eligibility', `${batch ? batch.current_remaining_qty : 'N/A'} units remaining`);
 
   return Response.json({

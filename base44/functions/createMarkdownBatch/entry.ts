@@ -2,11 +2,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
  * createMarkdownBatch
- * Creates a new MarkdownBatch. Standard markdowns become Active immediately so
- * labels can be printed without slowing the floor workflow. Exception cases
- * (bulk/high quantity, custom price override, or explicit configured rules)
- * require Supervisor/Manager handling. Supports store-floor markdown request
- * evidence from ScanOps/manual fallback.
+ * Creates a new MarkdownBatch as a temporary price overlay. Standard markdowns
+ * become Active immediately without changing the Item Master price. Exception
+ * cases (bulk/high quantity, custom price override, or configured rules) require
+ * Supervisor/Manager activation. The overlay is scoped to SKU + expiry/sell-by
+ * date + affected quantity and closes when sold out, expired, or manually closed.
  * Role normalised to lowercase before all comparisons.
  */
 
@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
   const exceptionRequiresManager = forceApprovalForAll || isHighQtyException || isCustomPriceOverride;
   const requiresApproval = exceptionRequiresManager && !isPrivileged;
   const initialStatus = requiresApproval ? 'Pending_Approval' : 'Active';
+  const priceOverlayScope = isCustomPriceOverride ? 'CUSTOM_MANAGER_OVERLAY' : 'EXPIRY_DATE_QTY';
   const batchRef = `MB-${new Date().getFullYear()}-${Date.now().toString(36).toUpperCase().slice(-6)}`;
   const now = new Date().toISOString();
 
@@ -121,6 +122,12 @@ Deno.serve(async (req) => {
     high_qty_threshold: highQtyThreshold,
     threshold_exceeded: isHighQtyException,
     exception_requires_manager: exceptionRequiresManager,
+    manager_action_required: requiresApproval,
+    manager_action_type: exceptionRequiresManager ? 'APPROVE_TEMPORARY_PRICE_OVERLAY' : 'NONE',
+    item_master_price_mutated: false,
+    price_overlay_scope: priceOverlayScope,
+    auto_close_rule: 'CLOSE_ON_SOLD_OUT_OR_EXPIRY',
+    fallback_price_after_close: originalPrice,
     initial_expiry_date: expiryDate,
     label_qty: Number(label_qty || allocatedQty),
     request_notes,
@@ -144,6 +151,12 @@ Deno.serve(async (req) => {
     disposed_qty: 0,
     sell_through_pct: 0,
     current_round_number: 1,
+    price_overlay_scope: priceOverlayScope,
+    overlay_original_unit_price: originalPrice,
+    overlay_markdown_unit_price: markdownPrice,
+    overlay_discount_percent: requestedDiscount,
+    overlay_expiry_date: expiryDate,
+    item_master_price_mutated: false,
     site_id: site_id || '',
     settings_snapshot: {
       ...settings,
@@ -178,6 +191,8 @@ Deno.serve(async (req) => {
       qty_at_round_start: allocatedQty,
       qty_sold_in_round: 0,
       print_count: 0,
+      price_overlay_scope: priceOverlayScope,
+      auto_close_rule: 'CLOSE_ON_SOLD_OUT_OR_EXPIRY',
       environment,
     });
   }
@@ -200,6 +215,9 @@ Deno.serve(async (req) => {
         requires_approval: requiresApproval,
         exception_requires_manager: exceptionRequiresManager,
         high_qty_threshold: highQtyThreshold,
+        overlay_scope: priceOverlayScope,
+        item_master_price_mutated: false,
+        auto_close_rule: 'CLOSE_ON_SOLD_OUT_OR_EXPIRY',
         request_metadata: requestMetadata,
       }
     },
@@ -221,9 +239,19 @@ Deno.serve(async (req) => {
     action_type: 'MARKDOWN_CREATED',
     linked_source_record: batch.id,
     source_record_id: round1?.id || batch.id,
-    notes: `Markdown batch ${batchRef} created with ${allocatedQty} units. Status: ${initialStatus}. Reason: ${markdown_reason || 'not supplied'}. ${exceptionRequiresManager ? 'Exception guardrail applied.' : 'Standard markdown label printable immediately.'}`,
+    notes: `Markdown batch ${batchRef} created with ${allocatedQty} units. Status: ${initialStatus}. Reason: ${markdown_reason || 'not supplied'}. ${exceptionRequiresManager ? 'Exception guardrail applied; manager approval activates a scoped price overlay.' : 'Standard markdown scoped price overlay active immediately.'}`,
     environment,
   });
 
-  return Response.json({ success: true, batch, round1, requires_approval: requiresApproval, exception_requires_manager: exceptionRequiresManager, high_qty_threshold: highQtyThreshold });
+  return Response.json({
+    success: true,
+    batch,
+    round1,
+    requires_approval: requiresApproval,
+    exception_requires_manager: exceptionRequiresManager,
+    high_qty_threshold: highQtyThreshold,
+    overlay_scope: priceOverlayScope,
+    item_master_price_mutated: false,
+    auto_close_rule: 'CLOSE_ON_SOLD_OUT_OR_EXPIRY',
+  });
 });

@@ -97,6 +97,20 @@
       "default": 0,
       "description": "Units sold during this specific round"
     },
+
+    "price_overlay_scope": {
+      "type": "string",
+      "enum": [
+        "EXPIRY_DATE_QTY",
+        "CUSTOM_MANAGER_OVERLAY"
+      ],
+      "default": "EXPIRY_DATE_QTY",
+      "description": "Round price applies only to the affected expiry/date quantity group; it never changes Item Master price"
+    },
+    "auto_close_rule": {
+      "type": "string",
+      "description": "Auto-close rule, usually CLOSE_ON_SOLD_OUT_OR_EXPIRY"
+    },
     "environment": {
       "type": "string",
       "enum": [

@@ -2,8 +2,9 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
  * approveMarkdownBatch
- * Supervisor/Manager approves a Pending_Approval batch → Active.
- * Also creates Round 1 if initial price/expiry are supplied and no round exists yet.
+ * Supervisor/Manager approves a Pending_Approval batch by activating a
+ * temporary, quantity-limited price overlay. This never changes Item Master
+ * price and therefore cannot leave the normal SKU price stuck at markdown.
  */
 
 function normaliseRole(role) {
@@ -42,19 +43,27 @@ Deno.serve(async (req) => {
 
   const now = new Date().toISOString();
 
-  // Activate the batch
-  const updated = await base44.asServiceRole.entities.MarkdownBatch.update(batch_id, {
-    status: 'Active',
-    approved_by: user.id || user.email,
-    approved_at: now,
-  });
-
-  // Create Round 1 (always — approval requires price/expiry)
   const origPrice = initial_original_price ? Number(initial_original_price) : Number(initial_markdown_price);
   const mdPrice = Number(initial_markdown_price);
   const discountPct = origPrice > 0
     ? Math.round((1 - mdPrice / origPrice) * 10000) / 100
     : 0;
+  const priceOverlayScope = batch?.settings_snapshot?.request_metadata?.price_overlay_scope || 'EXPIRY_DATE_QTY';
+
+  // Activate the quantity/date scoped overlay. Item Master price remains untouched.
+  const updated = await base44.asServiceRole.entities.MarkdownBatch.update(batch_id, {
+    status: 'Active',
+    approved_by: user.id || user.email,
+    approved_at: now,
+    price_overlay_scope: priceOverlayScope,
+    overlay_original_unit_price: origPrice,
+    overlay_markdown_unit_price: mdPrice,
+    overlay_discount_percent: discountPct,
+    overlay_expiry_date: initial_expiry_date,
+    item_master_price_mutated: false,
+  });
+
+  // Create Round 1 overlay (always — approval requires price/expiry)
   const barcode = `MD-${batch_id.slice(-6).toUpperCase()}-R1-${Date.now().toString(36).toUpperCase()}`;
 
   const round1 = await base44.asServiceRole.entities.MarkdownRound.create({
@@ -72,6 +81,8 @@ Deno.serve(async (req) => {
     qty_at_round_start: batch.allocated_qty,
     qty_sold_in_round: 0,
     print_count: 0,
+    price_overlay_scope: priceOverlayScope,
+    auto_close_rule: 'CLOSE_ON_SOLD_OUT_OR_EXPIRY',
     environment: batch.environment || 'LIVE',
   });
 
@@ -84,8 +95,13 @@ Deno.serve(async (req) => {
       user_role: role,
       payload: {
         before: { status: 'Pending_Approval' },
-        after: { status: 'Active', round1_id: round1.id, barcode },
-        meta: { approval_notes: approval_notes || '' }
+        after: { status: 'Active', round1_id: round1.id, barcode, overlay_price: mdPrice, overlay_expiry_date: initial_expiry_date },
+        meta: {
+          approval_notes: approval_notes || '',
+          manager_action_type: 'APPROVE_TEMPORARY_PRICE_OVERLAY',
+          item_master_price_mutated: false,
+          auto_close_rule: 'CLOSE_ON_SOLD_OUT_OR_EXPIRY',
+        }
       },
       created_at: now,
       environment: batch.environment || 'LIVE',
@@ -104,7 +120,7 @@ Deno.serve(async (req) => {
       action_type: 'MARKDOWN_APPROVED',
       linked_source_record: batch_id,
       source_record_id: round1.id,
-      notes: approval_notes || `Batch approved. Round 1 created @ ₱${mdPrice}. Barcode: ${barcode}.`,
+      notes: approval_notes || `Temporary price overlay approved @ ₱${mdPrice}. Item Master price unchanged. Barcode/session: ${barcode}.`,
       environment: batch.environment || 'LIVE',
     }),
   ]);

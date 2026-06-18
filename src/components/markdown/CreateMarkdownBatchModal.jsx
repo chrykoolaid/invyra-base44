@@ -157,7 +157,7 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
     }
 
     if (!form.initial_expiry_date) {
-      setError('Enter the expiry / sell-by date that will control the markdown label.');
+      setError('Enter the expiry / sell-by date that will control the temporary markdown overlay.');
       return;
     }
 
@@ -167,12 +167,12 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
     }
 
     if (!markdownPrice || markdownPrice <= 0) {
-      setError(isCustomPriceOverride ? 'Enter the manager override label price.' : 'Select a markdown discount so the label price can be calculated.');
+      setError(isCustomPriceOverride ? 'Enter the manager override overlay price.' : 'Select a markdown discount so the overlay price can be calculated.');
       return;
     }
 
     if (markdownPrice > originalPrice) {
-      setError('Markdown label price cannot be higher than the original shelf price.');
+      setError('Markdown overlay price cannot be higher than the original shelf price.');
       return;
     }
 
@@ -234,11 +234,11 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
           </div>
           {result.requires_approval ? (
             <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-700">
-              Exception captured. Supervisor/Manager handling is required because this request exceeded the normal markdown guardrail.
+              Exception captured. Supervisor/Manager approval is required to activate the temporary price overlay; the Item Master price remains unchanged.
             </div>
           ) : (
             <div className="mb-4 p-3 rounded-lg border border-green-200 bg-green-50 text-xs text-green-700">
-              Standard markdown created. Round 1 label is printable immediately; the event remains visible for desktop audit and monitoring.
+              Standard scoped markdown price is active. ScanOps/POS can use the temporary overlay until the affected quantity is sold out or the expiry window closes.
             </div>
           )}
           <button onClick={onClose} className="h-9 px-6 bg-primary text-primary-foreground rounded hover:opacity-90 text-sm">
@@ -254,7 +254,7 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
       <div className="w-full max-w-3xl bg-card border border-border rounded-xl shadow-xl max-h-[92vh] overflow-hidden flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Manual Markdown Request</h2>
+            <h2 className="text-base font-semibold text-foreground">Manual Markdown Exception Entry</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Fallback/admin entry only — normal markdown captures come from ScanOps sync</p>
           </div>
           <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground">
@@ -273,8 +273,8 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
               <p className="text-xs text-muted-foreground mt-1">Only counted units enter the markdown request.</p>
             </div>
             <div className="rounded-xl border border-border bg-muted/20 p-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Tag size={16} /> 3. Discount/date label</div>
-              <p className="text-xs text-muted-foreground mt-1">Standard labels print immediately; exceptions route to manager.</p>
+              <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><Tag size={16} /> 3. Scoped price/date</div>
+              <p className="text-xs text-muted-foreground mt-1">Standard overlays activate immediately; exceptions route to manager approval.</p>
             </div>
           </div>
 
@@ -387,24 +387,24 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
                   min="0.01"
                   value={form.initial_markdown_price}
                   onChange={(event) => { setForm((current) => ({ ...current, initial_markdown_price: event.target.value })); setError(''); }}
-                  placeholder="Manager override label price"
+                  placeholder="Manager override overlay price"
                   className="w-full h-10 border border-amber-300 rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-amber-400"
                   required
                 />
               ) : (
                 <div className="h-10 rounded-lg border border-border bg-muted/30 px-3 flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Calculated label price</span>
+                  <span className="text-muted-foreground">Calculated overlay price</span>
                   <span className="font-semibold text-foreground">{markdownPrice > 0 ? formatMoney(markdownPrice) : '—'}</span>
                 </div>
               )}
-              {discountPercent !== null && <p className="text-xs text-muted-foreground">Markdown discount: {discountPercent.toFixed(1)}% off · Label price: {formatMoney(markdownPrice)}</p>}
+              {discountPercent !== null && <p className="text-xs text-muted-foreground">Markdown discount: {discountPercent.toFixed(1)}% off · Overlay price: {formatMoney(markdownPrice)}</p>}
             </div>
           </section>
 
           {(isHighQtyException || isCustomPriceOverride) && (
             <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800">
-              <strong>Exception guardrail:</strong> {isHighQtyException ? `Line quantity is over ${HIGH_QTY_REVIEW_THRESHOLD}; supervisor/manager handling is required. ` : ''}{isCustomPriceOverride ? 'Custom label price is a manager override. ' : ''}
-              Standard markdowns within the guardrail can print immediately.
+              <strong>Exception guardrail:</strong> {isHighQtyException ? `Line quantity is over ${HIGH_QTY_REVIEW_THRESHOLD}; supervisor/manager handling is required. ` : ''}{isCustomPriceOverride ? 'Custom overlay price is a manager override. ' : ''}
+              Standard markdowns within the guardrail can activate immediately without changing the normal SKU price.
             </div>
           )}
 
@@ -452,7 +452,7 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
           </div>
 
           <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-800">
-            <strong>Governance:</strong> Standard markdown labels are printable immediately within configured guardrails. Supervisor/Manager handling is only required for high-quantity lines, custom price overrides, or other exception rules. Stock is not deducted at request/label stage; final stock movement still depends on POS sale, recovery, or confirmed disposition.
+            <strong>Governance:</strong> Standard markdown overlays are active immediately within configured guardrails. Supervisor/Manager handling is only required for high-quantity lines, custom price overrides, or other exception rules. Item Master price is never changed; the overlay auto-closes when the affected quantity sells out, expires, or is manually closed. Stock is not deducted until POS sale, recovery, or confirmed disposition.
           </div>
 
           {error && (
@@ -465,7 +465,7 @@ export default function CreateMarkdownBatchModal({ onClose, onCreated }) {
           <div className="flex justify-end gap-2 pt-1 border-t border-border pt-4">
             <button type="button" onClick={onClose} className="h-9 px-4 text-sm border border-border rounded hover:bg-muted">Cancel</button>
             <button type="submit" disabled={saving} className="h-9 px-4 text-sm bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-50">
-              {saving ? 'Submitting…' : 'Create Markdown Label Request'}
+              {saving ? 'Submitting…' : 'Submit Markdown Exception'}
             </button>
           </div>
         </form>

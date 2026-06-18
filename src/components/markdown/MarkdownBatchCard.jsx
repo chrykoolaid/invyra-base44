@@ -15,6 +15,13 @@ export default function MarkdownBatchCard({ batch, onRefresh, statusStyle }) {
 
   const st = statusStyle[batch.status] || 'bg-slate-100 text-slate-600 border-slate-200';
   const sellPct = batch.sell_through_pct || 0;
+  const requestMetadata = batch.settings_snapshot?.request_metadata || {};
+  const isManagerExceptionOverlay = Boolean(
+    requestMetadata.exception_requires_manager ||
+    requestMetadata.threshold_exceeded ||
+    requestMetadata.manual_price_override ||
+    batch.price_overlay_scope === 'CUSTOM_MANAGER_OVERLAY'
+  );
 
   const loadRounds = async () => {
     if (rounds) return rounds;
@@ -88,6 +95,8 @@ export default function MarkdownBatchCard({ batch, onRefresh, statusStyle }) {
               { label: 'Removed from Floor', val: batch.removed_from_floor_qty || 0 },
               { label: 'Initiated By', val: batch.initiated_by || '—' },
               { label: 'Approved By', val: batch.approved_by || 'Pending' },
+              { label: 'Price Scope', val: batch.price_overlay_scope ? String(batch.price_overlay_scope).replace(/_/g, ' ') : 'Expiry/date qty' },
+              { label: 'Item Master Price', val: batch.item_master_price_mutated ? 'Changed' : 'Unchanged' },
             ].map(({ label, val }) => (
               <div key={label} className="bg-muted/40 rounded p-2">
                 <p className="text-muted-foreground mb-0.5">{label}</p>
@@ -123,26 +132,34 @@ export default function MarkdownBatchCard({ batch, onRefresh, statusStyle }) {
                 onClick={() => openModal('approve')}
                 className="flex items-center gap-1.5 h-7 px-3 text-xs bg-green-600 text-white rounded hover:opacity-90"
               >
-                <CheckCircle size={12} /> Approve Batch
+                <CheckCircle size={12} /> Approve Overlay
               </button>
             )}
 
             {batch.status === 'Active' && activeRound && (
               <>
-                <button
-                  onClick={() => openModal('print')}
-                  disabled={activeRound.print_count > 0}
-                  className="flex items-center gap-1.5 h-7 px-3 text-xs bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-40"
-                  title={activeRound.print_count > 0 ? 'Initial print done — use Reprint' : 'Print initial label'}
-                >
-                  <Printer size={12} /> Print Label
-                </button>
-                <button
-                  onClick={() => openModal('reprint')}
-                  className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted text-foreground"
-                >
-                  <Printer size={12} /> Reprint
-                </button>
+                {isManagerExceptionOverlay ? (
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border border-green-200 bg-green-50 text-green-700">
+                    <CheckCircle size={12} /> Temporary price overlay active — closes on sold-out or expiry
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => openModal('print')}
+                      disabled={activeRound.print_count > 0}
+                      className="flex items-center gap-1.5 h-7 px-3 text-xs bg-primary text-primary-foreground rounded hover:opacity-90 disabled:opacity-40"
+                      title={activeRound.print_count > 0 ? 'Initial print done — use Reprint' : 'Print fallback label'}
+                    >
+                      <Printer size={12} /> Print Label
+                    </button>
+                    <button
+                      onClick={() => openModal('reprint')}
+                      className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted text-foreground"
+                    >
+                      <Printer size={12} /> Reprint
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => openModal('progress')}
                   className="flex items-center gap-1.5 h-7 px-3 text-xs border border-border rounded bg-card hover:bg-muted text-foreground"
