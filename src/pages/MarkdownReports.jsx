@@ -31,6 +31,20 @@ const GROUP_OPTIONS = [
   { key: 'monthly', label: 'Monthly' },
 ];
 
+const CLOSURE_REASON_OPTIONS = [
+  'Public holiday',
+  'Christmas / seasonal closure',
+  'Planned store closure',
+  'Emergency closure',
+  'Stocktake closure',
+  'Renovation / maintenance',
+  'Trading hours change',
+  'System / POS outage',
+  'Weather / safety closure',
+  'Other',
+];
+
+
 function pad(value) {
   return String(value).padStart(2, '0');
 }
@@ -258,7 +272,8 @@ export default function MarkdownReports() {
   const [takeoffDate, setTakeoffDate] = useState(toDateInput(addDays(new Date(), 1)));
   const [closureDate, setClosureDate] = useState(toDateInput(addDays(new Date(), 1)));
   const [nextTradingDay, setNextTradingDay] = useState(toDateInput(addDays(new Date(), 2)));
-  const [closureReason, setClosureReason] = useState('Holiday / planned closure');
+  const [closureReason, setClosureReason] = useState('Public holiday');
+  const [closureNote, setClosureNote] = useState('');
   const [includeClosurePlanning, setIncludeClosurePlanning] = useState(true);
   const [printMode, setPrintMode] = useState('takeoff');
 
@@ -410,6 +425,10 @@ export default function MarkdownReports() {
     return Object.entries(counts).map(([type, count]) => ({ type: type.replace(/_/g, ' '), count }));
   }, [filteredEvents]);
 
+  const closureReasonDisplay = closureReason === 'Other' && closureNote.trim()
+    ? `Other — ${closureNote.trim()}`
+    : closureReason;
+
   const handlePrint = (mode) => {
     setPrintMode(mode);
     window.setTimeout(() => window.print(), 75);
@@ -528,7 +547,26 @@ export default function MarkdownReports() {
             </div>
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Closure reason</label>
-              <input value={closureReason} onChange={(event) => setClosureReason(event.target.value)} className="mt-1 h-9 w-full rounded border border-border bg-background px-3 text-sm" placeholder="e.g. Christmas Day" />
+              <select
+                value={closureReason}
+                onChange={(event) => setClosureReason(event.target.value)}
+                className="mt-1 h-9 w-full rounded border border-border bg-background px-3 text-sm"
+              >
+                {CLOSURE_REASON_OPTIONS.map((reason) => (
+                  <option key={reason} value={reason}>{reason}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Closure note {closureReason === 'Other' ? '*' : ''}
+              </label>
+              <input
+                value={closureNote}
+                onChange={(event) => setClosureNote(event.target.value)}
+                className="mt-1 h-9 w-full rounded border border-border bg-background px-3 text-sm"
+                placeholder={closureReason === 'Other' ? 'Required details' : 'Optional details, e.g. Christmas Day'}
+              />
             </div>
             <label className="flex items-center gap-2 text-sm text-muted-foreground pb-2">
               <input type="checkbox" checked={includeClosurePlanning} onChange={(event) => setIncludeClosurePlanning(event.target.checked)} />
@@ -701,7 +739,7 @@ export default function MarkdownReports() {
           <div>
             <h1>Markdown Take-Off Sheet</h1>
             <p>Take-off / shelf-check date: {formatDate(takeoffDate)}</p>
-            <p>Closed-store date: {formatDate(closureDate)} · Next trading day: {formatDate(nextTradingDay)} · Reason: {closureReason || '—'}</p>
+            <p>Closed-store date: {formatDate(closureDate)} · Next trading day: {formatDate(nextTradingDay)} · Reason: {closureReasonDisplay || '—'}</p>
             <p>Generated: {formatDateTime(new Date().toISOString())}</p>
             <table>
               <thead><tr><th>Item</th><th>SKU</th><th>Expiry/Sell-by</th><th>Markdown</th><th>Qty Marked</th><th>Sold</th><th>Remaining</th><th>Action</th><th>Staff Initials</th></tr></thead>
