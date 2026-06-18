@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Search, Download, TrendingUp } from 'lucide-react';
+import { Search, Download } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { stockOutRepository } from '@/services/wasteEngine/stockOutRepository.js';
@@ -365,6 +365,54 @@ export default function ReportsTab({ refreshTick }) {
     );
   };
 
+
+  const groupLabel = {
+    reason: 'Reason / Group',
+    sku: 'SKU / Item',
+    item: 'Item',
+    user: 'User',
+    location: 'Location',
+    source: 'Source',
+    department: 'Department',
+    costcentre: 'Cost Centre',
+    status: 'Status',
+    type: 'Type',
+  }[groupBy] || 'Reason / Group';
+
+  const getGroupSubtitle = (items) => {
+    if (groupBy === 'sku') {
+      return items.find(r => r.item_name)?.item_name || '';
+    }
+    if (groupBy === 'item') {
+      return items.find(r => r.sku)?.sku || '';
+    }
+    return '';
+  };
+
+  const getGroupMetrics = (items) => {
+    const grossRecords = items.filter(r => r.status === 'POSTED' || r.status === 'REVERSED' || r.status === 'AMENDED');
+    const reversedRecords = items.filter(r => r.status === 'REVERSED');
+    const pendingRecords = items.filter(r => r.status === 'DRAFT' || r.status === 'SUBMITTED');
+    const rejectedRecords = items.filter(r => r.status === 'REJECTED');
+
+    const grossValue = grossRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const reversedValue = reversedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const pendingValue = pendingRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const rejectedValue = rejectedRecords.reduce((s, r) => s + (r.estimated_value || 0), 0);
+    const totalValue = items.reduce((s, r) => s + (r.estimated_value || 0), 0);
+
+    return {
+      records: items.length,
+      units: items.reduce((s, r) => s + (r.quantity || 0), 0),
+      grossValue,
+      reversedValue,
+      netValue: grossValue - reversedValue,
+      pendingValue,
+      rejectedValue,
+      totalValue,
+    };
+  };
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -579,38 +627,45 @@ export default function ReportsTab({ refreshTick }) {
             </div>
           ) : Object.keys(grouped).length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm font-medium text-foreground mb-1">No records match filters</p>
-              <p className="text-xs text-muted-foreground">Try adjusting date range or filters</p>
+              <p className="text-sm font-medium text-foreground mb-1">No stock-out records found</p>
+              <p className="text-xs text-muted-foreground">Try adjusting your filters or date range.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {Object.entries(grouped)
-                .sort(([, a], [, b]) => (b.reduce((s, r) => s + (r.estimated_value || 0), 0)) - (a.reduce((s, r) => s + (r.estimated_value || 0), 0)))
-                .map(([key, items]) => {
-                  const groupQty = items.reduce((s, r) => s + (r.quantity || 0), 0);
-                  const groupValue = items.reduce((s, r) => s + (r.estimated_value || 0), 0);
-                  const percentage = summary.netValue > 0 ? (groupValue / summary.netValue) * 100 : 0;
-                  return (
-                    <div key={key} className="border border-border rounded-xl p-4 bg-background/40">
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div>
-                          <p className="font-medium text-foreground text-sm flex items-center gap-2">
-                            {key}
-                            <TrendingUp size={14} className="text-muted-foreground" />
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">{items.length} records · {groupQty} units · {percentage.toFixed(1)}%</p>
-                        </div>
-                        <p className="font-semibold text-foreground whitespace-nowrap">₱{groupValue.toFixed(0)}</p>
-                      </div>
-                      <div className="w-full bg-muted rounded h-2">
-                        <div
-                          className="bg-primary h-2 rounded"
-                          style={{ width: `${Math.min(percentage, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
+            <div className="overflow-x-auto border border-border rounded-xl">
+              <table className="w-full min-w-[860px] text-sm">
+                <thead className="bg-muted/30 border-b border-border">
+                  <tr className="text-left text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                    <th className="px-4 py-3 font-semibold">{groupLabel}</th>
+                    <th className="px-4 py-3 font-semibold text-right">Records</th>
+                    <th className="px-4 py-3 font-semibold text-right">Units</th>
+                    <th className="px-4 py-3 font-semibold text-right">Gross Value</th>
+                    <th className="px-4 py-3 font-semibold text-right">Reversed</th>
+                    <th className="px-4 py-3 font-semibold text-right">Net Value</th>
+                    <th className="px-4 py-3 font-semibold text-right">Pending</th>
+                    <th className="px-4 py-3 font-semibold text-right">Rejected</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {Object.entries(grouped)
+                    .map(([key, items]) => ({ key, metrics: getGroupMetrics(items), subtitle: getGroupSubtitle(items) }))
+                    .sort((a, b) => b.metrics.totalValue - a.metrics.totalValue)
+                    .map(({ key, metrics, subtitle }) => (
+                      <tr key={key} className="bg-card hover:bg-muted/20">
+                        <td className="px-4 py-3 align-top">
+                          <p className="font-medium text-foreground">{key || 'N/A'}</p>
+                          {subtitle && <p className="text-[11px] text-muted-foreground mt-0.5">{subtitle}</p>}
+                        </td>
+                        <td className="px-4 py-3 align-top text-right font-medium text-foreground">{metrics.records}</td>
+                        <td className="px-4 py-3 align-top text-right text-foreground">{metrics.units}</td>
+                        <td className="px-4 py-3 align-top text-right font-semibold text-foreground">{formatCurrency(metrics.grossValue)}</td>
+                        <td className="px-4 py-3 align-top text-right font-semibold text-red-700">{formatCurrency(metrics.reversedValue)}</td>
+                        <td className="px-4 py-3 align-top text-right font-semibold text-green-700">{formatCurrency(metrics.netValue)}</td>
+                        <td className="px-4 py-3 align-top text-right font-semibold text-amber-700">{formatCurrency(metrics.pendingValue)}</td>
+                        <td className="px-4 py-3 align-top text-right font-semibold text-muted-foreground">{formatCurrency(metrics.rejectedValue)}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
