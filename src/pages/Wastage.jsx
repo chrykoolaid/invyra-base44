@@ -9,8 +9,10 @@ import ScannerIntakeTab from '@/components/wastage/ScannerIntakeTab';
 import AmendmentsTab from '@/components/wastage/AmendmentsTab';
 import AlertsTab from '@/components/wastage/AlertsTab';
 import ReportsTab from '@/components/wastage/ReportsTab';
+import OverviewTab from '@/components/wastage/OverviewTab';
 
 const mainTabs = [
+  { key: 'OVERVIEW', label: 'Overview' },
   { key: 'WASTAGE', label: 'Wastage' },
   { key: 'STORE_USE', label: 'Store Use' },
   { key: 'SCANNER_INTAKE', label: 'Scanner Intake' },
@@ -47,7 +49,7 @@ export default function Wastage() {
   const isManager = ['manager', 'admin', 'owner'].includes(role);
 
   const visibleTabs = mainTabs.filter(tab => {
-    if (tab.key === 'WASTAGE' || tab.key === 'STORE_USE') return true;
+    if (tab.key === 'OVERVIEW' || tab.key === 'WASTAGE' || tab.key === 'STORE_USE') return true;
     if (tab.key === 'SCANNER_INTAKE' && isSupervisor) return true;
     if (tab.key === 'AMENDMENTS' && isManager) return true;
     if (tab.key === 'ALERTS' && isManager) return true;
@@ -57,7 +59,7 @@ export default function Wastage() {
 
   const initialTab = (() => {
     const tab = searchParams.get('tab');
-    return visibleTabs.some((t) => t.key === tab) ? tab : 'WASTAGE';
+    return visibleTabs.some((t) => t.key === tab) ? tab : 'OVERVIEW';
   })();
 
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -109,6 +111,7 @@ export default function Wastage() {
         />
       )}
 
+      {activeTab === 'OVERVIEW' && <OverviewTab onNavigate={updateTab} />}
       {activeTab === 'WASTAGE' && <WastageTab refreshTick={refreshTick} />}
       {activeTab === 'STORE_USE' && <StoreUseTab refreshTick={refreshTick} />}
       {activeTab === 'SCANNER_INTAKE' && isSupervisor && <ScannerIntakeTab refreshTick={refreshTick} />}
