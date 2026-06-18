@@ -125,7 +125,7 @@ export default function OverviewTab({ onNavigate }) {
           base44.entities.StockOutRecord.list('-updated_date', 10),
         ]);
 
-        const pendingValue = submitted.reduce((s, r) => s + (r.estimated_value || 0), 0);
+        const pendingValue = [...drafts, ...submitted].reduce((s, r) => s + (r.estimated_value || 0), 0);
 
         setCounts({
           drafts: drafts.length,
