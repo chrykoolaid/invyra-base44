@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { X, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function ApproveBatchModal({ batch, onClose, onDone }) {
+  const requestMetadata = useMemo(() => batch?.settings_snapshot?.request_metadata || {}, [batch]);
   const [form, setForm] = useState({
     approval_notes: '',
-    initial_markdown_price: '',
-    initial_original_price: '',
-    initial_expiry_date: '',
+    initial_markdown_price: requestMetadata.initial_markdown_price || requestMetadata.proposed_markdown_price || '',
+    initial_original_price: requestMetadata.initial_original_price || '',
+    initial_expiry_date: requestMetadata.initial_expiry_date || requestMetadata.requested_expiry_date || '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -52,7 +53,15 @@ export default function ApproveBatchModal({ batch, onClose, onDone }) {
           <div className="p-3 rounded-lg bg-muted text-xs text-muted-foreground grid grid-cols-2 gap-2">
             <div><span className="block font-semibold text-foreground">SKU</span>{batch.sku}</div>
             <div><span className="block font-semibold text-foreground">Qty Allocated</span>{batch.allocated_qty}</div>
+            {requestMetadata.markdown_reason && <div><span className="block font-semibold text-foreground">Reason</span>{String(requestMetadata.markdown_reason).replace(/_/g, ' ')}</div>}
+            {requestMetadata.capture_method && <div><span className="block font-semibold text-foreground">Captured By</span>{String(requestMetadata.capture_method).replace(/_/g, ' ')}</div>}
           </div>
+
+          {(requestMetadata.request_notes || requestMetadata.scanner_session_ref) && (
+            <div className="p-3 rounded-lg border border-blue-100 bg-blue-50 text-xs text-blue-800">
+              <strong>Operator request evidence:</strong> {requestMetadata.request_notes || requestMetadata.scanner_session_ref}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Original Price (₱) *</label>

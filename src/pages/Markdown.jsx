@@ -84,7 +84,7 @@ async function safeFilter(entityName, query, sort, limit) {
   }
 }
 
-function SummaryCard({ icon: Icon, label, value, tone = 'default', to }) {
+function SummaryCard({ icon: Icon, label, value, tone = 'default' }) {
   const toneStyles = {
     default: 'border-border bg-card',
     amber: 'border-amber-200 bg-amber-50/40',
@@ -100,8 +100,8 @@ function SummaryCard({ icon: Icon, label, value, tone = 'default', to }) {
     green: 'text-green-600',
   };
 
-  const content = (
-    <div className={`border rounded-2xl px-4 py-3.5 ${toneStyles[tone]} ${to ? 'hover:shadow-sm hover:border-primary/30 transition-all' : ''}`}>
+  return (
+    <div className={`border rounded-2xl px-4 py-3.5 cursor-default select-none ${toneStyles[tone]}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground truncate">{label}</p>
         <Icon size={16} className={`${iconStyles[tone]} flex-shrink-0`} />
@@ -109,8 +109,6 @@ function SummaryCard({ icon: Icon, label, value, tone = 'default', to }) {
       <p className="text-2xl font-bold text-foreground mt-2">{value ?? '—'}</p>
     </div>
   );
-
-  return to ? <Link to={to}>{content}</Link> : content;
 }
 
 function EmptyState({ icon: Icon, title, description }) {
@@ -353,32 +351,47 @@ export default function Markdown() {
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 h-9 px-3 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90"
-          >
-            <Plus size={14} /> New Markdown Batch
-          </button>
-          <Link to="/Markdown/Monitor" className="flex items-center gap-1.5 h-9 px-3 text-sm border border-border rounded-lg bg-card hover:bg-muted text-foreground">
-            <Printer size={14} /> Print Monitor Sheet
-          </Link>
-          <button onClick={load} className="flex items-center gap-1.5 h-9 px-3 text-sm border border-border rounded-lg bg-card hover:bg-muted text-foreground">
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
-          </button>
-          <Link to="/Markdown/Reports" className="flex items-center gap-1.5 h-9 px-3 text-sm border border-border rounded-lg bg-card hover:bg-muted text-foreground">
-            <BarChart3 size={14} /> Reports
-          </Link>
-        </div>
+        <button onClick={load} className="flex items-center gap-1.5 h-9 px-3 text-sm border border-border rounded-lg bg-card hover:bg-muted text-foreground w-fit">
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+        </button>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
-        <SummaryCard icon={Tag} label="Active Batches" value={batches.filter((batch) => batch.status === 'Active').length} tone="green" to="/Markdown/Batches" />
-        <SummaryCard icon={Clock} label="Pending Approval" value={computed.pendingApproval.length} tone="amber" to="/Markdown/Batches" />
-        <SummaryCard icon={ClipboardList} label="In Review" value={computed.inReviewCount} tone="orange" to="/Markdown/ReviewQueue" />
-        <SummaryCard icon={CheckCircle2} label="Ready for Disposition" value={computed.readyForDisposition.length} tone="blue" to="/Markdown/ReviewQueue" />
-        <SummaryCard icon={Printer} label="Labels Printed Today" value={printEventsAvailable ? computed.printedToday.length : '—'} tone="default" to="/Markdown/Monitor" />
+        <SummaryCard icon={Tag} label="Active Batches" value={batches.filter((batch) => batch.status === 'Active').length} tone="green" />
+        <SummaryCard icon={Clock} label="Pending Approval" value={computed.pendingApproval.length} tone="amber" />
+        <SummaryCard icon={ClipboardList} label="In Review" value={computed.inReviewCount} tone="orange" />
+        <SummaryCard icon={CheckCircle2} label="Ready for Disposition" value={computed.readyForDisposition.length} tone="blue" />
+        <SummaryCard icon={Printer} label="Labels Printed Today" value={printEventsAvailable ? computed.printedToday.length : '—'} tone="default" />
       </div>
+
+      <section className="border border-border rounded-2xl bg-card p-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Workflow Tabs</p>
+            <p className="text-xs text-muted-foreground mt-0.5">KPI cards are read-only. Use these actions to move between markdown work areas.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-1.5 h-9 px-3 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90"
+            >
+              <Plus size={14} /> Start Markdown Request
+            </button>
+            {SECONDARY_LINKS.map((link) => {
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={link.id}
+                  to={link.path}
+                  className="flex items-center gap-1.5 h-9 px-3 text-sm border border-border rounded-lg bg-background hover:bg-muted text-foreground"
+                >
+                  <Icon size={14} /> {link.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
 
       {loading ? (
         <div className="flex items-center justify-center py-20 border border-border rounded-2xl bg-card">
