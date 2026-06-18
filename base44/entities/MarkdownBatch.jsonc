@@ -122,6 +122,43 @@
       "default": false,
       "description": "Must remain false. Markdown overlays do not change the normal SKU price."
     },
+    "planned_takeoff_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Future-dated shelf check / take-off date for unsold marked-down stock, especially useful around holidays or closed-store days."
+    },
+    "store_closed_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Optional planned closure date, e.g. Christmas Day, that requires advance markdown take-off planning."
+    },
+    "next_trading_day": {
+      "type": "string",
+      "format": "date",
+      "description": "Next trading day after a closure; used to print reopening shelf-check lists."
+    },
+    "holiday_flag": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this markdown is part of holiday or closed-store planning."
+    },
+    "closure_reason": {
+      "type": "string",
+      "description": "Human-readable reason for closure planning, e.g. Christmas Day, Easter, store maintenance."
+    },
+    "takeoff_status": {
+      "type": "string",
+      "enum": [
+        "Pending_Check",
+        "Removed",
+        "Sold_Out",
+        "Auto_Closed",
+        "Manually_Closed",
+        "Verified_Clear"
+      ],
+      "default": "Pending_Check",
+      "description": "Operational follow-up status for printable Markdown Take-Off Sheets."
+    },
     "site_id": {
       "type": "string",
       "description": "Reference to Site.id"
