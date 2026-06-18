@@ -3,26 +3,64 @@ import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { CheckCircle2, Search, X } from 'lucide-react';
 
-export default function RecordStockOutModal({ onClose, onSuccess }) {
-  const [step, setStep] = useState('class'); // 'class', 'details'
-  const [stockOutClass, setStockOutClass] = useState('WASTAGE');
+const EDITABLE_FIELDS = [
+  'quantity',
+  'reason_category',
+  'reason_notes',
+  'location',
+  'department',
+  'cost_centre',
+  'site_id',
+];
+
+function normaliseValue(value) {
+  if (value === null || value === undefined) return '';
+  return String(value);
+}
+
+function formatMoney(value) {
+  return `₱${Number(value || 0).toFixed(0)}`;
+}
+
+function buildChangedFields(originalRecord, nextPayload) {
+  if (!originalRecord) return [];
+
+  return EDITABLE_FIELDS
+    .map((field) => {
+      const oldValue = field === 'quantity'
+        ? Number(originalRecord[field] || 0)
+        : normaliseValue(originalRecord[field]);
+      const newValue = field === 'quantity'
+        ? Number(nextPayload[field] || 0)
+        : normaliseValue(nextPayload[field]);
+
+      if (oldValue === newValue) return null;
+      return { field, old_value: oldValue, new_value: newValue };
+    })
+    .filter(Boolean);
+}
+
+export default function RecordStockOutModal({ onClose, onSuccess, initialRecord = null }) {
+  const isEditMode = Boolean(initialRecord?.id);
+  const [step, setStep] = useState(isEditMode ? 'details' : 'class'); // 'class', 'details'
+  const [stockOutClass, setStockOutClass] = useState(initialRecord?.stock_out_class || 'WASTAGE');
   const [items, setItems] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(false);
   const [itemSearch, setItemSearch] = useState('');
 
   const [form, setForm] = useState({
-    item_id: '',
-    item_name: '',
-    sku: '',
-    available_stock: 0,
-    quantity: '',
-    reason_category: '',
-    reason_notes: '',
-    location: '',
-    department: '',
-    cost_centre: '',
-    site_id: '',
+    item_id: initialRecord?.item_id || '',
+    item_name: initialRecord?.item_name || '',
+    sku: initialRecord?.sku || '',
+    available_stock: Number(initialRecord?.available_stock || 0),
+    quantity: initialRecord?.quantity ? String(initialRecord.quantity) : '',
+    reason_category: initialRecord?.reason_category || '',
+    reason_notes: initialRecord?.reason_notes || '',
+    location: initialRecord?.location || '',
+    department: initialRecord?.department || '',
+    cost_centre: initialRecord?.cost_centre || '',
+    site_id: initialRecord?.site_id || '',
   });
 
   useEffect(() => {
@@ -38,6 +76,14 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
     () => items.find(item => item.id === form.item_id),
     [items, form.item_id]
   );
+
+  useEffect(() => {
+    if (!selectedItem) return;
+    setForm(prev => ({
+      ...prev,
+      available_stock: Number(selectedItem.stock || prev.available_stock || 0),
+    }));
+  }, [selectedItem]);
 
   const filteredItems = useMemo(() => {
     const query = itemSearch.trim().toLowerCase();
@@ -65,6 +111,8 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
   }, [items, itemSearch]);
 
   const selectedAvailableStock = Number(form.available_stock ?? selectedItem?.stock ?? 0);
+  const fallbackCostPerUnit = initialRecord?.quantity ? Number(initialRecord.estimated_value || 0) / Number(initialRecord.quantity || 1) : 0;
+  const costPerUnit = Number(selectedItem?.cost_per_unit ?? selectedItem?.unit_cost ?? fallbackCostPerUnit ?? 0);
   const quantityNumber = Number(form.quantity);
   const hasQuantity = form.quantity !== '';
   const quantityInvalid = hasQuantity && (
@@ -72,15 +120,40 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
     quantityNumber <= 0 ||
     (selectedAvailableStock > 0 && quantityNumber > selectedAvailableStock)
   );
-  const canCreateDraft = Boolean(
+  const estimatedValue = quantityInvalid || !hasQuantity ? 0 : quantityNumber * costPerUnit;
+  const originalEstimatedValue = Number(initialRecord?.estimated_value || 0);
+
+  const draftPayload = useMemo(() => ({
+    quantity: hasQuantity ? quantityNumber : 0,
+    reason_category: form.reason_category,
+    reason_notes: form.reason_notes,
+    location: form.location,
+    department: form.department,
+    cost_centre: form.cost_centre,
+    site_id: form.site_id,
+    estimated_value: estimatedValue,
+    stock_out_class: stockOutClass,
+  }), [estimatedValue, form.cost_centre, form.department, form.location, form.reason_category, form.reason_notes, form.site_id, hasQuantity, quantityNumber, stockOutClass]);
+
+  const changedFields = useMemo(
+    () => buildChangedFields(initialRecord, draftPayload),
+    [initialRecord, draftPayload]
+  );
+
+  const estimatedValueChanged = isEditMode && Number(originalEstimatedValue || 0) !== Number(estimatedValue || 0);
+  const hasChanges = isEditMode && (changedFields.length > 0 || estimatedValueChanged);
+
+  const canSaveDraft = Boolean(
     form.item_id &&
     hasQuantity &&
     !quantityInvalid &&
     form.reason_category &&
-    !loading
+    !loading &&
+    (!isEditMode || hasChanges)
   );
 
   const handleSelectItem = (item) => {
+    if (isEditMode) return;
     setForm(prev => ({
       ...prev,
       item_id: item.id,
@@ -91,6 +164,7 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
   };
 
   const handleChangeItem = () => {
+    if (isEditMode) return;
     setForm(prev => ({
       ...prev,
       item_id: '',
@@ -99,6 +173,83 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
       available_stock: 0,
       quantity: '',
     }));
+  };
+
+  const createDraft = async () => {
+    await base44.functions.invoke('createStockOutRecord', {
+      item_id: form.item_id,
+      item_name: form.item_name,
+      sku: form.sku,
+      stock_out_class: stockOutClass,
+      quantity: Number(form.quantity),
+      reason_category: form.reason_category,
+      reason_notes: form.reason_notes,
+      location: form.location,
+      department: form.department,
+      cost_centre: form.cost_centre,
+      site_id: form.site_id,
+      source: 'MANUAL',
+      environment: 'LIVE',
+    });
+  };
+
+  const updateDraft = async () => {
+    if (!initialRecord || initialRecord.status !== 'DRAFT') {
+      throw new Error('Only DRAFT stock-out records can be edited.');
+    }
+
+    const user = await base44.auth.me().catch(() => null);
+    const now = new Date().toISOString();
+
+    await base44.entities.StockOutRecord.update(initialRecord.id, {
+      quantity: Number(form.quantity),
+      reason_category: form.reason_category,
+      reason_notes: form.reason_notes,
+      location: form.location,
+      department: form.department,
+      cost_centre: form.cost_centre,
+      site_id: form.site_id,
+      estimated_value: estimatedValue,
+      environment: initialRecord.environment || 'LIVE',
+    });
+
+    await base44.entities.AuditLog.create({
+      item_id: initialRecord.item_id,
+      sku: initialRecord.sku,
+      item_name: initialRecord.item_name,
+      change_type: 'STOCK_WASTE',
+      field_name: 'stock_out_draft',
+      old_value: JSON.stringify({
+        quantity: initialRecord.quantity,
+        reason_category: initialRecord.reason_category,
+        reason_notes: initialRecord.reason_notes || '',
+        location: initialRecord.location || '',
+        department: initialRecord.department || '',
+        cost_centre: initialRecord.cost_centre || '',
+        site_id: initialRecord.site_id || '',
+        estimated_value: originalEstimatedValue,
+      }),
+      new_value: JSON.stringify({
+        quantity: Number(form.quantity),
+        reason_category: form.reason_category,
+        reason_notes: form.reason_notes || '',
+        location: form.location || '',
+        department: form.department || '',
+        cost_centre: form.cost_centre || '',
+        site_id: form.site_id || '',
+        estimated_value: estimatedValue,
+        changed_fields: changedFields,
+        updated_at: now,
+      }),
+      changed_by: user?.email || user?.id || 'unknown',
+      actor_role: user?.role || 'unknown',
+      source_module: 'StockOut',
+      action_type: 'STOCK_OUT_DRAFT_UPDATED',
+      linked_source_record: initialRecord.id,
+      source_record_id: initialRecord.id,
+      notes: 'Draft stock-out updated before submission. No StockMovement was created.',
+      environment: initialRecord.environment || 'LIVE',
+    });
   };
 
   const handleSubmit = async () => {
@@ -112,27 +263,22 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
       return;
     }
 
+    if (isEditMode && !hasChanges) {
+      alert('No draft changes to save');
+      return;
+    }
+
     setLoading(true);
     try {
-      await base44.functions.invoke('createStockOutRecord', {
-        item_id: form.item_id,
-        item_name: form.item_name,
-        sku: form.sku,
-        stock_out_class: stockOutClass,
-        quantity: Number(form.quantity),
-        reason_category: form.reason_category,
-        reason_notes: form.reason_notes,
-        location: form.location,
-        department: form.department,
-        cost_centre: form.cost_centre,
-        site_id: form.site_id,
-        source: 'MANUAL',
-        environment: 'LIVE',
-      });
+      if (isEditMode) {
+        await updateDraft();
+      } else {
+        await createDraft();
+      }
       onSuccess();
     } catch (error) {
-      console.error('Error creating record:', error);
-      alert('Failed to create record');
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} record:`, error);
+      alert(`Failed to ${isEditMode ? 'save draft' : 'create record'}`);
     } finally {
       setLoading(false);
     }
@@ -180,11 +326,17 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-card rounded-2xl border border-border max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-lg">
+      <div className="bg-card rounded-2xl border border-border max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-lg">
         <div className="sticky top-0 flex items-center justify-between p-4 border-b border-border bg-card z-10">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Record {stockOutClass === 'WASTAGE' ? 'Wastage' : 'Store Use'}</h2>
-            <p className="text-xs text-muted-foreground mt-1">Create a draft stock-out record</p>
+            <h2 className="text-base font-semibold text-foreground">
+              {isEditMode ? 'Edit Stock-Out Draft' : `Record ${stockOutClass === 'WASTAGE' ? 'Wastage' : 'Store Use'}`}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isEditMode
+                ? 'Correct draft details before submission. No stock movement has posted yet.'
+                : 'Create a draft stock-out record'}
+            </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X size={18} />
@@ -192,11 +344,12 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
         </div>
 
         <div className="p-4 space-y-4">
-          {/* Item selection */}
           <div>
             <div className="flex items-center justify-between gap-3 mb-2">
-              <label className="text-xs font-medium text-muted-foreground block">Item</label>
-              {form.item_id && (
+              <label className="text-xs font-medium text-muted-foreground block">
+                {isEditMode ? 'Selected Item' : 'Item'}
+              </label>
+              {form.item_id && !isEditMode && (
                 <button
                   type="button"
                   onClick={handleChangeItem}
@@ -213,8 +366,13 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{form.item_name}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {form.sku || 'No SKU'} · Stock: {selectedAvailableStock}
+                      {form.sku || 'No SKU'} · Available stock: {selectedAvailableStock}
                     </p>
+                    {isEditMode && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Item is locked in edit mode. Delete this draft and create a new one if the item is wrong.
+                      </p>
+                    )}
                   </div>
                   <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary">
                     <CheckCircle2 size={13} />
@@ -385,24 +543,50 @@ export default function RecordStockOutModal({ onClose, onSuccess }) {
                   rows="3"
                 />
               </div>
+
+              {isEditMode && hasChanges && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-semibold text-amber-900 mb-2">Draft Change Preview</p>
+                  <div className="space-y-1 text-xs text-amber-900">
+                    {changedFields.map(change => (
+                      <p key={change.field}>
+                        {change.field.replaceAll('_', ' ')}: <span className="font-medium">{String(change.old_value || 'Blank')}</span> → <span className="font-medium">{String(change.new_value || 'Blank')}</span>
+                      </p>
+                    ))}
+                    {estimatedValueChanged && (
+                      <p>
+                        Estimated value: <span className="font-medium">{formatMoney(originalEstimatedValue)}</span> → <span className="font-medium">{formatMoney(estimatedValue)}</span>
+                      </p>
+                    )}
+                    <p className="font-medium">Stock movement: None until approval</p>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
 
         <div className="sticky bottom-0 flex items-center justify-between gap-3 p-4 border-t border-border bg-card">
-          <button
-            onClick={() => form.item_id ? handleChangeItem() : onClose()}
-            className="px-4 h-9 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
-          >
-            {form.item_id ? 'Change Item' : 'Cancel'}
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!canCreateDraft}
-            className="px-4 h-9 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-          >
-            {loading ? 'Creating...' : 'Create Draft'}
-          </button>
+          <p className="hidden sm:block text-xs text-muted-foreground">
+            {isEditMode
+              ? 'Draft changes are audit logged. No stock movement posts until approval.'
+              : 'Stock movement will only post after approval.'}
+          </p>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={onClose}
+              className="px-4 h-9 rounded-xl border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={!canSaveDraft}
+              className="px-4 h-9 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+            >
+              {loading ? (isEditMode ? 'Saving...' : 'Creating...') : (isEditMode ? 'Save Draft' : 'Create Draft')}
+            </button>
+          </div>
         </div>
       </div>
     </div>

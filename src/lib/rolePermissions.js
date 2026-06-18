@@ -58,3 +58,17 @@ export function canSubmitStockOut(role, user, record) {
   if (r === 'staff') return isOwnStockOutDraft(user, record);
   return ['supervisor', 'manager', 'admin', 'owner'].includes(r);
 }
+
+export function canEditStockOutDraft(role, user, record) {
+  const r = normalise(role);
+  if (!record || record.status !== 'DRAFT') return false;
+  if (r === 'staff') return isOwnStockOutDraft(user, record);
+  return ['supervisor', 'manager', 'admin', 'owner'].includes(r);
+}
+
+export function canDeleteStockOutDraft(role, user, record) {
+  const r = normalise(role);
+  if (!record || record.status !== 'DRAFT') return false;
+  if (r === 'staff') return isOwnStockOutDraft(user, record);
+  return ['supervisor', 'manager', 'admin', 'owner'].includes(r);
+}

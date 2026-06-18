@@ -1,10 +1,19 @@
 import { useEffect, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Search, CheckCircle2, X, Undo2 } from 'lucide-react';
+import { Search, CheckCircle2, X, Undo2, Pencil, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import RejectReasonModal from './RejectReasonModal';
-import { canApproveStockOut, canRejectStockOut, canReverseStockOut, canSubmitStockOut } from '@/lib/rolePermissions';
+import RecordStockOutModal from './RecordStockOutModal';
+import DeleteDraftConfirmModal from './DeleteDraftConfirmModal';
+import {
+  canApproveStockOut,
+  canDeleteStockOutDraft,
+  canEditStockOutDraft,
+  canRejectStockOut,
+  canReverseStockOut,
+  canSubmitStockOut,
+} from '@/lib/rolePermissions';
 
 export default function StoreUseTab({ refreshTick }) {
   const [user, setUser] = useState(null);
@@ -13,6 +22,10 @@ export default function StoreUseTab({ refreshTick }) {
   const [loading, setLoading] = useState(false);
   const [rejectModal, setRejectModal] = useState(null);
   const [reverseModal, setReverseModal] = useState(null);
+  const [editDraftRecord, setEditDraftRecord] = useState(null);
+  const [deleteDraftRecord, setDeleteDraftRecord] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [localRefreshTick, setLocalRefreshTick] = useState(0);
 
   useEffect(() => {
     base44.auth.me().then(u => setUser(u)).catch(() => {});
@@ -26,8 +39,8 @@ export default function StoreUseTab({ refreshTick }) {
     }, '-created_date', 50).then(data => {
       setRecords(data || []);
       setLoading(false);
-    });
-  }, [refreshTick]);
+    }).catch(() => setLoading(false));
+  }, [refreshTick, localRefreshTick]);
 
   const statusColors = {
     DRAFT: 'bg-slate-50 text-slate-700 border-slate-200',
@@ -35,15 +48,17 @@ export default function StoreUseTab({ refreshTick }) {
     APPROVED: 'bg-blue-50 text-blue-700 border-blue-200',
     POSTED: 'bg-green-50 text-green-700 border-green-200',
     AMENDED: 'bg-purple-50 text-purple-700 border-purple-200',
+    REVERSED: 'bg-slate-50 text-slate-700 border-slate-200',
+    REJECTED: 'bg-red-50 text-red-700 border-red-200',
   };
 
   const filteredRecords = useMemo(() => {
     const q = query.toLowerCase();
     return records.filter(r =>
-      r.sku.toLowerCase().includes(q) ||
-      r.item_name.toLowerCase().includes(q) ||
-      r.reason_category.toLowerCase().includes(q) ||
-      (r.department && r.department.toLowerCase().includes(q))
+      (r.sku || '').toLowerCase().includes(q) ||
+      (r.item_name || '').toLowerCase().includes(q) ||
+      (r.reason_category || '').toLowerCase().includes(q) ||
+      (r.department || '').toLowerCase().includes(q)
     );
   }, [records, query]);
 
@@ -53,7 +68,10 @@ export default function StoreUseTab({ refreshTick }) {
   const submitRecord = async (recordId) => {
     try {
       const response = await base44.functions.invoke('submitStockOutRecord', { record_id: recordId });
-      if (response.data.success) window.location.reload();
+      if (response.data.success) {
+        toast.success('Draft submitted for approval');
+        setLocalRefreshTick(t => t + 1);
+      }
     } catch (e) {
       toast.error(e.message || 'Submit failed');
     }
@@ -64,7 +82,7 @@ export default function StoreUseTab({ refreshTick }) {
       const response = await base44.functions.invoke('approveStockOutRecordV2', { record_id: recordId });
       if (response.data.success) {
         toast.success(`Store use approved. Balance: ${response.data.balance_before} → ${response.data.balance_after}`);
-        window.location.reload();
+        setLocalRefreshTick(t => t + 1);
       }
     } catch (error) {
       toast.error(`Approval failed: ${error.message}`);
@@ -78,7 +96,7 @@ export default function StoreUseTab({ refreshTick }) {
       if (response.data.success) {
         toast.success('Record rejected');
         setRejectModal(null);
-        window.location.reload();
+        setLocalRefreshTick(t => t + 1);
       }
     } catch (error) {
       toast.error(`Rejection failed: ${error.message}`);
@@ -92,10 +110,47 @@ export default function StoreUseTab({ refreshTick }) {
       if (response.data.success) {
         toast.success(`Reversed. Balance: ${response.data.balance_before} → ${response.data.balance_after}`);
         setReverseModal(null);
-        window.location.reload();
+        setLocalRefreshTick(t => t + 1);
       }
     } catch (error) {
       toast.error(`Reversal failed: ${error.message}`);
+    }
+  };
+
+  const handleDeleteDraft = async () => {
+    if (!deleteDraftRecord || deleteDraftRecord.status !== 'DRAFT') return;
+    setDeleteLoading(true);
+    try {
+      await base44.entities.StockOutRecord.delete(deleteDraftRecord.id);
+      await base44.entities.AuditLog.create({
+        item_id: deleteDraftRecord.item_id,
+        sku: deleteDraftRecord.sku,
+        item_name: deleteDraftRecord.item_name,
+        change_type: 'STOCK_WASTE',
+        field_name: 'stock_out_draft',
+        old_value: JSON.stringify({
+          record_id: deleteDraftRecord.id,
+          quantity: deleteDraftRecord.quantity,
+          reason: deleteDraftRecord.reason_category,
+          estimated_value: deleteDraftRecord.estimated_value || 0,
+        }),
+        new_value: 'DELETED',
+        changed_by: user?.email || user?.id || 'unknown',
+        actor_role: user?.role || 'unknown',
+        source_module: 'StockOut',
+        action_type: 'STOCK_OUT_DRAFT_DELETED',
+        linked_source_record: deleteDraftRecord.id,
+        source_record_id: deleteDraftRecord.id,
+        notes: 'Draft store use stock-out deleted before submission. No StockMovement was created.',
+        environment: deleteDraftRecord.environment || 'LIVE',
+      });
+      toast.success('Draft deleted. No stock movement was posted.');
+      setDeleteDraftRecord(null);
+      setLocalRefreshTick(t => t + 1);
+    } catch (error) {
+      toast.error(`Delete failed: ${error.message}`);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -115,6 +170,26 @@ export default function StoreUseTab({ refreshTick }) {
           onCancel={() => setReverseModal(null)}
         />
       )}
+      {editDraftRecord && (
+        <RecordStockOutModal
+          initialRecord={editDraftRecord}
+          onClose={() => setEditDraftRecord(null)}
+          onSuccess={() => {
+            toast.success('Draft updated. No stock movement was posted.');
+            setEditDraftRecord(null);
+            setLocalRefreshTick(t => t + 1);
+          }}
+        />
+      )}
+      {deleteDraftRecord && (
+        <DeleteDraftConfirmModal
+          record={deleteDraftRecord}
+          loading={deleteLoading}
+          onCancel={() => setDeleteDraftRecord(null)}
+          onConfirm={handleDeleteDraft}
+        />
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Total Store Use</p>
@@ -190,18 +265,34 @@ export default function StoreUseTab({ refreshTick }) {
                       {!isStaff && <p className="text-xs text-muted-foreground">₱{record.estimated_value?.toFixed(2)}</p>}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
-                    <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+                    <div className="flex items-center gap-4 flex-wrap">
                       <span>{new Date(record.created_date).toLocaleDateString()}</span>
                       {record.reason_notes && <span>{record.reason_notes}</span>}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      {record.status === 'DRAFT' && canEditStockOutDraft(user?.role, user, record) && (
+                        <button
+                          onClick={() => setEditDraftRecord(record)}
+                          className="px-2 py-1 text-[11px] rounded border border-border bg-background text-foreground hover:bg-muted flex items-center gap-1"
+                        >
+                          <Pencil size={12} /> Edit Draft
+                        </button>
+                      )}
                       {record.status === 'DRAFT' && canSubmitStockOut(user?.role, user, record) && (
                         <button
                           onClick={() => submitRecord(record.id)}
                           className="px-2 py-1 text-[11px] rounded bg-primary text-primary-foreground hover:opacity-90"
                         >
                           Submit
+                        </button>
+                      )}
+                      {record.status === 'DRAFT' && canDeleteStockOutDraft(user?.role, user, record) && (
+                        <button
+                          onClick={() => setDeleteDraftRecord(record)}
+                          className="px-2 py-1 text-[11px] rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 flex items-center gap-1"
+                        >
+                          <Trash2 size={12} /> Delete Draft
                         </button>
                       )}
                       {record.status === 'SUBMITTED' && (
