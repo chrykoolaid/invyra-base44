@@ -17,6 +17,7 @@
     "validate:inventory-bridge-pairing-backend-diagnostic": "node scripts/validate-inventory-bridge-pairing-backend-diagnostic.mjs",
     "validate:inventory-bridge-scanops-pairing-request-fixture": "node scripts/validate-inventory-bridge-scanops-pairing-request-fixture.mjs",
     "validate:inventory-bridge-pairing-offer-request-correlation": "node scripts/validate-inventory-bridge-pairing-offer-request-correlation.mjs",
+    "validate:inventory-bridge-pairing-offer-builder": "node scripts/validate-inventory-bridge-pairing-offer-builder.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
