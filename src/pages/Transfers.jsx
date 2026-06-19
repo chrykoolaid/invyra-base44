@@ -2,31 +2,41 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter, ENV_LIVE } from '@/lib/envFilter';
 import { postInventoryTransfer } from '@/lib/inventoryMovement';
-import { ArrowLeftRight, Plus, RefreshCw, ArrowRight, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, Plus, RefreshCw, ArrowRight, Trash2, MapPin } from 'lucide-react';
 
 export default function Transfers() {
   const [sites, setSites] = useState([]);
   const [items, setItems] = useState([]);
   const [transfers, setTransfers] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [storageAreas, setStorageAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
   // Form state
   const [fromSite, setFromSite] = useState('');
   const [toSite, setToSite] = useState('');
+  const [fromLocation, setFromLocation] = useState('');
+  const [toLocation, setToLocation] = useState('');
+  const [fromStorageArea, setFromStorageArea] = useState('');
+  const [toStorageArea, setToStorageArea] = useState('');
   const [lines, setLines] = useState([{ item_id: '', qty: '' }]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
-    const [siteData, itemData, movements] = await Promise.all([
+    const [siteData, itemData, movements, locData, areaData] = await Promise.all([
       base44.entities.Site.filter({ is_active: true }),
       base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500),
       base44.entities.StockMovement.filter({ ...envFilter(), source_type: 'TRANSFER' }),
+      base44.entities.Location.filter({ ...envFilter(), is_active: true }, 'name', 100),
+      base44.entities.StorageArea.filter({ ...envFilter(), is_active: true }, 'name', 200),
     ]);
     setSites(siteData || []);
     setItems(itemData || []);
+    setLocations(locData || []);
+    setStorageAreas(areaData || []);
 
     // Group movements into transfers by source_ref
     const grouped = {};
@@ -67,6 +77,10 @@ export default function Transfers() {
           fromSite,
           toSite,
           qty: Number(line.qty),
+          fromLocationId: fromLocation || null,
+          toLocationId: toLocation || null,
+          fromStorageAreaId: fromStorageArea || null,
+          toStorageAreaId: toStorageArea || null,
           sourceRef: ref,
           notes,
           environment: ENV_LIVE,
@@ -88,7 +102,7 @@ export default function Transfers() {
 
     setSaving(false);
     setShowForm(false);
-    setFromSite(''); setToSite(''); setLines([{ item_id: '', qty: '' }]); setNotes('');
+    setFromSite(''); setToSite(''); setFromLocation(''); setToLocation(''); setFromStorageArea(''); setToStorageArea(''); setLines([{ item_id: '', qty: '' }]); setNotes('');
     loadData();
   };
 
@@ -130,6 +144,55 @@ export default function Transfers() {
                 className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
                 <option value="">Select…</option>
                 {sites.filter(s => s.id !== fromSite).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {/* Locations & Storage Areas */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">From Location (optional)</label>
+              <select value={fromLocation} onChange={e => { setFromLocation(e.target.value); setFromStorageArea(''); }}
+                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
+                <option value="">All locations</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name} ({loc.location_code})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">To Location (optional)</label>
+              <select value={toLocation} onChange={e => { setToLocation(e.target.value); setToStorageArea(''); }}
+                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
+                <option value="">All locations</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name} ({loc.location_code})</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">From Storage Area (optional)</label>
+              <select value={fromStorageArea} onChange={e => setFromStorageArea(e.target.value)}
+                disabled={!fromLocation}
+                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
+                <option value="">All areas</option>
+                {storageAreas.filter(sa => sa.location_id === fromLocation).map(sa => (
+                  <option key={sa.id} value={sa.id}>{sa.name} ({sa.storage_area_code})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">To Storage Area (optional)</label>
+              <select value={toStorageArea} onChange={e => setToStorageArea(e.target.value)}
+                disabled={!toLocation}
+                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
+                <option value="">All areas</option>
+                {storageAreas.filter(sa => sa.location_id === toLocation).map(sa => (
+                  <option key={sa.id} value={sa.id}>{sa.name} ({sa.storage_area_code})</option>
+                ))}
               </select>
             </div>
           </div>
@@ -232,6 +295,13 @@ export default function Transfers() {
                         <span className="font-medium text-foreground">{m.qty} units</span>
                       </div>
                     ))}
+                    {(outMovements[0]?.location_id || outMovements[0]?.storage_area_id) && (
+                      <div className="text-xs text-muted-foreground mt-1 flex gap-2">
+                        {outMovements[0]?.location_id && (
+                          <span className="flex items-center gap-1"><MapPin size={11} /> {locations.find(l => l.id === outMovements[0].location_id)?.name} → {locations.find(l => l.id === inMovements[0]?.location_id)?.name}</span>
+                        )}
+                      </div>
+                    )}
                     {outMovements[0]?.notes && (
                       <p className="text-xs italic text-muted-foreground mt-1">{outMovements[0].notes}</p>
                     )}
