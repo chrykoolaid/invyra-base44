@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Pencil, Archive, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
 import LocationModal from './LocationModal';
 import StorageAreaModal from './StorageAreaModal';
 
