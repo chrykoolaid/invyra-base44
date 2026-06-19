@@ -14,6 +14,7 @@
     "validate:phase2n-local-entity-fallback": "node scripts/validate-phase2n-local-entity-fallback.mjs",
     "validate:phase2o-hosted-readiness": "node scripts/validate-phase2o-hosted-readiness.mjs",
     "verify:forecast-api": "node scripts/verify-phase2l-forecast-api.mjs",
+    "validate:inventory-bridge-pairing-backend-diagnostic": "node scripts/validate-inventory-bridge-pairing-backend-diagnostic.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
