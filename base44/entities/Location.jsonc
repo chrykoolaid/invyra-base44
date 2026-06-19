@@ -1,0 +1,89 @@
+{
+  "name": "Location",
+  "type": "object",
+  "properties": {
+    "location_code": {
+      "type": "string",
+      "description": "Unique short code for this location e.g. BR-001"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable location name"
+    },
+    "location_type": {
+      "type": "string",
+      "enum": [
+        "Branch",
+        "Warehouse",
+        "Storage",
+        "Office",
+        "Other"
+      ],
+      "default": "Branch"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "province": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string",
+      "default": "Philippines"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_phone": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, this is the primary/default location"
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "transfer_blocked": {
+      "type": "boolean",
+      "default": false
+    },
+    "receiving_blocked": {
+      "type": "boolean",
+      "default": false
+    },
+    "stocktake_blocked": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "location_code",
+    "name",
+    "location_type"
+  ]
+}

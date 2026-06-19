@@ -22,6 +22,7 @@ import {
   ScrollText,
   AlertTriangle,
   Map,
+  MapPin,
   LogOut,
   FlaskConical,
   ChevronDown,
@@ -39,6 +40,7 @@ const primaryNav = [
 
 const operationsNav = [
   { path: '/Markdown',       label: 'Markdown',    icon: Tag,               minRole: 'staff'      },
+  { path: '/Locations',      label: 'Locations',   icon: MapPin,            minRole: 'supervisor' },
   { path: '/Inventory',      label: 'Inventory',   icon: Package,           minRole: 'supervisor' },
   { path: '/Movements',      label: 'Movements',   icon: ScrollText,        minRole: 'supervisor' },
   { path: '/Adjustments',    label: 'Adjustments', icon: SlidersHorizontal, minRole: 'supervisor' },

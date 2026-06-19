@@ -1,0 +1,70 @@
+{
+  "name": "StorageArea",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string",
+      "description": "Reference to Location.id"
+    },
+    "storage_area_code": {
+      "type": "string",
+      "description": "Unique short code within the location e.g. SA-001"
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable storage area name"
+    },
+    "storage_type": {
+      "type": "string",
+      "enum": [
+        "Shelf",
+        "Bin",
+        "Stockroom",
+        "Receiving Area",
+        "Damaged Stock",
+        "Quarantine",
+        "Zone",
+        "Other"
+      ],
+      "default": "Shelf"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_archived": {
+      "type": "boolean",
+      "default": false
+    },
+    "receiving_allowed": {
+      "type": "boolean",
+      "default": true
+    },
+    "transfer_allowed": {
+      "type": "boolean",
+      "default": true
+    },
+    "stocktake_allowed": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "location_id",
+    "storage_area_code",
+    "name",
+    "storage_type"
+  ]
+}

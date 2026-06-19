@@ -39,6 +39,7 @@ import Exceptions from './pages/Exceptions';
 import InventoryRoadmap from './pages/InventoryRoadmap';
 import LocalForecastVerification from './pages/LocalForecastVerification';
 import InventorySettings from './pages/InventorySettings';
+import Locations from './pages/Locations';
 import Markdown from './pages/Markdown';
 import MarkdownBatches from './pages/MarkdownBatches';
 import MarkdownReviewQueuePage from './pages/MarkdownReviewQueuePage';
@@ -97,6 +98,7 @@ const AuthenticatedApp = () => {
         <Route path="/Exceptions"            element={<RoleGuard><Exceptions /></RoleGuard>} />
         <Route path="/LocalForecastVerification" element={<RoleGuard><LocalForecastVerification /></RoleGuard>} />
         <Route path="/InventorySettings"        element={<RoleGuard><InventorySettings /></RoleGuard>} />
+        <Route path="/Locations"             element={<RoleGuard><Locations /></RoleGuard>} />
         <Route path="/Markdown"               element={<RoleGuard><Markdown /></RoleGuard>} />
         <Route path="/Markdown/Batches"       element={<RoleGuard><MarkdownBatches /></RoleGuard>} />
         <Route path="/Markdown/ReviewQueue"   element={<RoleGuard><MarkdownReviewQueuePage /></RoleGuard>} />

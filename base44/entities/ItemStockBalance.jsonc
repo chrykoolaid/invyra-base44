@@ -1,0 +1,101 @@
+{
+  "name": "ItemStockBalance",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU for fast querying"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name"
+    },
+    "location_id": {
+      "type": "string",
+      "description": "Reference to Location.id"
+    },
+    "location_name": {
+      "type": "string",
+      "description": "Denormalized location name"
+    },
+    "storage_area_id": {
+      "type": "string",
+      "description": "Optional reference to StorageArea.id"
+    },
+    "storage_area_name": {
+      "type": "string",
+      "description": "Denormalized storage area name"
+    },
+    "on_hand_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "Current stock on hand at this location/area"
+    },
+    "reserved_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "PLANNED: qty reserved for pending transfers or orders"
+    },
+    "available_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "on_hand_qty - reserved_qty"
+    },
+    "incoming_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "PLANNED: qty in transit / on order inbound"
+    },
+    "outgoing_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "PLANNED: qty in transit outbound"
+    },
+    "last_movement_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the last StockMovement affecting this balance"
+    },
+    "last_counted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of the last stocktake for this item/location"
+    },
+    "last_synced_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when this balance row was last recalculated"
+    },
+    "balance_status": {
+      "type": "string",
+      "enum": [
+        "Current",
+        "Stale",
+        "Count Overdue",
+        "Movement Mismatch",
+        "Rebuild Recommended"
+      ],
+      "default": "Current"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "item_id",
+    "sku",
+    "location_id",
+    "on_hand_qty",
+    "environment"
+  ]
+}
