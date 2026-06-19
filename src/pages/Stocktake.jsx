@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter, ENV_LIVE } from '@/lib/envFilter';
 import { postInventoryMovement } from '@/lib/inventoryMovement';
-import { ClipboardCheck, Search, CheckCircle2 } from 'lucide-react';
+import { ClipboardCheck, Search, CheckCircle2, MapPin } from 'lucide-react';
 
 const statusStyle = {
   matched:    'bg-green-50 text-green-700 border border-green-200',
@@ -23,16 +23,31 @@ function getVarianceStatus(expected, counted) {
 
 export default function Stocktake() {
   const [items, setItems] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [storageAreas, setStorageAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [counts, setCounts] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [showOnlyVariances, setShowOnlyVariances] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState('');
+  const [selectedStocktakeArea, setSelectedStocktakeArea] = useState('');
 
   useEffect(() => {
-    base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500)
-      .then(rows => { setItems(rows || []); setLoading(false); });
+    Promise.all([
+      base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500),
+      base44.entities.Location.filter({ ...envFilter(), is_active: true }, 'name', 100),
+      base44.entities.StorageArea.filter({ ...envFilter(), is_active: true, stocktake_allowed: true }, 'name', 200),
+    ]).then(([rows, locData, areaData]) => {
+      setItems(rows || []);
+      setLocations(locData || []);
+      setStorageAreas(areaData || []);
+      setLoading(false);
+    }).catch(err => {
+      console.error('Failed to load stocktake data', err);
+      setLoading(false);
+    });
   }, []);
 
   const filtered = useMemo(() => {
@@ -133,6 +148,36 @@ export default function Stocktake() {
           className="flex items-center gap-2 h-9 px-5 text-sm rounded bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed font-medium whitespace-nowrap">
           <CheckCircle2 size={14} /> {submitting ? 'Committing…' : `Commit ${stats.counted} Count${stats.counted !== 1 ? 's' : ''}`}
         </button>
+      </div>
+
+      {/* Location Selection */}
+      <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <MapPin size={14} /> Stocktake Location
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Location (optional)</label>
+            <select value={selectedLocation} onChange={e => { setSelectedLocation(e.target.value); setSelectedStocktakeArea(''); }}
+              className="w-full h-8 border border-border rounded px-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
+              <option value="">All locations</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name} ({loc.location_code})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Storage Area (optional)</label>
+            <select value={selectedStocktakeArea} onChange={e => setSelectedStocktakeArea(e.target.value)}
+              disabled={!selectedLocation}
+              className="w-full h-8 border border-border rounded px-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
+              <option value="">All areas</option>
+              {storageAreas.filter(sa => sa.location_id === selectedLocation && sa.stocktake_allowed).map(sa => (
+                <option key={sa.id} value={sa.id}>{sa.name} ({sa.storage_area_code})</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Stats strip */}
