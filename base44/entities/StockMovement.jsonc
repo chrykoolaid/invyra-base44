@@ -52,6 +52,14 @@
       "type": "number",
       "description": "Running stock balance AFTER this movement"
     },
+    "location_id": {
+      "type": "string",
+      "description": "Reference to Location.id where this movement occurred"
+    },
+    "storage_area_id": {
+      "type": "string",
+      "description": "Optional reference to StorageArea.id within the location"
+    },
     "source_ref": {
       "type": "string",
       "description": "Human-readable reference e.g. PO-2026-001, W-045"
