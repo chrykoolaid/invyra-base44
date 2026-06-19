@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Plus, RefreshCw, Tag, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Plus, RefreshCw, Tag, ArrowLeft } from 'lucide-react';
 import CreateMarkdownBatchModal from '@/components/markdown/CreateMarkdownBatchModal';
 import MarkdownBatchCard from '@/components/markdown/MarkdownBatchCard';
 

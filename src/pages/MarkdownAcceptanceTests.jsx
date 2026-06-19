@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Circle, ChevronDown, ChevronUp, AlertTriangle, Info, ArrowLeft } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, AlertTriangle, Info, ArrowLeft } from 'lucide-react';
 
 const TESTS = [
   {

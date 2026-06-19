@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Search, CheckCircle2, AlertTriangle, HelpCircle, Copy, X } from 'lucide-react';
+import { Search, CheckCircle2, HelpCircle, Copy, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import RejectReasonModal from './RejectReasonModal';

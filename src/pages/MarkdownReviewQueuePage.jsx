@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { ClipboardList, AlertTriangle, Clock, RefreshCw, ArrowLeft } from 'lucide-react';
+import { ClipboardList, AlertTriangle, RefreshCw, ArrowLeft } from 'lucide-react';
 import ReviewQueueEntry from '@/components/markdown/ReviewQueueEntry';
 
 const SLA_STATUS = (entry) => {

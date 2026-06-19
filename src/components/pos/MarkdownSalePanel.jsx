@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Tag, CheckCircle2, AlertCircle, Search, RotateCcw } from 'lucide-react';
+import { Tag, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
 
 /**
  * MarkdownSalePanel

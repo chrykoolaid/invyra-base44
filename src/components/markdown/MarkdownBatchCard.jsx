@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { ChevronDown, ChevronUp, CheckCircle, Tag, Printer, SkipForward, RotateCcw, ArrowDownToLine } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle, Tag, Printer, SkipForward, ArrowDownToLine } from 'lucide-react';
 import ApproveBatchModal from './ApproveBatchModal';
 import ProgressRoundModal from './ProgressRoundModal';
 import PrintLabelModal from './PrintLabelModal';
