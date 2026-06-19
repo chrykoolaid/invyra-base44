@@ -49,8 +49,7 @@
     },
     "is_default": {
       "type": "boolean",
-      "default": false,
-      "description": "If true, this is the primary/default location"
+      "default": false
     },
     "is_archived": {
       "type": "boolean",

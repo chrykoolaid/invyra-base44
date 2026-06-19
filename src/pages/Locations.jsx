@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import LocationsTab from '@/components/locations/LocationsTab';
 import StockLookupTab from '@/components/locations/StockLookupTab';
 import BranchStockTab from '@/components/locations/BranchStockTab';
+import LocationManagementTab from '@/components/locations/LocationManagementTab';
 import { MapPin } from 'lucide-react';
 
 const TABS = [
@@ -55,7 +55,7 @@ export default function Locations() {
 
       {activeTab === 'lookup' && <StockLookupTab />}
       {activeTab === 'branches' && <BranchStockTab />}
-      {activeTab === 'locations' && <LocationsTab />}
+      {activeTab === 'locations' && <LocationManagementTab />}
     </div>
   );
 }
