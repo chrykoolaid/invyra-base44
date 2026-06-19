@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ScanLine, ClipboardList, Search, ChevronRight } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
+import { ScanLine, ClipboardList, Search, ChevronRight, MapPin } from 'lucide-react';
 
 const receivingRows = [
   { po: 'PO-2026-001', supplier: 'ChemSupply Co',         item: 'Premium Detergent 20L', expected: 20,  received: 0,   unit: 'drum',   status: 'Awaiting'  },
@@ -42,6 +44,29 @@ export default function Receiving() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [expandedPO, setExpandedPO] = useState(null);
+  const [locations, setLocations] = useState([]);
+  const [storageAreas, setStorageAreas] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState('');
+  const [selectedReceivingArea, setSelectedReceivingArea] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const [locData, areaData] = await Promise.all([
+          base44.entities.Location.filter({ ...envFilter(), is_active: true }, 'name', 100),
+          base44.entities.StorageArea.filter({ ...envFilter(), is_active: true, receiving_allowed: true }, 'name', 200),
+        ]);
+        setLocations(locData || []);
+        setStorageAreas(areaData || []);
+      } catch (err) {
+        console.error('Failed to load locations', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadLocations();
+  }, []);
 
   const togglePO = (po) => setExpandedPO(prev => prev === po ? null : po);
 
@@ -56,6 +81,36 @@ export default function Receiving() {
   return (
     <div className="p-6">
       <h1 className="text-xl font-semibold text-foreground mb-4">Receiving</h1>
+
+      {/* Location Selection */}
+      <div className="rounded-lg border border-border bg-card p-4 mb-5 space-y-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+          <MapPin size={14} /> Receiving Location
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Location (optional)</label>
+            <select value={selectedLocation} onChange={e => { setSelectedLocation(e.target.value); setSelectedReceivingArea(''); }}
+              className="w-full h-8 border border-border rounded px-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
+              <option value="">All locations</option>
+              {locations.map(loc => (
+                <option key={loc.id} value={loc.id}>{loc.name} ({loc.location_code})</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Receiving Area (optional)</label>
+            <select value={selectedReceivingArea} onChange={e => setSelectedReceivingArea(e.target.value)}
+              disabled={!selectedLocation}
+              className="w-full h-8 border border-border rounded px-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
+              <option value="">All areas</option>
+              {storageAreas.filter(sa => sa.location_id === selectedLocation && sa.receiving_allowed).map(sa => (
+                <option key={sa.id} value={sa.id}>{sa.name} ({sa.storage_area_code})</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
 
       {/* Search + actions */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
