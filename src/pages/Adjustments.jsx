@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter, ENV_LIVE } from '@/lib/envFilter';
 import { postInventoryMovement } from '@/lib/inventoryMovement';
-import { Plus, RefreshCw, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { Plus, RefreshCw, ArrowUpCircle, ArrowDownCircle, MapPin } from 'lucide-react';
 
 const REASONS = [
   { label: 'Stock Found', direction: 'IN' },
@@ -19,12 +19,16 @@ const REASONS = [
 export default function Adjustments() {
   const [items, setItems] = useState([]);
   const [adjustments, setAdjustments] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [storageAreas, setStorageAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Form state
   const [selectedItem, setSelectedItem] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState('');
+  const [selectedStorageArea, setSelectedStorageArea] = useState('');
   const [reason, setReason] = useState('');
   const [qty, setQty] = useState('');
   const [notes, setNotes] = useState('');
@@ -32,12 +36,16 @@ export default function Adjustments() {
   const loadData = async () => {
     setLoading(true);
     // Filter to LIVE environment only — exclude TRAINING/TEST records
-    const [itemData, movements] = await Promise.all([
+    const [itemData, movements, locData, areaData] = await Promise.all([
       base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500),
       base44.entities.StockMovement.filter({ ...envFilter(), movement_type: 'ADJUST' }, '-created_date', 200),
+      base44.entities.Location.filter({ ...envFilter(), is_active: true }, 'name', 100),
+      base44.entities.StorageArea.filter({ ...envFilter(), is_active: true }, 'name', 200),
     ]);
     setItems(itemData || []);
     setAdjustments((movements || []).sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
+    setLocations(locData || []);
+    setStorageAreas(areaData || []);
     setLoading(false);
   };
 
@@ -76,6 +84,8 @@ export default function Adjustments() {
         sourceModule: 'Adjustments',
         notes: `${reason}${notes ? ` — ${notes}` : ''}`,
         siteId: item.site_id || '',
+        locationId: selectedLocation || null,
+        storageAreaId: selectedStorageArea || null,
         environment: ENV_LIVE,
         user,
       });
@@ -87,7 +97,7 @@ export default function Adjustments() {
 
     setSaving(false);
     setShowForm(false);
-    setSelectedItem(''); setReason(''); setQty(''); setNotes('');
+    setSelectedItem(''); setSelectedLocation(''); setSelectedStorageArea(''); setReason(''); setQty(''); setNotes('');
     loadData();
   };
 
@@ -120,6 +130,30 @@ export default function Adjustments() {
                 <option key={it.id} value={it.id}>{it.name} ({it.sku}) — On hand: {it.stock ?? 0}</option>
               ))}
             </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Location (optional)</label>
+              <select value={selectedLocation} onChange={e => { setSelectedLocation(e.target.value); setSelectedStorageArea(''); }}
+                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
+                <option value="">All locations</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name} ({loc.location_code})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Storage Area (optional)</label>
+              <select value={selectedStorageArea} onChange={e => setSelectedStorageArea(e.target.value)}
+                disabled={!selectedLocation}
+                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
+                <option value="">All areas</option>
+                {storageAreas.filter(sa => sa.location_id === selectedLocation).map(sa => (
+                  <option key={sa.id} value={sa.id}>{sa.name} ({sa.storage_area_code})</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
@@ -213,6 +247,12 @@ export default function Adjustments() {
                   <span>{adj.posted_by}</span>
                   <span>•</span>
                   <span>{new Date(adj.created_date).toLocaleString()}</span>
+                  {adj.location_id && (
+                    <>
+                      <span>•</span>
+                      <span className="flex items-center gap-1"><MapPin size={11} /> {locations.find(l => l.id === adj.location_id)?.name || 'Location'}</span>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
