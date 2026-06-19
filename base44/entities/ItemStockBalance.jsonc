@@ -38,7 +38,7 @@
     "reserved_qty": {
       "type": "number",
       "default": 0,
-      "description": "PLANNED: qty reserved for pending transfers or orders"
+      "description": "Quantity reserved for pending transfers or orders"
     },
     "available_qty": {
       "type": "number",
@@ -48,12 +48,12 @@
     "incoming_qty": {
       "type": "number",
       "default": 0,
-      "description": "PLANNED: qty in transit / on order inbound"
+      "description": "Quantity in transit or on order inbound"
     },
     "outgoing_qty": {
       "type": "number",
       "default": 0,
-      "description": "PLANNED: qty in transit outbound"
+      "description": "Quantity in transit outbound"
     },
     "last_movement_at": {
       "type": "string",
