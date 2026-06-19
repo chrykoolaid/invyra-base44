@@ -18,6 +18,7 @@
     "validate:inventory-bridge-scanops-pairing-request-fixture": "node scripts/validate-inventory-bridge-scanops-pairing-request-fixture.mjs",
     "validate:inventory-bridge-pairing-offer-request-correlation": "node scripts/validate-inventory-bridge-pairing-offer-request-correlation.mjs",
     "validate:inventory-bridge-pairing-offer-builder": "node scripts/validate-inventory-bridge-pairing-offer-builder.mjs",
+    "validate:inventory-bridge-pairing-pending-receipt-builder": "node scripts/validate-inventory-bridge-pairing-pending-receipt-builder.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
