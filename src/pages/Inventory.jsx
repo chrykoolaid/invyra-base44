@@ -5,6 +5,7 @@ import {
   Plus, RefreshCw, Upload, X, Eye
 } from 'lucide-react';
 import BulkStockUpload from '@/components/BulkStockUpload';
+import ReorderHeatmap from '@/components/inventory/ReorderHeatmap';
 import ItemDetailsWorkspace from '@/components/ItemDetailsWorkspace';
 import {
   getLocalDevInventoryItems,
@@ -515,6 +516,9 @@ export default function Inventory() {
         ))}
       </div>
 
+      {/* Reorder Heatmap */}
+      {!loading && <ReorderHeatmap items={filtered} />}
+
       {/* Table */}
       <div className="border border-border rounded overflow-hidden">
         <table className="w-full text-sm">
@@ -538,14 +542,22 @@ export default function Inventory() {
             {loading ? (
               <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground text-sm">Loading inventory…</td></tr>
             ) : filtered.map((item, i) => {
-              const belowReorder = item.reorder_point != null && (item.stock || 0) <= item.reorder_point;
+              const stock = item.stock ?? 0;
+              const rp = item.reorder_point;
+              const isOut = rp != null && stock <= 0;
+              const isCritical = rp != null && stock > 0 && stock <= rp;
+              const isLow = rp != null && stock > rp && stock <= rp * 1.5;
+              const rowHeat = isOut ? 'bg-red-50 hover:bg-red-100/60'
+                : isCritical ? 'bg-orange-50 hover:bg-orange-100/60'
+                : isLow ? 'bg-amber-50/60 hover:bg-amber-100/40'
+                : i % 2 === 0 ? 'bg-card hover:bg-accent/40' : 'bg-background hover:bg-accent/40';
               return (
                 <tr
                   key={item.id}
                   onClick={() => toggleRow(item.id)}
                   className={`border-t border-border cursor-pointer transition-colors ${
-                    selected.has(item.id) ? 'bg-primary/5' : i % 2 === 0 ? 'bg-card' : 'bg-background'
-                  } hover:bg-accent/40`}
+                    selected.has(item.id) ? 'bg-primary/5' : rowHeat
+                  }`}
                 >
                   <td className="px-4 py-2.5">
                     <input
@@ -558,9 +570,9 @@ export default function Inventory() {
                   </td>
                   <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{item.sku}</td>
                   <td className="px-4 py-2.5 font-medium">{item.name}</td>
-                  <td className={`px-4 py-2.5 font-semibold ${belowReorder ? 'text-red-600' : 'text-foreground'}`}>
+                  <td className={`px-4 py-2.5 font-semibold ${(isOut || isCritical) ? 'text-red-600' : isLow ? 'text-amber-700' : 'text-foreground'}`}>
                     {(item.stock ?? 0).toLocaleString()}
-                    {belowReorder && <span className="ml-1.5 text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 rounded-full px-1.5 py-0.5">Low</span>}
+                    {(isOut || isCritical) && <span className="ml-1.5 text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 rounded-full px-1.5 py-0.5">Low</span>}
                   </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{item.unit || '—'}</td>
                    <td className="px-4 py-2.5">
