@@ -1,0 +1,72 @@
+name: Inventory Bridge Final Conservative Validation
+
+on:
+  push:
+    branches:
+      - phase-1d-d-al-stack-readiness-review-manifest
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory-bridge-validation-matrix:
+    name: Inventory bridge validation matrix
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Inventory bridge validation matrix
+        run: |
+          npm run validate:inventory-bridge-relay-admission-evidence-projection
+          npm run validate:inventory-bridge-relay-readiness-preflight-acceptance
+          npm run validate:inventory-bridge-relay-handshake-evidence
+          npm run validate:inventory-bridge-gate-projection
+          npm run validate:inventory-bridge-gate-requirements-manifest
+          npm run validate:inventory-bridge-release-blocker-projection
+          npm run validate:inventory-bridge-release-plan-draft-projection
+          npm run validate:inventory-bridge-stack-evidence-manifest
+          npm run validate:inventory-bridge-stack-readiness-review-manifest
+
+      - name: Write Inventory bridge validation report
+        run: node scripts/write-inventory-bridge-stack-report.mjs
+
+      - name: Upload Inventory final bridge validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-bridge-final-conservative-validation-report
+          path: bridge-validation-reports/inventory-bridge-stack-report.json
+          if-no-files-found: warn
+
+  inventory-baseline-typecheck-build:
+    name: Inventory baseline typecheck and build
+    runs-on: ubuntu-latest
+    needs: inventory-bridge-validation-matrix
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
