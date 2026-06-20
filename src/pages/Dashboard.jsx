@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import StockMovementTrendChart from '@/components/dashboard/StockMovementTrendChart';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { envFilter } from '@/lib/envFilter';
@@ -235,7 +236,7 @@ export default function Dashboard() {
       base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, '-updated_date', 500),
       base44.entities.ReceivingRecord.filter(envFilter(), '-created_date', 20),
       base44.entities.PurchaseOrder.filter({ ...envFilter(), status: ['Draft', 'Submitted', 'Confirmed', 'Awaiting Delivery', 'Partially Received'] }, '-created_date', 20),
-      base44.entities.StockMovement.filter(envFilter(), '-created_date', 30),
+      base44.entities.StockMovement.filter(envFilter(), '-created_date', 500),
     ]);
     setInventoryItems(invRows || []);
     setReceivingRecords(recRows || []);
@@ -521,6 +522,8 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      <StockMovementTrendChart stockMovements={stockMovements} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
         <Panel title="Needs Action Now" actionLabel="Open work queue" actionTo="/ReorderReview">
