@@ -1,0 +1,63 @@
+{
+  "name": "ItemBarcode",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU for fast lookup"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name"
+    },
+    "barcode": {
+      "type": "string",
+      "description": "The barcode value (EAN, UPC, QR, internal, etc.)"
+    },
+    "barcode_type": {
+      "type": "string",
+      "enum": [
+        "EAN13",
+        "EAN8",
+        "UPC-A",
+        "QR",
+        "CODE128",
+        "INTERNAL",
+        "SUPPLIER",
+        "PACK"
+      ],
+      "default": "EAN13"
+    },
+    "is_primary": {
+      "type": "boolean",
+      "default": true,
+      "description": "True if this is the primary scannable barcode for the item"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "notes": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "item_id",
+    "sku",
+    "barcode",
+    "barcode_type"
+  ]
+}

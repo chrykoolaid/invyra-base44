@@ -1,0 +1,93 @@
+{
+  "name": "ItemExpiryBalance",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name"
+    },
+    "batch_id": {
+      "type": "string",
+      "description": "Reference to ItemBatch.id"
+    },
+    "batch_number": {
+      "type": "string",
+      "description": "Denormalized batch number"
+    },
+    "location_id": {
+      "type": "string",
+      "description": "Reference to Location.id"
+    },
+    "location_name": {
+      "type": "string",
+      "description": "Denormalized location name"
+    },
+    "storage_area_id": {
+      "type": "string",
+      "description": "Reference to StorageArea.id"
+    },
+    "storage_area_name": {
+      "type": "string",
+      "description": "Denormalized storage area name"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expiry date for this balance row"
+    },
+    "on_hand_qty": {
+      "type": "number",
+      "default": 0,
+      "description": "Current on-hand quantity for this item/batch/location combination"
+    },
+    "expiry_status": {
+      "type": "string",
+      "enum": [
+        "OK",
+        "30 Days",
+        "14 Days",
+        "7 Days",
+        "Today",
+        "Expired"
+      ],
+      "default": "OK",
+      "description": "Computed expiry proximity bucket"
+    },
+    "action_flag": {
+      "type": "string",
+      "enum": [
+        "None",
+        "Ready for Markdown",
+        "Ready for Wastage",
+        "Priority FEFO"
+      ],
+      "default": "None",
+      "description": "Operational action recommendation based on expiry status"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "item_id",
+    "sku",
+    "batch_id",
+    "expiry_date",
+    "on_hand_qty",
+    "expiry_status"
+  ]
+}

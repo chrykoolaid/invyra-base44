@@ -1,0 +1,93 @@
+{
+  "name": "ItemBatch",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name at time of batch creation"
+    },
+    "batch_number": {
+      "type": "string",
+      "description": "Internal batch number"
+    },
+    "lot_number": {
+      "type": "string",
+      "description": "Manufacturer or supplier lot number"
+    },
+    "supplier_batch_number": {
+      "type": "string",
+      "description": "Supplier's own batch reference"
+    },
+    "expiry_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expiry or best-before date"
+    },
+    "received_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date this batch was received into stock"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 0,
+      "description": "Quantity in this batch at time of entry"
+    },
+    "supplier_id": {
+      "type": "string",
+      "description": "Reference to supplier"
+    },
+    "supplier_name": {
+      "type": "string",
+      "description": "Denormalized supplier name"
+    },
+    "location_id": {
+      "type": "string",
+      "description": "Location where this batch is held"
+    },
+    "storage_area_id": {
+      "type": "string",
+      "description": "Storage area where this batch is held"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Active",
+        "Near Expiry",
+        "Expired",
+        "Depleted",
+        "Quarantine",
+        "Disposed"
+      ],
+      "default": "Active"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "item_id",
+    "sku",
+    "item_name",
+    "batch_number",
+    "expiry_date",
+    "quantity"
+  ]
+}

@@ -46,6 +46,7 @@ import MarkdownReviewQueuePage from './pages/MarkdownReviewQueuePage';
 import MarkdownMonitor from './pages/MarkdownMonitor';
 import MarkdownReports from './pages/MarkdownReports';
 import MarkdownAcceptanceTests from './pages/MarkdownAcceptanceTests';
+import ExpiryTracking from './pages/ExpiryTracking';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -105,6 +106,7 @@ const AuthenticatedApp = () => {
         <Route path="/Markdown/Monitor"       element={<RoleGuard><MarkdownMonitor /></RoleGuard>} />
         <Route path="/Markdown/Reports"       element={<RoleGuard><MarkdownReports /></RoleGuard>} />
         <Route path="/Markdown/Tests"         element={<RoleGuard><MarkdownAcceptanceTests /></RoleGuard>} />
+        <Route path="/ExpiryTracking"          element={<RoleGuard><ExpiryTracking /></RoleGuard>} />
         {/* Training routes — RoleGuard enforces RBAC; TrainingProvider scopes DB to environment:"TRAINING" */}
         <Route path="/Training/Staff"      element={<RoleGuard><TrainingProvider><TrainingStaff /></TrainingProvider></RoleGuard>} />
         <Route path="/Training/Supervisor" element={<RoleGuard><TrainingProvider><TrainingSupervisor /></TrainingProvider></RoleGuard>} />

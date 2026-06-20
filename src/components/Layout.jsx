@@ -27,6 +27,7 @@ import {
   FlaskConical,
   ChevronDown,
   Tag,
+  CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { hasAccess, roleLabel, roleBadgeClass } from '@/lib/permissions';
@@ -47,6 +48,7 @@ const operationsNav = [
   { path: '/Transfers',      label: 'Transfers',   icon: ArrowLeftRight,    minRole: 'supervisor' },
   { path: '/Stocktake',      label: 'Stocktake',   icon: ClipboardCheck,    minRole: 'supervisor' },
   { path: '/Wastage',        label: 'Wastage',     icon: Trash2,            minRole: 'staff'      },
+  { path: '/ExpiryTracking', label: 'Expiry & Batches', icon: CalendarClock, minRole: 'supervisor' },
 ];
 
 const purchasingNav = [
