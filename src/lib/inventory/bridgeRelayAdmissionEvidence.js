@@ -31,6 +31,9 @@ export const INVENTORY_BRIDGE_RELAY_ADMISSION_PROTOCOL_VERSION = "1.0.0";
 export const INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_CODE = Object.freeze({
   PROJECTED: "RELAY_ADMISSION_EVIDENCE_PROJECTED",
   CONTEXT_INVALID: "RELAY_ADMISSION_CONTEXT_INVALID",
+  DEVICE_ID_MISMATCH: "DEVICE_ID_MISMATCH",
+  STORE_SCOPE_MISMATCH: "STORE_SCOPE_MISMATCH",
+  INVENTORY_INSTANCE_SCOPE_MISMATCH: "INVENTORY_INSTANCE_SCOPE_MISMATCH",
 });
 
 export const INVENTORY_BRIDGE_RELAY_ADMISSION_REQUIRED_CONTEXT_FIELDS = Object.freeze([
@@ -96,6 +99,71 @@ function normalizeContext(input = {}) {
   };
 }
 
+function buildDeniedAccess(code, message) {
+  return {
+    allowed: false,
+    decision_code: code,
+    decision_message: message,
+  };
+}
+
+function validateDeviceRecordScope(record, context) {
+  if (!record) return { ok: true, code: "DEVICE_SCOPE_NOT_APPLICABLE" };
+  if (record.device_id !== context.source_device_id) {
+    return {
+      ok: false,
+      code: INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_CODE.DEVICE_ID_MISMATCH,
+      message: "Device record id does not match relay source_device_id.",
+    };
+  }
+  if (record.store_id !== context.store_id) {
+    return {
+      ok: false,
+      code: INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_CODE.STORE_SCOPE_MISMATCH,
+      message: "Device record store_id does not match relay context store_id.",
+    };
+  }
+  if (record.inventory_instance_id !== context.inventory_instance_id) {
+    return {
+      ok: false,
+      code: INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_CODE.INVENTORY_INSTANCE_SCOPE_MISMATCH,
+      message: "Device record inventory_instance_id does not match relay context inventory_instance_id.",
+    };
+  }
+  return { ok: true, code: "DEVICE_SCOPE_MATCHED" };
+}
+
+function buildEvidence({ context, access, allowedForBridgeTransport, projectedAt, record }) {
+  return {
+    schema_version: INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_SCHEMA_VERSION,
+    phase: INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_PHASE,
+    bridge_protocol_version: INVENTORY_BRIDGE_RELAY_ADMISSION_PROTOCOL_VERSION,
+    pairing_contract_version: INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_CONTRACT_VERSION,
+    source_system: context.source_system,
+    source_device_id: context.source_device_id,
+    environment: context.environment,
+    store_id: context.store_id,
+    inventory_instance_id: context.inventory_instance_id,
+    relay_instance_ref: context.relay_instance_ref,
+    relay_decision_code: access.decision_code,
+    relay_decision_message: access.decision_message,
+    allowed_for_bridge_transport: allowedForBridgeTransport,
+    relay_enforcement_applied: false,
+    relay_transport_started: false,
+    event_transport_enabled: false,
+    event_ingestion_allowed: false,
+    ingestion_validation_still_required_per_event: true,
+    inventory_mutation_allowed: false,
+    stock_mutation_allowed: false,
+    price_mutation_allowed: false,
+    pos_order_forecast_mutation_allowed: false,
+    item_master_mutation_allowed: false,
+    evidence_projection_only: true,
+    projected_at: projectedAt,
+    device_summary: record ? getInventoryBridgeDeviceSafeSummary(record) : null,
+  };
+}
+
 export function validateInventoryBridgeRelayAdmissionContext(input = {}) {
   const context = normalizeContext(input);
   const errors = [];
@@ -141,43 +209,46 @@ export function projectInventoryBridgeRelayAdmissionEvidence(record = null, cont
       allowed_for_bridge_transport: false,
       evidence: null,
       context_validation: contextValidation,
+      scope_validation: null,
       guardrails: INVENTORY_BRIDGE_RELAY_ADMISSION_GUARDRAILS,
     };
   }
 
   const context = contextValidation.context;
+  const projectedAt = options.projected_at || context.projected_at || nowIso();
+  const scopeValidation = validateDeviceRecordScope(record, context);
+
+  if (!scopeValidation.ok) {
+    const access = buildDeniedAccess(scopeValidation.code, scopeValidation.message);
+    const evidence = buildEvidence({
+      context,
+      access,
+      allowedForBridgeTransport: false,
+      projectedAt,
+      record,
+    });
+
+    return {
+      ok: false,
+      code: scopeValidation.code,
+      allowed_for_bridge_transport: false,
+      evidence,
+      access,
+      context_validation: contextValidation,
+      scope_validation: scopeValidation,
+      guardrails: INVENTORY_BRIDGE_RELAY_ADMISSION_GUARDRAILS,
+    };
+  }
+
   const access = decideInventoryBridgeDeviceAccess(record, context);
   const allowedForBridgeTransport = access.allowed === true;
-  const projectedAt = options.projected_at || context.projected_at || nowIso();
-
-  const evidence = {
-    schema_version: INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_SCHEMA_VERSION,
-    phase: INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_PHASE,
-    bridge_protocol_version: INVENTORY_BRIDGE_RELAY_ADMISSION_PROTOCOL_VERSION,
-    pairing_contract_version: INVENTORY_BRIDGE_RELAY_ADMISSION_EVIDENCE_CONTRACT_VERSION,
-    source_system: context.source_system,
-    source_device_id: context.source_device_id,
-    environment: context.environment,
-    store_id: context.store_id,
-    inventory_instance_id: context.inventory_instance_id,
-    relay_instance_ref: context.relay_instance_ref,
-    relay_decision_code: access.decision_code,
-    relay_decision_message: access.decision_message,
-    allowed_for_bridge_transport: allowedForBridgeTransport,
-    relay_enforcement_applied: false,
-    relay_transport_started: false,
-    event_transport_enabled: false,
-    event_ingestion_allowed: false,
-    ingestion_validation_still_required_per_event: true,
-    inventory_mutation_allowed: false,
-    stock_mutation_allowed: false,
-    price_mutation_allowed: false,
-    pos_order_forecast_mutation_allowed: false,
-    item_master_mutation_allowed: false,
-    evidence_projection_only: true,
-    projected_at: projectedAt,
-    device_summary: record ? getInventoryBridgeDeviceSafeSummary(record) : null,
-  };
+  const evidence = buildEvidence({
+    context,
+    access,
+    allowedForBridgeTransport,
+    projectedAt,
+    record,
+  });
 
   return {
     ok: allowedForBridgeTransport,
@@ -188,6 +259,7 @@ export function projectInventoryBridgeRelayAdmissionEvidence(record = null, cont
     evidence,
     access,
     context_validation: contextValidation,
+    scope_validation: scopeValidation,
     guardrails: INVENTORY_BRIDGE_RELAY_ADMISSION_GUARDRAILS,
   };
 }
