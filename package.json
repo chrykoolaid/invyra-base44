@@ -28,6 +28,7 @@
     "validate:inventory-bridge-gate-projection": "node scripts/validate-inventory-bridge-gate-projection.mjs",
     "validate:inventory-bridge-gate-requirements-manifest": "node scripts/validate-inventory-bridge-gate-requirements-manifest.mjs",
     "validate:inventory-bridge-release-blocker-projection": "node scripts/validate-inventory-bridge-release-blocker-projection.mjs",
+    "validate:inventory-bridge-release-plan-draft-projection": "node scripts/validate-inventory-bridge-release-plan-draft-projection.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
