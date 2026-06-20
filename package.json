@@ -24,6 +24,7 @@
     "validate:inventory-bridge-relay-trust-decision-projection": "node scripts/validate-inventory-bridge-relay-trust-decision-projection.mjs",
     "validate:inventory-bridge-relay-admission-evidence-projection": "node scripts/validate-inventory-bridge-relay-admission-evidence-projection.mjs",
     "validate:inventory-bridge-relay-readiness-preflight-acceptance": "node scripts/validate-inventory-bridge-relay-readiness-preflight-acceptance.mjs",
+    "validate:inventory-bridge-relay-handshake-evidence": "node scripts/validate-inventory-bridge-relay-handshake-evidence.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
