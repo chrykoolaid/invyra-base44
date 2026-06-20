@@ -23,6 +23,7 @@
     "validate:inventory-bridge-approved-device-record-projection": "node scripts/validate-inventory-bridge-approved-device-record-projection.mjs",
     "validate:inventory-bridge-relay-trust-decision-projection": "node scripts/validate-inventory-bridge-relay-trust-decision-projection.mjs",
     "validate:inventory-bridge-relay-admission-evidence-projection": "node scripts/validate-inventory-bridge-relay-admission-evidence-projection.mjs",
+    "validate:inventory-bridge-relay-readiness-preflight-acceptance": "node scripts/validate-inventory-bridge-relay-readiness-preflight-acceptance.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
