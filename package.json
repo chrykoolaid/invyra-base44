@@ -20,6 +20,7 @@
     "validate:inventory-bridge-pairing-offer-builder": "node scripts/validate-inventory-bridge-pairing-offer-builder.mjs",
     "validate:inventory-bridge-pairing-pending-receipt-builder": "node scripts/validate-inventory-bridge-pairing-pending-receipt-builder.mjs",
     "validate:inventory-bridge-pairing-approved-receipt-builder": "node scripts/validate-inventory-bridge-pairing-approved-receipt-builder.mjs",
+    "validate:inventory-bridge-approved-device-record-projection": "node scripts/validate-inventory-bridge-approved-device-record-projection.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
