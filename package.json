@@ -25,6 +25,7 @@
     "validate:inventory-bridge-relay-admission-evidence-projection": "node scripts/validate-inventory-bridge-relay-admission-evidence-projection.mjs",
     "validate:inventory-bridge-relay-readiness-preflight-acceptance": "node scripts/validate-inventory-bridge-relay-readiness-preflight-acceptance.mjs",
     "validate:inventory-bridge-relay-handshake-evidence": "node scripts/validate-inventory-bridge-relay-handshake-evidence.mjs",
+    "validate:inventory-bridge-gate-projection": "node scripts/validate-inventory-bridge-gate-projection.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
