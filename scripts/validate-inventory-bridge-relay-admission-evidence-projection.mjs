@@ -128,6 +128,29 @@ function assertSubset(actual, expected, label) {
   }
 }
 
+function assertDeniedEvidence(result, expectedCode, label) {
+  assertSubset(
+    result,
+    {
+      ok: false,
+      code: expectedCode,
+      allowed_for_bridge_transport: false,
+      evidence: {
+        relay_decision_code: expectedCode,
+        allowed_for_bridge_transport: false,
+        relay_enforcement_applied: false,
+        relay_transport_started: false,
+        event_transport_enabled: false,
+        event_ingestion_allowed: false,
+        ingestion_validation_still_required_per_event: true,
+        evidence_projection_only: true,
+      },
+      guardrails,
+    },
+    label
+  );
+}
+
 function assertNoForbiddenOperationalCalls() {
   const ownSource = stripComments(readRequired('scripts/validate-inventory-bridge-relay-admission-evidence-projection.mjs'));
   for (const forbidden of forbiddenOperationalCalls) {
@@ -176,6 +199,7 @@ function assertProjected(result, label) {
       code: 'RELAY_ADMISSION_EVIDENCE_PROJECTED',
       allowed_for_bridge_transport: true,
       context_validation: { ok: true, code: 'RELAY_ADMISSION_CONTEXT_VALID' },
+      scope_validation: { ok: true, code: 'DEVICE_SCOPE_MATCHED' },
       access: { allowed: true, decision_code: 'DEVICE_TRUSTED' },
       evidence: {
         phase: '1D-D-U',
@@ -235,39 +259,57 @@ async function main() {
       'safe summary'
     );
 
-    assertSubset(
+    assertDeniedEvidence(
       evidenceModule.projectInventoryBridgeRelayAdmissionEvidence(null, relayContext),
-      { ok: false, code: 'DEVICE_UNKNOWN', allowed_for_bridge_transport: false, guardrails },
+      'DEVICE_UNKNOWN',
       'unknown device denied without enforcement'
     );
 
     assertSubset(
       evidenceModule.projectInventoryBridgeRelayAdmissionEvidence(trustedDeviceRecord, { ...relayContext, source_device_id: null }),
-      { ok: false, code: 'RELAY_ADMISSION_CONTEXT_INVALID', allowed_for_bridge_transport: false, evidence: null, guardrails },
+      { ok: false, code: 'RELAY_ADMISSION_CONTEXT_INVALID', allowed_for_bridge_transport: false, evidence: null, scope_validation: null, guardrails },
       'missing source identity rejected by context validation'
     );
 
-    assertSubset(
+    assertDeniedEvidence(
+      evidenceModule.projectInventoryBridgeRelayAdmissionEvidence({ ...trustedDeviceRecord, device_id: 'SCANOPS-OTHER' }, relayContext),
+      'DEVICE_ID_MISMATCH',
+      'device id mismatch denied before relay decision projection'
+    );
+
+    assertDeniedEvidence(
+      evidenceModule.projectInventoryBridgeRelayAdmissionEvidence({ ...trustedDeviceRecord, store_id: 'STORE-OTHER' }, relayContext),
+      'STORE_SCOPE_MISMATCH',
+      'store scope mismatch denied before relay decision projection'
+    );
+
+    assertDeniedEvidence(
+      evidenceModule.projectInventoryBridgeRelayAdmissionEvidence({ ...trustedDeviceRecord, inventory_instance_id: 'INV-OTHER' }, relayContext),
+      'INVENTORY_INSTANCE_SCOPE_MISMATCH',
+      'inventory instance mismatch denied before relay decision projection'
+    );
+
+    assertDeniedEvidence(
       evidenceModule.projectInventoryBridgeRelayAdmissionEvidence({ ...trustedDeviceRecord, status: 'PENDING', trusted: false, paired_at: null }, relayContext),
-      { ok: false, code: 'DEVICE_PENDING_APPROVAL', allowed_for_bridge_transport: false, guardrails },
+      'DEVICE_PENDING_APPROVAL',
       'pending device denied without enforcement'
     );
 
-    assertSubset(
+    assertDeniedEvidence(
       evidenceModule.projectInventoryBridgeRelayAdmissionEvidence({ ...trustedDeviceRecord, environment: 'TRAINING' }, relayContext),
-      { ok: false, code: 'ENVIRONMENT_MISMATCH', allowed_for_bridge_transport: false, guardrails },
+      'ENVIRONMENT_MISMATCH',
       'environment mismatch denied without enforcement'
     );
 
-    assertSubset(
+    assertDeniedEvidence(
       evidenceModule.projectInventoryBridgeRelayAdmissionEvidence({ ...trustedDeviceRecord, status: 'REVOKED', trusted: false, revoked_at: new Date().toISOString() }, relayContext),
-      { ok: false, code: 'DEVICE_REVOKED', allowed_for_bridge_transport: false, guardrails },
+      'DEVICE_REVOKED',
       'revoked device denied without enforcement'
     );
 
     assertSubset(
       evidenceModule.projectInventoryBridgeRelayAdmissionEvidence(trustedDeviceRecord, { ...relayContext, bridge_protocol_version: '9.9.9' }),
-      { ok: false, code: 'RELAY_ADMISSION_CONTEXT_INVALID', allowed_for_bridge_transport: false, evidence: null, guardrails },
+      { ok: false, code: 'RELAY_ADMISSION_CONTEXT_INVALID', allowed_for_bridge_transport: false, evidence: null, scope_validation: null, guardrails },
       'protocol mismatch rejected by context validation'
     );
 
