@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import {
   AlertCircle,
@@ -7,9 +7,18 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Download,
+  FileText,
+  FileSpreadsheet,
   History,
   TrendingDown,
+  ChevronDown,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import CostAnalysisReport from '@/components/CostAnalysisReport';
 import StockAgingReport from '@/components/StockAgingReport';
 import SupplierPerformanceReport from '@/components/SupplierPerformanceReport';
@@ -21,6 +30,7 @@ import ValuationHistory from '@/components/ValuationHistory';
 export default function Reports() {
   const [activeTab, setActiveTab] = useState('cost');
   const [exporting, setExporting] = useState(false);
+  const reportRef = useRef(null);
 
   const tabs = [
     {
@@ -77,7 +87,9 @@ export default function Reports() {
   const activeReport = tabs.find(tab => tab.id === activeTab) || tabs[0];
   const ActiveIcon = activeReport.icon;
 
-  const handleExport = async () => {
+  const dateStr = new Date().toISOString().split('T')[0];
+
+  const handleExportCSV = async () => {
     setExporting(true);
     try {
       const response = await base44.functions.invoke('generateCompleteReport', { report_type: activeTab });
@@ -85,11 +97,43 @@ export default function Reports() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${activeTab}-report-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `${activeTab}-report-${dateStr}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export failed:', err);
+      console.error('CSV export failed:', err);
+    }
+    setExporting(false);
+  };
+
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const html2canvas = (await import('html2canvas')).default;
+      const el = reportRef.current;
+      if (!el) return;
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: 'a4' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const ratio = canvas.width / canvas.height;
+      const imgWidth = pageWidth;
+      const imgHeight = imgWidth / ratio;
+
+      let y = 0;
+      let remaining = imgHeight;
+      while (remaining > 0) {
+        pdf.addImage(imgData, 'PNG', 0, -y, imgWidth, imgHeight);
+        remaining -= pageHeight;
+        y += pageHeight;
+        if (remaining > 0) pdf.addPage();
+      }
+
+      pdf.save(`${activeTab}-report-${dateStr}.pdf`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
     }
     setExporting(false);
   };
@@ -104,14 +148,28 @@ export default function Reports() {
           </p>
         </div>
 
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50 xl:mt-1"
-        >
-          <Download size={15} />
-          {exporting ? 'Exporting…' : 'Export'}
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              disabled={exporting}
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-50 xl:mt-1"
+            >
+              <Download size={15} />
+              {exporting ? 'Exporting…' : 'Export'}
+              <ChevronDown size={13} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={handleExportCSV} className="gap-2 cursor-pointer">
+              <FileSpreadsheet size={14} className="text-emerald-600" />
+              Export as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportPDF} className="gap-2 cursor-pointer">
+              <FileText size={14} className="text-red-500" />
+              Export as PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Tab Navigation */}
@@ -155,7 +213,7 @@ export default function Reports() {
           </div>
         </div>
 
-        <div className="p-5">
+        <div className="p-5" ref={reportRef}>
           {activeTab === 'cost' && <CostAnalysisReport />}
           {activeTab === 'site-values' && <InventoryValueBySite />}
           {activeTab === 'valuation' && <ValuationHistory />}
