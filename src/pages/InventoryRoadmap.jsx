@@ -195,6 +195,33 @@ const roadmapGroups = {
           ],
         },
         {
+          title: 'Module Progression Review — June 2026',
+          status: 'UPDATED / THIS PASS',
+          source: 'Uploaded inventory build module scan and no-duplication review',
+          reason: 'The current build now covers most core inventory surfaces. The next roadmap risk is not missing major modules — it is adding duplicate sidebar modules when the correct shape is a sub-workflow inside an existing module.',
+          summary: [
+            'Confirmed current coverage: Dashboard, POS Mode, Markdown, Locations, Inventory, Movements, Adjustments, Transfers, Stocktake, Stock-Out Exceptions/Wastage, Expiry & Batches, Suppliers, Reorder Review, Orders, Receiving, Delivery Portal, Gap Scan, Exceptions, Reports, Exports & Integrations, Inventory Settings, Roadmap, Training, and forecasting verification/UI wiring.',
+            'Recommended posture: stabilize current modules before adding more top-level sidebar items.',
+            'Remaining gaps should be implemented as governed sub-workflows: Item Master governance, Holds/Quarantine/Recall, Supplier Returns/Claims, Fill Tasks, Cycle Count Planner, and Device/Label Administration.',
+            'Do not create standalone duplicate modules for Store Use, Scanner Intake, Markdown Reports, Floor Scan, Forecasting, Branch Lookup, or Expiry Reports.',
+          ],
+          ownershipRules: [
+            'Inventory owns item-level detail and future Item Master governance.',
+            'Exceptions owns cross-module alert and hold/release triage.',
+            'Receiving/Suppliers own supplier returns and claims.',
+            'Gap Scan owns shelf evidence and replenishment/fill tasks.',
+            'Stocktake owns cycle-count planning and reconciliation.',
+            'Inventory Settings owns device, scanner, label, role, and configuration controls.',
+          ],
+          priority: [
+            'Do not add new top-level modules until the active hardening queue is verified.',
+            'Patch route permission gaps for InventorySettings, Locations, ExpiryTracking, and SupplierPortal before commercial lock.',
+            'Fix Owner role normalization so Owner is not treated as Staff by dev role fallback logic.',
+            'Fix Inventory Bridge diagnostic validator path drift before bridge stack is marked clean.',
+            'Runtime-test Stock-Out Exceptions and Markdown end-to-end before locking either module.',
+          ],
+        },
+        {
           title: 'Module-by-module polish review queue',
           status: 'NEXT REVIEW QUEUE',
           source: 'Sidebar and module cleanup sequence',
@@ -255,7 +282,7 @@ const roadmapGroups = {
       items: [
         {
           title: 'Locations v1',
-          status: 'SCOPED / PLANNED',
+          status: 'FOUNDATION BUILT / NEEDS REVIEW',
           source: 'Locations v1 scope',
           reason: 'Locations should define where stock can exist and let users look up stock availability across branches and storage areas. It must not become a duplicate transfer, receiving, stocktake, or ledger module.',
           summary: [
@@ -285,7 +312,7 @@ const roadmapGroups = {
         },
         {
           title: 'Expiry & Barcode Tracking v1',
-          status: 'SCOPED / PLANNED',
+          status: 'FOUNDATION BUILT / NEEDS REVIEW',
           source: 'Expiry & Barcode Tracking v1 scope',
           reason: 'This is the expiry-aware stock foundation. It tracks which item barcode, batch, lot, and quantity expires when, then feeds Markdowns, Wastage, POS, Reports, Alerts, and compliance workflows.',
           summary: [
@@ -312,6 +339,112 @@ const roadmapGroups = {
             'Locations and storage areas',
             'Receiving, Stocktake, Adjustments, Transfers, Markdowns, and Wastage workflow contracts',
             'StockMovement ledger with expiry-aware optional fields',
+          ],
+        },
+      ],
+    },
+    {
+      title: 'No-Duplication Module Gap Recommendations',
+      description: 'Genuine gaps found in the current build and where they should live without bloating the sidebar.',
+      tone: 'amber',
+      icon: ClipboardList,
+      items: [
+        {
+          title: 'Item Master / Product Catalogue Governance',
+          status: 'GAP / ADD AS INVENTORY SUB-WORKFLOW',
+          source: 'Module progression review — June 2026',
+          reason: 'Inventory has item records and Item Details, but the roadmap needs a formal governance path for product identity and controlled catalogue fields. This should not duplicate the Inventory module.',
+          summary: [
+            'Start inside Inventory → Item Details as an Item Master / Governance section.',
+            'Govern SKU identity, product name, barcode aliases, pack size, UOM, category, preferred supplier, tax group, active/inactive status, expiry/batch flags, markdown eligibility, and wastage eligibility.',
+            'Keep stock-changing actions out of Item Master governance; it controls product identity and rules only.',
+          ],
+          ownershipRules: [
+            'Inventory owns the item master and read-only item details workspace.',
+            'Movements remains the stock transaction source of truth.',
+            'Suppliers may provide preferred supplier references but must not own item identity.',
+          ],
+        },
+        {
+          title: 'Holds / Quarantine / Recall Control',
+          status: 'HIGH-VALUE GAP / ADD UNDER EXCEPTIONS',
+          source: 'Module progression review — June 2026',
+          reason: 'The system needs a way to block unsafe or disputed stock without immediately writing it off as wastage, adjusting it, or changing the Item Master.',
+          summary: [
+            'Use cases include supplier recall, contamination concern, damaged stock awaiting decision, expired stock blocked from sale, batch under investigation, and do-not-sell manager holds.',
+            'Place under Exceptions as Holds / Quarantine rather than a new sidebar module.',
+            'A hold should reserve/block stock visibility and sale/use eligibility without posting stock out until a governed decision is made.',
+          ],
+          ownershipRules: [
+            'Exceptions owns hold lifecycle triage and release/escalation workflow.',
+            'Expiry & Batches supplies batch/expiry context for batch-level holds.',
+            'Wastage only takes ownership after a disposal/write-off decision is approved.',
+            'POS later consumes hold status as a sale-blocking signal; it does not own the hold.',
+          ],
+        },
+        {
+          title: 'Return to Supplier / Supplier Claims',
+          status: 'GAP / ADD UNDER RECEIVING OR SUPPLIERS',
+          source: 'Module progression review — June 2026',
+          reason: 'Supplier claims are different from wastage because the business may recover credit, replacement stock, or corrected deliveries. They should not be hidden inside Wastage.',
+          summary: [
+            'Use cases include damaged-on-delivery, wrong item supplied, expired/short-dated stock received, supplier credit request, and return authorization tracking.',
+            'Best placement: Receiving → Supplier Returns / Claims, with supplier-level summary inside Suppliers.',
+            'Claims may reference ReceivingRecord, PurchaseOrder, StockMovement, Supplier, and AuditLog records without duplicating them.',
+          ],
+          ownershipRules: [
+            'Receiving owns evidence captured at delivery/receipt time.',
+            'Suppliers owns supplier-level claim visibility and performance context.',
+            'StockMovement owns any actual stock-in or stock-out posting.',
+            'Wastage does not own recoverable supplier claims unless the stock is finally disposed.',
+          ],
+        },
+        {
+          title: 'Replenishment / Fill Tasks',
+          status: 'GAP / ADD UNDER GAP SCAN',
+          source: 'Module progression review — June 2026',
+          reason: 'Gap Scan can identify an empty shelf even when backroom stock exists. That should create a fill/replenishment task, not a supplier reorder or a stocktake variance.',
+          summary: [
+            'Use case: shelf is empty or low, backroom has stock, staff need to refill shelf, no purchase order required.',
+            'Place under Gap Scan as Fill Tasks / Replenishment Tasks.',
+            'Keep it evidentiary and task-based; do not post ledger movements unless a governed transfer/location movement contract exists.',
+          ],
+          ownershipRules: [
+            'Gap Scan owns shelf observation and fill task creation.',
+            'Locations/StorageArea supplies backroom/shelf stock context.',
+            'Reorder Review only takes over when supplier replenishment is actually needed.',
+            'Stocktake owns variance/reconciliation, not routine shelf-fill work.',
+          ],
+        },
+        {
+          title: 'Cycle Count Planner',
+          status: 'GAP / ADD UNDER STOCKTAKE',
+          source: 'Module progression review — June 2026',
+          reason: 'Full Stocktake exists, but later operations need smaller scheduled counts for high-risk or high-value items without creating a second reconciliation module.',
+          summary: [
+            'Use cases include daily high-risk item count, weekly category count, expiry-sensitive count, high-shrink item count, and manager-assigned count task.',
+            'Place as Stocktake → Cycle Count Planner.',
+            'Cycle counts may create variances and sign-off flows through the existing Stocktake/StockMovement governance path.',
+          ],
+          ownershipRules: [
+            'Stocktake owns all count planning, count evidence, variance review, and reconciliation posting.',
+            'Dashboard and Exceptions may surface cycle count tasks or alerts but do not own them.',
+          ],
+        },
+        {
+          title: 'Device & Label Administration',
+          status: 'GAP / ADD UNDER INVENTORY SETTINGS',
+          source: 'Module progression review — June 2026',
+          reason: 'Scanner pairing, portable printers, and label templates are admin configuration tasks. They should not become day-to-day operation modules.',
+          summary: [
+            'Use Inventory Settings → Sync & Devices for paired scanners, device health, last seen, approved device list, and environment tagging.',
+            'Use Inventory Settings → Labels & Printers for markdown label templates, barcode rules, portable printer setup, and print fallback rules.',
+            'Scanner Intake stays inside Stock-Out Exceptions; Markdown print/report workflows stay inside Markdown.',
+          ],
+          ownershipRules: [
+            'Inventory Settings owns devices, label templates, printers, pairing, and environment controls.',
+            'Scanner Intake owns intake review only.',
+            'Markdown owns markdown labels and take-off/holiday reports only.',
           ],
         },
       ],
@@ -529,7 +662,7 @@ const roadmapGroups = {
       items: [
         {
           title: 'Inventory Settings & Configuration Module v1',
-          status: 'SCOPED / PLANNED',
+          status: 'FOUNDATION BUILT / NEEDS ALIGNMENT',
           source: 'Settings module scope v1',
           reason: 'Settings should become the configuration control centre for Inventory, not another operations page.',
           summary: [
@@ -821,6 +954,19 @@ const roadmapGroups = {
             'Do not change Dashboard or Advanced Reports calculations',
             'Do not change Bulk Stock Update',
             'Do not change LIVE seeded inventory data',
+          ],
+        },
+        {
+          title: 'Do not create duplicate sidebar modules',
+          status: 'LOCKED ROADMAP BOUNDARY',
+          source: 'Module progression review — June 2026',
+          summary: [
+            'Do not create Store Use as a standalone module — keep it inside Stock-Out Exceptions.',
+            'Do not create Scanner Intake as a standalone module — keep review inside Stock-Out Exceptions and configuration inside Inventory Settings.',
+            'Do not create Markdown Reports as a standalone module — keep take-off, holiday, and closure reporting inside Markdown.',
+            'Do not create Floor Scan as a standalone module — keep shelf observation under Gap Scan / ScanOps bridge.',
+            'Do not create Forecasting as a large operational module yet — keep outputs advisory inside Item Details, Reorder Review, Dashboard, and Reports.',
+            'Do not create Branch Lookup or Expiry Reports as standalone modules — keep them under Locations, Item Details, Expiry & Batches, and Reports.',
           ],
         },
         {
