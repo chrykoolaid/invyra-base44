@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { ScanLine, Layers, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Layers, ScanLine, ShieldCheck } from 'lucide-react';
+import ExpiryOverviewTab from '@/components/expiry/ExpiryOverviewTab';
 import BarcodeLookupTab from '@/components/expiry/BarcodeLookupTab';
 import BatchRegisterTab from '@/components/expiry/BatchRegisterTab';
 import NearExpiryTab from '@/components/expiry/NearExpiryTab';
 
 const TABS = [
-  { key: 'lookup',   label: 'Barcode Lookup',     icon: ScanLine       },
-  { key: 'batches',  label: 'Batch & Lot Register',icon: Layers         },
-  { key: 'expiry',   label: 'Near-Expiry Alerts',  icon: AlertTriangle  },
+  { key: 'overview', label: 'Overview',             icon: ShieldCheck   },
+  { key: 'lookup',   label: 'Barcode Lookup',       icon: ScanLine      },
+  { key: 'batches',  label: 'Batch & Lot Register', icon: Layers        },
+  { key: 'expiry',   label: 'Near-Expiry Alerts',   icon: AlertTriangle },
 ];
 
 function PillTab({ active, onClick, label, Icon }) {
@@ -27,14 +29,19 @@ function PillTab({ active, onClick, label, Icon }) {
 }
 
 export default function ExpiryTracking() {
-  const [activeTab, setActiveTab] = useState('lookup');
+  const [activeTab, setActiveTab] = useState('overview');
 
   return (
-    <div className="p-5 lg:p-6 space-y-4">
+    <div className="p-5 lg:p-6 space-y-5 max-w-[1280px]">
       <div className="space-y-1">
-        <h1 className="text-xl font-semibold text-foreground">Expiry & Barcode Tracking</h1>
-        <p className="text-sm text-muted-foreground">
-          Track expiry dates, barcodes, batches, and lots. Identifies near-expiry stock for Markdown and Wastage action — does not perform pricing or write-offs.
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-xl font-semibold text-foreground">Expiry & Barcode Tracking</h1>
+          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <ShieldCheck size={11} /> Tracking Only
+          </span>
+        </div>
+        <p className="text-sm text-muted-foreground max-w-4xl leading-relaxed">
+          Track expiry dates, barcodes, batches, and lots. Identifies near-expiry stock for Markdown and Wastage action — does not perform pricing, write-offs, or stock adjustments.
         </p>
       </div>
 
@@ -50,9 +57,10 @@ export default function ExpiryTracking() {
         ))}
       </div>
 
-      {activeTab === 'lookup'  && <BarcodeLookupTab />}
-      {activeTab === 'batches' && <BatchRegisterTab />}
-      {activeTab === 'expiry'  && <NearExpiryTab />}
+      {activeTab === 'overview' && <ExpiryOverviewTab onSelectTab={setActiveTab} />}
+      {activeTab === 'lookup'   && <BarcodeLookupTab />}
+      {activeTab === 'batches'  && <BatchRegisterTab />}
+      {activeTab === 'expiry'   && <NearExpiryTab />}
     </div>
   );
 }

@@ -1,11 +1,45 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter } from '@/lib/envFilter';
-import { Plus } from 'lucide-react';
+import { CheckCircle2, Clock, History, Plus, ShieldCheck, Truck } from 'lucide-react';
+import TransferOverviewTab from '@/components/transfers/TransferOverviewTab';
 import TransferForm from '@/components/transfers/TransferForm';
 import TransferPendingPanel from '@/components/transfers/TransferPendingPanel';
 import TransferInTransitPanel from '@/components/transfers/TransferInTransitPanel';
 import TransferHistory from '@/components/transfers/TransferHistory';
+
+const TABS = [
+  { key: 'overview', label: 'Overview',         icon: ShieldCheck },
+  { key: 'active',   label: 'Active Transfers', icon: Clock       },
+  { key: 'receiving',label: 'Receiving',        icon: Truck       },
+  { key: 'history',  label: 'History',          icon: History     },
+];
+
+function PillTab({ active, onClick, label, Icon }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 h-9 px-3.5 rounded-xl border text-sm font-medium transition-colors ${
+        active
+          ? 'border-primary bg-primary/5 text-primary'
+          : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground'
+      }`}
+    >
+      <Icon size={13} />
+      {label}
+    </button>
+  );
+}
+
+function EmptyState({ title, message }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card px-5 py-12 text-center">
+      <CheckCircle2 size={28} className="mx-auto text-muted-foreground/40 mb-3" />
+      <p className="text-sm font-medium text-foreground">{title}</p>
+      <p className="text-sm text-muted-foreground mt-1">{message}</p>
+    </div>
+  );
+}
 
 export default function Transfers() {
   const [sites, setSites] = useState([]);
@@ -15,6 +49,7 @@ export default function Transfers() {
   const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   const [userRole, setUserRole] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -43,9 +78,17 @@ export default function Transfers() {
 
   const pendingDrafts = drafts.filter(d => d.status === 'PENDING_APPROVAL');
   const inTransitDrafts = drafts.filter(d => d.status === 'IN_TRANSIT');
+  const approvedDrafts = drafts.filter(d => d.status === 'APPROVED');
+  const activeDrafts = drafts.filter(d => ['PENDING_APPROVAL', 'APPROVED', 'IN_TRANSIT'].includes(d.status));
+
+  const openTransferForm = () => {
+    setShowForm(true);
+    setActiveTab('active');
+  };
 
   const handleSubmitted = (data) => {
     setShowForm(false);
+    setActiveTab(data?.self_approved ? 'receiving' : 'active');
     setSuccessMsg(data?.self_approved
       ? `Transfer ${data.ref} dispatched — stock deducted from source. Awaiting receiving confirmation.`
       : `Transfer ${data.ref} submitted for approval.`
@@ -59,25 +102,43 @@ export default function Transfers() {
       ? 'Transfer received with discrepancies. A HIGH alert has been raised in the Exception Center.'
       : 'Transfer fully received. Ledger updated.'
     );
+    setActiveTab('history');
     loadData();
     setTimeout(() => setSuccessMsg(''), 6000);
   };
 
   return (
-    <div className="p-5 lg:p-6 max-w-[1100px] space-y-5">
+    <div className="p-5 lg:p-6 max-w-[1280px] space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold text-foreground">Transfers</h1>
-          <p className="text-sm text-muted-foreground">
-            Move stock between sites with governed approval, in-transit tracking, and receiving confirmation.
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold text-foreground">Transfers</h1>
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <ShieldCheck size={11} /> Governed Workflow
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground max-w-4xl leading-relaxed">
+            Move stock between sites with governed approval, in-transit tracking, and receiving confirmation. Locations provides visibility; Transfers performs approved movement workflow.
           </p>
         </div>
         <button
-          onClick={() => setShowForm(v => !v)}
+          onClick={() => { setShowForm(v => !v); setActiveTab('active'); }}
           className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 font-medium flex-shrink-0"
         >
           <Plus size={14} /> New Transfer
         </button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {TABS.map(tab => (
+          <PillTab
+            key={tab.key}
+            active={activeTab === tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            label={tab.label}
+            Icon={tab.icon}
+          />
+        ))}
       </div>
 
       {successMsg && (
@@ -86,34 +147,103 @@ export default function Transfers() {
         </div>
       )}
 
-      {showForm && (
-        <TransferForm
-          sites={sites}
-          items={items}
-          locations={locations}
-          storageAreas={storageAreas}
-          userRole={userRole}
-          onSubmitted={handleSubmitted}
-          onCancel={() => setShowForm(false)}
+      {activeTab === 'overview' && (
+        <TransferOverviewTab
+          drafts={drafts}
+          loading={loading}
+          onRefresh={loadData}
+          onNewTransfer={openTransferForm}
         />
       )}
 
-      <TransferPendingPanel
-        drafts={pendingDrafts}
-        canApprove={canApprove}
-        onUpdated={loadData}
-      />
+      {activeTab === 'active' && (
+        <div className="space-y-4">
+          {showForm && (
+            <TransferForm
+              sites={sites}
+              items={items}
+              locations={locations}
+              storageAreas={storageAreas}
+              userRole={userRole}
+              onSubmitted={handleSubmitted}
+              onCancel={() => setShowForm(false)}
+            />
+          )}
 
-      <TransferInTransitPanel
-        drafts={inTransitDrafts}
-        onUpdated={handleReceived}
-      />
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Active Transfers</h2>
+                <p className="text-xs text-muted-foreground mt-1">Drafts awaiting approval, approved transfers, and in-transit transfers are shown here.</p>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {activeDrafts.length} active transfer{activeDrafts.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
 
-      <TransferHistory
-        drafts={drafts}
-        loading={loading}
-        onRefresh={loadData}
-      />
+          <TransferPendingPanel
+            drafts={pendingDrafts}
+            canApprove={canApprove}
+            onUpdated={loadData}
+          />
+
+          {approvedDrafts.length > 0 && (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/30 overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-blue-200 bg-blue-50 flex items-center gap-2">
+                <CheckCircle2 size={14} className="text-blue-600" />
+                <h2 className="text-sm font-semibold text-blue-900">Approved Transfers ({approvedDrafts.length})</h2>
+              </div>
+              <div className="divide-y divide-blue-100">
+                {approvedDrafts.map(draft => (
+                  <div key={draft.id} className="px-5 py-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="font-mono text-sm font-semibold text-foreground">{draft.transfer_ref}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{draft.from_site_name} → {draft.to_site_name} · {draft.reason}</p>
+                      </div>
+                      <span className="text-xs rounded-full border border-blue-200 bg-blue-100 text-blue-700 px-2 py-0.5 font-semibold">APPROVED</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <TransferInTransitPanel
+            drafts={inTransitDrafts}
+            onUpdated={handleReceived}
+          />
+
+          {!showForm && activeDrafts.length === 0 && (
+            <EmptyState title="No active transfers" message="Create a new transfer when stock needs to move between sites." />
+          )}
+        </div>
+      )}
+
+      {activeTab === 'receiving' && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="text-sm font-semibold text-foreground">Receiving Confirmation</h2>
+            <p className="text-xs text-muted-foreground mt-1">Confirm actual quantities received for in-transit transfers. Discrepancies raise exception alerts through the existing workflow.</p>
+          </div>
+          <TransferInTransitPanel
+            drafts={inTransitDrafts}
+            onUpdated={handleReceived}
+          />
+          {inTransitDrafts.length === 0 && (
+            <EmptyState title="No transfers awaiting receiving" message="In-transit transfers will appear here once dispatched." />
+          )}
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <TransferHistory
+          drafts={drafts}
+          loading={loading}
+          onRefresh={loadData}
+        />
+      )}
     </div>
   );
 }
