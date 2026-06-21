@@ -1,0 +1,16 @@
+{
+  "_fixture_notice": "Static Phase 1G-C receipt fixture only. Not live runtime data.",
+  "receipt_id": "inventory-receipt-fixture-0002",
+  "event_id": "scanops-event-fixture-0002",
+  "status": "REJECTED_TRUST",
+  "reason_code": "DEVICE_NOT_TRUSTED",
+  "received_at": "2026-06-21T06:05:11.000Z",
+  "processed_at": "2026-06-21T06:05:12.000Z",
+  "inventory_instance_id": "inventory-fixture-001",
+  "ledger_reference": null,
+  "retry_allowed": false,
+  "operator_action_required": true,
+  "receipt_signature": "receipt-signature-fixture",
+  "downstream_effect": "NONE",
+  "safety_note": "Rejected trust fixture. Device trust must be Inventory-owned and explicit."
+}
