@@ -14,20 +14,27 @@ import { getConfiguration, initConfiguration, saveConfigurationSection } from '@
 import SettingsSectionShell from '@/components/settings/SettingsSectionShell';
 import SettingsField from '@/components/settings/SettingsField';
 import LockedFeatureBadge from '@/components/settings/LockedFeatureBadge';
-import { Lock, Settings, ShieldCheck, Bell, RefreshCw, Cpu } from 'lucide-react';
+import { Lock, Settings, ShieldCheck, Bell, RefreshCw, Cpu, Share2, FileSpreadsheet, FileUp, PlugZap, CircleAlert } from 'lucide-react';
 
 const TABS = [
-  { id: 'general',     label: 'General',              icon: Settings   },
-  { id: 'inventory',   label: 'Inventory Rules',       icon: ShieldCheck },
-  { id: 'reorder',     label: 'Reorder Behaviour',     icon: RefreshCw  },
-  { id: 'compliance',  label: 'Environment & Compliance', icon: Lock    },
-  { id: 'notifications', label: 'Notifications',       icon: Bell       },
-  { id: 'devices',     label: 'Sync & Devices',        icon: Cpu        },
+  { id: 'general',       label: 'General',                  icon: Settings    },
+  { id: 'inventory',     label: 'Inventory Rules',          icon: ShieldCheck  },
+  { id: 'reorder',       label: 'Reorder Behaviour',        icon: RefreshCw    },
+  { id: 'devices',       label: 'Sync & Devices',           icon: Cpu         },
+  { id: 'data-exchange', label: 'Data Exchange',            icon: Share2      },
+  { id: 'compliance',    label: 'Environment & Compliance', icon: Lock        },
+  { id: 'notifications', label: 'Notifications',            icon: Bell        },
 ];
 
 const DATE_FORMATS = ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY', 'DD MMM YYYY'];
 const TIMEZONES    = ['Asia/Manila', 'Asia/Singapore', 'UTC', 'Asia/Hong_Kong', 'Australia/Sydney'];
 const UOM_OPTIONS  = ['pcs', 'kg', 'L', 'ml', 'g', 'box', 'pack', 'pair'];
+
+function getInitialSettingsTab() {
+  if (typeof window === 'undefined') return 'general';
+  const requested = new URLSearchParams(window.location.search).get('tab');
+  return TABS.some(tab => tab.id === requested) ? requested : 'general';
+}
 
 function Toggle({ checked, onChange, disabled }) {
   return (
@@ -281,9 +288,93 @@ function TabDevices() {
   );
 }
 
+
+// ─── Tab: Data Exchange ──────────────────────────────────────────────────────
+function TabDataExchange() {
+  const capabilityGroups = [
+    {
+      title: 'Planned exports',
+      description: 'Outbound inventory, order, wastage, and reporting surfaces after source workflows are stable.',
+      items: [
+        { icon: FileSpreadsheet, title: 'Inventory CSV export', body: 'Reserved for controlled item, stock balance, and threshold exports once data ownership rules are finalised.' },
+        { icon: FileSpreadsheet, title: 'Order history export', body: 'Reserved for purchase order history exports after Orders and Receiving are stable enough to expose externally.' },
+        { icon: FileSpreadsheet, title: 'Wastage / stock-out export', body: 'Reserved for approved stock-out and wastage reporting; operational report exports remain inside their source modules.' },
+      ],
+    },
+    {
+      title: 'Planned imports & connectors',
+      description: 'Inbound catalogue loading and third-party connectors remain disabled until the core ledger and order flows are locked.',
+      items: [
+        { icon: FileUp, title: 'Supplier catalogue import', body: 'Planned support for supplier price sheets and item files after templates, mapping rules, and validation are defined.' },
+        { icon: PlugZap, title: 'Accounting connectors', body: 'Future connector setup for accounting systems. No live sync, token storage, or connector runtime is active here.' },
+        { icon: Share2, title: 'API / webhook exchange', body: 'Future machine-to-machine exchange after admission control, audit, and failure recovery are approved.' },
+      ],
+    },
+  ];
+
+  return (
+    <SettingsSectionShell
+      title="Data Exchange"
+      description="Roadmap-only connector and import/export planning. This tab replaces the old standalone Exports & Integrations sidebar page."
+      hideSave
+    >
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-white/70">
+            <CircleAlert className="h-4 w-4 text-amber-700" strokeWidth={2} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-amber-900">Planned / roadmap only</p>
+            <p className="text-sm leading-relaxed text-amber-800/90">
+              No live import, export, connector, webhook, or third-party sync action is activated from Inventory Settings. Operational exports should stay inside Reports or the source workflow until the exchange layer is approved.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {capabilityGroups.map(group => (
+          <section key={group.title} className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-border bg-muted/25">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground mb-1">Planned capabilities</p>
+              <h3 className="text-sm font-semibold text-foreground">{group.title}</h3>
+              <p className="text-sm text-muted-foreground mt-1">{group.description}</p>
+            </div>
+            <div className="p-4 space-y-3">
+              {group.items.map(({ icon: Icon, title, body }) => (
+                <div key={title} className="rounded-2xl border border-border bg-background px-4 py-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted/70 border border-border">
+                        <Icon className="h-4 w-4 text-foreground" strokeWidth={1.9} />
+                      </div>
+                      <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-border bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Planned
+                    </span>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border border-border bg-muted/20 px-4 py-4">
+        <p className="text-sm font-semibold text-foreground mb-1">Promotion rule</p>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Data Exchange should only return as a full sidebar workspace after supplier imports, connector configuration, API tokens, scheduled exports, integration logs, and failed-sync retries become real governed workflows.
+        </p>
+      </div>
+    </SettingsSectionShell>
+  );
+}
+
 // ─── Page Shell ──────────────────────────────────────────────────────────────
 export default function InventorySettings() {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(getInitialSettingsTab);
   const [config, setConfig] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -391,7 +482,7 @@ export default function InventorySettings() {
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
-          const isLocked = tab.id === 'devices';
+          const isLocked = tab.id === 'devices' || tab.id === 'data-exchange';
           return (
             <button
               key={tab.id}
@@ -422,6 +513,7 @@ export default function InventorySettings() {
         {activeTab === 'compliance'    && <TabCompliance    {...tabProps} />}
         {activeTab === 'notifications' && <TabNotifications {...tabProps} />}
         {activeTab === 'devices'       && <TabDevices />}
+        {activeTab === 'data-exchange' && <TabDataExchange />}
       </div>
 
       {/* Footer note */}

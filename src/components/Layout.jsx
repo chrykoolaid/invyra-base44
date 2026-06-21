@@ -11,11 +11,7 @@ import {
   Trash2,
   Truck,
   Monitor,
-  Users,
-  Clock,
-  BarChart2,
   BarChart3,
-  Share2,
   ClipboardCheck,
   ArrowLeftRight,
   SlidersHorizontal,
@@ -33,61 +29,55 @@ import { useAuth } from '@/lib/AuthContext';
 import { hasAccess, roleLabel, roleBadgeClass } from '@/lib/permissions';
 import { resolveEffectiveRole } from '@/lib/devRoleOverride';
 
-// Nav items — each has a `minRole` that controls visibility
+// Nav items — grouped by operational priority. Keep this sidebar focused on
+// active Inventory workflows; defer non-inventory placeholders to documents only.
 const primaryNav = [
-  { path: '/Dashboard', label: 'Dashboard',    icon: LayoutDashboard, minRole: 'staff' },
-  { path: '/POSMode',   label: 'Point of Sale', icon: Monitor,         minRole: 'staff' },
+  { path: '/Dashboard', label: 'Dashboard', icon: LayoutDashboard, minRole: 'staff' },
+  { path: '/POSMode', label: 'POS Mode', icon: Monitor, minRole: 'staff' },
 ];
 
-const operationsNav = [
-  { path: '/Markdown',       label: 'Markdown',    icon: Tag,               minRole: 'staff'      },
-  { path: '/Locations',      label: 'Locations',   icon: MapPin,            minRole: 'supervisor' },
-  { path: '/Inventory',      label: 'Inventory',   icon: Package,           minRole: 'supervisor' },
-  { path: '/Movements',      label: 'Movements',   icon: ScrollText,        minRole: 'supervisor' },
-  { path: '/Adjustments',    label: 'Adjustments', icon: SlidersHorizontal, minRole: 'supervisor' },
-  { path: '/Transfers',      label: 'Transfers',   icon: ArrowLeftRight,    minRole: 'supervisor' },
-  { path: '/Stocktake',      label: 'Stocktake',   icon: ClipboardCheck,    minRole: 'supervisor' },
-  { path: '/Wastage',        label: 'Wastage',     icon: Trash2,            minRole: 'staff'      },
+const coreInventoryNav = [
+  { path: '/Inventory', label: 'Inventory', icon: Package, minRole: 'supervisor' },
+  { path: '/Movements', label: 'Movements', icon: ScrollText, minRole: 'supervisor' },
+  { path: '/Adjustments', label: 'Adjustments', icon: SlidersHorizontal, minRole: 'supervisor' },
+  { path: '/Transfers', label: 'Transfers', icon: ArrowLeftRight, minRole: 'supervisor' },
+  { path: '/Stocktake', label: 'Stocktake', icon: ClipboardCheck, minRole: 'supervisor' },
+  { path: '/Wastage', label: 'Wastage', icon: Trash2, minRole: 'staff' },
+  { path: '/Markdown', label: 'Markdown', icon: Tag, minRole: 'staff' },
   { path: '/ExpiryTracking', label: 'Expiry & Batches', icon: CalendarClock, minRole: 'supervisor' },
+  { path: '/Locations', label: 'Locations', icon: MapPin, minRole: 'supervisor' },
 ];
 
 const purchasingNav = [
-  { path: '/Suppliers',      label: 'Suppliers',       icon: Factory,       minRole: 'manager'    },
-  { path: '/ReorderReview',  label: 'Reorder Review',  icon: ClipboardList, minRole: 'manager'    },
-  { path: '/Orders',         label: 'Orders',          icon: ShoppingCart,  minRole: 'manager'    },
-  { path: '/Receiving',      label: 'Receiving',       icon: PackageCheck,  minRole: 'supervisor' },
-  { path: '/DeliveryPortal', label: 'Delivery Portal', icon: Truck,         minRole: 'supervisor' },
+  { path: '/Suppliers', label: 'Suppliers', icon: Factory, minRole: 'manager' },
+  { path: '/ReorderReview', label: 'Reorder Review', icon: ClipboardList, minRole: 'manager' },
+  { path: '/Orders', label: 'Orders', icon: ShoppingCart, minRole: 'manager' },
+  { path: '/Receiving', label: 'Receiving', icon: PackageCheck, minRole: 'supervisor' },
+  { path: '/DeliveryPortal', label: 'Delivery Portal', icon: Truck, minRole: 'supervisor' },
 ];
 
 const intelligenceNav = [
-  { path: '/GapScan',    label: 'Gap Scan',   icon: ScanSearch,    minRole: 'staff'      },
+  { path: '/GapScan', label: 'Gap Scan', icon: ScanSearch, minRole: 'staff' },
   { path: '/Exceptions', label: 'Exceptions', icon: AlertTriangle, minRole: 'supervisor' },
+  { path: '/Reports', label: 'Reports', icon: BarChart3, minRole: 'manager' },
 ];
 
 const adminNav = [
-  { path: '/InventoryAdmin',       label: 'Inventory Admin',      icon: BarChart2, minRole: 'admin'   },
-  { path: '/Reports',              label: 'Advanced Reports',     icon: BarChart3, minRole: 'manager' },
-  { path: '/ExportsIntegrations',  label: 'Exports & Integrations',icon: Share2,   minRole: 'admin'   },
-  { path: '/InventoryRoadmap',      label: 'Inventory Roadmap',     icon: Map,      minRole: 'admin'   },
-  { path: '/InventorySettings',    label: 'Inventory Settings',    icon: SlidersHorizontal, minRole: 'admin' },
-];
-
-const optionalNav = [
-  { path: '/Payroll',      label: 'Payroll & Rostering', icon: Users,  minRole: 'manager' },
-  { path: '/TimeTracking', label: 'Time Tracking',       icon: Clock,  minRole: 'manager' },
+  { path: '/InventorySettings', label: 'Inventory Settings', icon: SlidersHorizontal, minRole: 'admin' },
+  { path: '/InventoryRoadmap', label: 'Inventory Roadmap', icon: Map, minRole: 'admin' },
 ];
 
 const trainingNav = [
-  { path: '/Training/Staff',      label: 'Staff Training',      icon: FlaskConical, minRole: 'staff'      },
+  { path: '/Training/Staff', label: 'Staff Training', icon: FlaskConical, minRole: 'staff' },
   { path: '/Training/Supervisor', label: 'Supervisor Training', icon: FlaskConical, minRole: 'supervisor' },
-  { path: '/Training/Manager',    label: 'Manager Training',    icon: FlaskConical, minRole: 'manager'    },
+  { path: '/Training/Manager', label: 'Manager Training', icon: FlaskConical, minRole: 'manager' },
 ];
 
-const COLLAPSIBLE_NAV_GROUPS = new Set(['Admin', 'Modules', 'Training']);
+const COLLAPSIBLE_NAV_GROUPS = new Set(['Admin', 'Training']);
 const SIDEBAR_COLLAPSE_STORAGE_KEY = 'invyra.sidebar.collapsedGroups.v1';
 
 function getInitialCollapsedGroups() {
-  const defaults = { Admin: true, Modules: true, Training: true };
+  const defaults = { Admin: true, Training: true };
   if (typeof window === 'undefined') return defaults;
 
   try {
@@ -157,12 +147,11 @@ export default function Layout() {
   const [collapsedGroups, setCollapsedGroups] = useState(getInitialCollapsedGroups);
 
   const navGroups = useMemo(() => [
-    { label: 'Main', items: primaryNav },
-    { label: 'Operations', items: operationsNav },
+    { label: 'Pinned', items: primaryNav },
+    { label: 'Core Inventory', items: coreInventoryNav },
     { label: 'Purchasing', items: purchasingNav },
     { label: 'Intelligence', items: intelligenceNav },
     { label: 'Admin', items: adminNav },
-    { label: 'Modules', items: optionalNav },
     { label: 'Training', items: trainingNav },
   ], []);
 
@@ -206,7 +195,7 @@ export default function Layout() {
       <aside className="w-56 bg-card border-r border-border flex flex-col flex-shrink-0">
         <div className="px-4 py-3.5 border-b border-border">
           <h1 className="text-base font-semibold text-foreground">Invyra</h1>
-          <p className="text-[11px] text-muted-foreground">Laundry Operations</p>
+          <p className="text-[11px] text-muted-foreground">Inventory Operations</p>
         </div>
 
         <nav className="flex-1 overflow-y-auto p-2 pt-3">

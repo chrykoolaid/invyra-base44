@@ -24,12 +24,8 @@ import Orders from './pages/Orders';
 import Receiving from './pages/Receiving';
 import DeliveryPortal from './pages/DeliveryPortal';
 import POSMode from './pages/POSMode.jsx';
-import Payroll from './pages/Payroll';
-import TimeTracking from './pages/TimeTracking';
-import InventoryAdmin from './pages/InventoryAdmin';
 import ReceivingWorkspace from './pages/ReceivingWorkspace';
 import ReceivingLog from './pages/ReceivingLog';
-import ExportsIntegrations from './pages/ExportsIntegrations';
 import SupplierPortal from './pages/SupplierPortal';
 import Stocktake from './pages/Stocktake';
 import Transfers from './pages/Transfers';
@@ -86,10 +82,10 @@ const AuthenticatedApp = () => {
         <Route path="/Receiving/log"         element={<RoleGuard><ReceivingLog /></RoleGuard>} />
         <Route path="/DeliveryPortal"        element={<RoleGuard><DeliveryPortal /></RoleGuard>} />
         <Route path="/POSMode"               element={<RoleGuard><POSMode /></RoleGuard>} />
-        <Route path="/Payroll"               element={<RoleGuard><Payroll /></RoleGuard>} />
-        <Route path="/TimeTracking"          element={<RoleGuard><TimeTracking /></RoleGuard>} />
-        <Route path="/InventoryAdmin"        element={<RoleGuard><InventoryAdmin /></RoleGuard>} />
-        <Route path="/ExportsIntegrations"   element={<RoleGuard><ExportsIntegrations /></RoleGuard>} />
+        <Route path="/Payroll"               element={<RoleGuard><Navigate to="/InventoryRoadmap" replace /></RoleGuard>} />
+        <Route path="/TimeTracking"          element={<RoleGuard><Navigate to="/InventoryRoadmap" replace /></RoleGuard>} />
+        <Route path="/InventoryAdmin"        element={<RoleGuard><Navigate to="/InventorySettings" replace /></RoleGuard>} />
+        <Route path="/ExportsIntegrations"   element={<RoleGuard><Navigate to="/InventorySettings?tab=data-exchange" replace /></RoleGuard>} />
         <Route path="/InventoryRoadmap"      element={<RoleGuard><InventoryRoadmap /></RoleGuard>} />
         <Route path="/SupplierPortal"        element={<RoleGuard><SupplierPortal /></RoleGuard>} />
         <Route path="/Stocktake"             element={<RoleGuard><Stocktake /></RoleGuard>} />
