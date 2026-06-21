@@ -22,78 +22,81 @@ import {
 
 // ─── RFID Scope ───────────────────────────────────────────────────────────────
 const rfidScope = {
-  title: 'Hybrid RFID + Barcode Integration v1',
-  status: 'TO DO / SCOPED',
-  source: 'RFID strategy discussion — June 2026',
-  reason: 'Invyra will adopt a Hybrid RFID model: UHF RFID for high-volume batch tasks (Stocktakes, Receiving batches, zone-level movements) and Barcode scanning as the reliable fallback for item-level exceptions, adjustments, and environments where RFID signal is unreliable. This must not replace the existing barcode intake infrastructure — it extends it.',
+  title: 'Hybrid RFID Visibility Layer v1',
+  status: 'LATER / ENTERPRISE SCOPED',
+  source: 'RFID hybrid model discussion — June 2026',
+  reason: 'Invyra should remain barcode-first and ledger-first for core operations. RFID becomes an optional accelerated capture and visibility layer for selected clients, storage zones, and workflows. RFID evidence must never bypass Stocktake, Receiving, Transfers, Adjustments, Wastage, or other approved inventory workflows.',
   summary: [
-    'Extend ScannerIntakeQueue to support dual scan_type: RFID and BARCODE.',
-    'Add debounce and aggregation logic to processScannerIntake so thousands of RFID tag pings collapse into a single validated ledger update.',
-    'Add is_rfid_enabled flag to StorageArea so RFID-capable zones are explicitly declared and auditable.',
-    'RFID-triggered movements must still produce StockMovement records identical to barcode-triggered ones — the ledger must not know or care about the source.',
-    'Barcodes remain the primary method for manual single-item actions: Adjustments, Wastage, Markdown label scans, and POS line items.',
+    'Adopt a hybrid model: barcodes remain the default operational capture method; RFID is an optional enterprise layer for high-volume visibility and validation.',
+    'Use RFID to detect presence, zone/location evidence, receiving counts, transfer verification, and stocktake acceleration — not to directly change on-hand stock.',
+    'Route RFID reads into controlled evidence/review queues before any inventory workflow creates StockMovement records.',
+    'Keep StockMovement as the source of truth; RFID sessions are capture evidence, not a separate inventory ledger.',
+    'Configure RFID only per device and per storage area so clients can enable it selectively without making RFID mandatory for all inventory users.',
   ],
   plannedFeatures: [
-    'scan_type field on ScannerIntakeQueue: RFID | BARCODE',
-    'RFID batch session grouping: aggregate reads by session_id, device_id, and location before posting',
-    'Debounce window config per StorageArea (e.g. 500ms default, configurable up to 5s)',
-    'Ghost read filtering: discard repeated tag reads within debounce window',
-    'is_rfid_enabled flag on StorageArea entity',
-    'rfid_zone_id reference on StorageArea for portal/antenna mapping',
-    'Handheld UI mode toggle: UHF RFID mode vs Barcode mode per session',
-    'RFID batch review screen before committing to ledger (mirrors existing Scanner Intake Queue review)',
-    'Conflict detection: flag items read in two RFID zones simultaneously',
-    'Failover path: if RFID read fails or tag is absent, prompt for barcode scan',
-    'Audit trail: every RFID-triggered movement tagged with scan_source: RFID in StockMovement',
+    'RFID Visibility Layer under Hardware & Sync, with device assignment managed from Inventory Settings / Sync & Devices.',
+    'RFID-capable device type support for handheld RFID readers, fixed readers, and portal readers.',
+    'StorageArea RFID zone declaration: is_rfid_enabled, rfid_zone_id, and reader/antenna references.',
+    'RFID session capture: device_id, operator_id, location_id, storage_area_id, session purpose, tag count, started_at, completed_at, and environment.',
+    'RFID evidence queue for review before routing to Stocktake, Receiving, Transfers, or exception investigation.',
+    'RFID-assisted stocktake mode where tag reads pre-fill count evidence but supervisor reconciliation still controls posting.',
+    'RFID-assisted receiving and transfer verification where tag reads compare expected vs detected items before existing workflow confirmation.',
+    'Unknown/default location detection when RFID evidence conflicts with known ItemStockBalance location data.',
+    'Barcode fallback prompt for untagged items, damaged RFID tags, signal gaps, and single-item exception handling.',
+    'Conflict detection for duplicate tag reads, ghost reads, reads from two zones, or reads from inactive locations.',
   ],
   technicalRequirements: [
-    'ScannerIntakeQueue.scan_type must default to BARCODE to preserve backward compatibility',
-    'processScannerIntake function must branch on scan_type and apply debounce/aggregation for RFID sessions',
-    'RFID aggregated reads must produce a single ScannerIntakeQueue record per item per session, not one per ping',
-    'StockMovement ledger entry must be structurally identical regardless of scan source',
-    'StorageArea.is_rfid_enabled must be false by default — opt-in per zone only',
-    'RFID zone configuration must be Admin/Manager only — Staff cannot enable or disable zones',
-    'All RFID session commits must be logged in AuditLog with session_id, device_id, tag_count, and operator_id',
-    'Ghost read deduplication must run server-side in processScannerIntake — not client-side only',
-    'LIVE/TRAINING/TEST environment separation must apply to RFID sessions identical to barcode sessions',
+    'RFID must be feature-flagged off by default and enabled only by Admin/Owner configuration.',
+    'StorageArea.is_rfid_enabled must default to false; RFID zones must be opt-in and auditable.',
+    'RFID reads must write only to an RFID evidence/session model or intake queue until an approved inventory workflow accepts them.',
+    'No RFID read may directly create, approve, reverse, or amend StockMovement records.',
+    'Debounce, deduplication, and ghost-read filtering must run server-side or bridge-side, not client-side only.',
+    'RFID session commits must preserve LIVE/TRAINING/TEST environment separation exactly like barcode/scanner workflows.',
+    'All RFID configuration changes and session routing actions must be AuditLog-visible with actor, device, location, storage area, and timestamp.',
+    'RFID reader identity must be trusted through Inventory-owned device registration; IP address or reader self-reporting alone is not enough.',
+    'Barcode workflows must remain fully functional when RFID is unavailable, disabled, or not licensed for a client.',
   ],
   dataModel: [
-    'ScannerIntakeQueue: add scan_type (RFID | BARCODE), rfid_session_id, rfid_tag_count, rfid_debounce_ms, aggregated_from_pings',
-    'StorageArea: add is_rfid_enabled (boolean, default false), rfid_zone_id (string), rfid_antenna_ref (string)',
-    'StockMovement: add scan_source (RFID | BARCODE | MANUAL) — optional denormalized field for reporting',
-    'New entity RFIDSession: session_id, device_id, operator_id, location_id, storage_area_id, started_at, committed_at, tag_count, status (OPEN | COMMITTED | ABANDONED | CONFLICT), environment',
+    'StorageArea: add is_rfid_enabled (boolean, default false), rfid_zone_id (string), rfid_reader_ref / rfid_antenna_ref (string), rfid_notes (optional)',
+    'DeviceRegistry / scanner registry: support device_type values such as BARCODE_HANDHELD, RFID_HANDHELD, RFID_FIXED_READER, RFID_PORTAL, and assigned location/storage area',
+    'New RFIDSession: session_id, device_id, operator_id, location_id, storage_area_id, session_purpose, started_at, completed_at, tag_count, status, environment',
+    'New RFIDReadEvidence or ScannerIntakeQueue extension: session_id, epc/tag_id, item_id/SKU if resolved, read_count, first_seen_at, last_seen_at, confidence, conflict_flags',
+    'Optional StockMovement.scan_source for reporting only after an approved workflow posts the movement; values may include MANUAL, BARCODE, SCANNER_BRIDGE, RFID_ASSISTED',
   ],
   ownershipRules: [
-    'ScannerIntakeQueue owns RFID and Barcode intake processing — both paths flow through the same review and approval workflow',
-    'StorageArea owns RFID zone configuration — zones must not be created outside the Locations module',
-    'StockMovement remains the source of truth — RFID is a trigger source, not a separate ledger',
-    'Markdowns, Wastage, and POS continue to use Barcode scanning only for item-level operations',
-    'RFID hardware integration (antennas, portals, tag encoding) is out of Invyra software scope — handled by hardware vendor',
+    'Inventory ledger owns stock truth; RFID owns capture evidence only.',
+    'Inventory Settings / Sync & Devices owns RFID reader registration, trust, environment tagging, and device assignment.',
+    'Locations / Storage Areas owns RFID zone metadata and whether a zone is RFID-enabled.',
+    'Stocktake owns reconciliation and stock-count posting, even when RFID pre-fills count evidence.',
+    'Receiving owns supplier delivery confirmation, even when RFID validates expected items.',
+    'Transfers owns dispatch/receive confirmation, even when RFID validates source/destination presence.',
+    'Adjustments and Wastage remain governed workflows; RFID may raise evidence but must not auto-adjust or auto-write-off.',
+    'Barcode scanning remains the fallback and normal method for POS, markdown label validation, wastage exceptions, and single-item operations.',
   ],
   outOfScope: [
-    'RFID portal/antenna hardware installation or configuration',
-    'RFID tag encoding, printing, or physical tagging workflow',
-    'Replacing barcodes for single-item Adjustments, Wastage, Markdown label scans, or POS operations',
-    'Real-time live location tracking (item-level GPS or continuous zone polling)',
-    'AI-powered ghost read filtering or predictive zone mapping',
-    'Full recall workflow triggered by RFID zone reads',
-    'Customer-facing RFID availability lookup',
+    'RFID as a required dependency for core inventory operation',
+    'Automatic stock changes from passive RFID reads',
+    'Automatic transfers, adjustments, write-offs, markdowns, or receiving confirmation from RFID alone',
+    'Replacing barcode scanning for POS, Markdown label scans, Wastage, or single-item exception workflows',
+    'RFID hardware installation, cabling, antenna tuning, tag selection, or tag encoding service',
+    'Real-time customer-facing item tracking or public stock visibility based on RFID reads',
+    'AI-driven ghost-read prediction or continuous item-level surveillance in the first RFID phase',
   ],
   dependencies: [
-    'ScannerIntakeQueue entity and processScannerIntake function',
-    'StorageArea entity with is_rfid_enabled flag',
-    'StockMovement ledger integrity and LIVE/TRAINING/TEST separation',
-    'AuditLog for session-level RFID commit events',
-    'Locations and StorageArea modules for zone setup',
-    'Role/permission model (Admin/Manager for zone config, Staff for session operation)',
+    'Inventory Settings / Sync & Devices device registry and trust model',
+    'Locations and Storage Areas module for RFID zone setup',
+    'StockMovement ledger integrity and approved workflow posting rules',
+    'Stocktake, Receiving, and Transfers workflows for routing accepted RFID evidence',
+    'AuditLog and LIVE/TRAINING/TEST environment separation',
+    'Barcode scanner workflows and fallback capture path',
   ],
   priority: [
-    'Scope accepted — June 2026',
-    'Implement after ScannerIntakeQueue barcode workflow is stable and validated in LIVE',
-    'Phase 1: Schema extensions + debounce logic in processScannerIntake',
-    'Phase 2: RFID batch review UI in Scanner Intake tab',
-    'Phase 3: StorageArea RFID zone configuration in Locations module',
-    'Hardware pilot recommended in highest-volume storage area first',
+    'Keep RFID deferred until barcode, Locations, Stocktake, Transfers, Receiving, and scanner bridge workflows are stable.',
+    'Phase 1: Roadmap and data-model scope only — no runtime activation.',
+    'Phase 2: Device registry and StorageArea RFID-zone metadata design.',
+    'Phase 3: RFID evidence/session intake design with debounce and conflict rules.',
+    'Phase 4: Pilot RFID-assisted Stocktake in one controlled storage area.',
+    'Phase 5: Expand to receiving/transfer validation only after stocktake evidence pilot passes.',
   ],
 };
 
@@ -191,7 +194,7 @@ const roadmapGroups = {
           summary: [
             'Consolidated inventory-related roadmap items from existing module pages into this Admin-only roadmap.',
             'Classified Payroll & Rostering and Time Tracking as non-inventory placeholder modules.',
-            'Added Hybrid RFID scope — June 2026.',
+            'Added Hybrid RFID Visibility Layer scope — June 2026.',
           ],
         },
         {
@@ -200,7 +203,7 @@ const roadmapGroups = {
           source: 'Uploaded inventory build module scan and no-duplication review',
           reason: 'The current build now covers most core inventory surfaces. The next roadmap risk is not missing major modules — it is adding duplicate sidebar modules when the correct shape is a sub-workflow inside an existing module.',
           summary: [
-            'Confirmed current coverage: Dashboard, POS Mode, Markdown, Locations, Inventory, Movements, Adjustments, Transfers, Stocktake, Stock-Out Exceptions/Wastage, Expiry & Batches, Suppliers, Reorder Review, Orders, Receiving, Delivery Portal, Gap Scan, Exceptions, Reports, Exports & Integrations, Inventory Settings, Roadmap, Training, and forecasting verification/UI wiring.',
+            'Confirmed active inventory coverage: Dashboard, POS Mode, Markdown, Locations, Inventory, Movements, Adjustments, Transfers, Stocktake, Stock-Out Exceptions/Wastage, Expiry & Batches, Suppliers, Reorder Review, Orders, Receiving, Delivery Portal, Gap Scan, Exceptions, Reports, Inventory Settings, Roadmap, Training, and forecasting verification/UI wiring. Exports & Integrations is now treated as Inventory Settings → Data Exchange, not a standalone sidebar module.',
             'Recommended posture: stabilize current modules before adding more top-level sidebar items.',
             'Remaining gaps should be implemented as governed sub-workflows: Item Master governance, Holds/Quarantine/Recall, Supplier Returns/Claims, Fill Tasks, Cycle Count Planner, and Device/Label Administration.',
             'Do not create standalone duplicate modules for Store Use, Scanner Intake, Markdown Reports, Floor Scan, Forecasting, Branch Lookup, or Expiry Reports.',
@@ -226,9 +229,9 @@ const roadmapGroups = {
           status: 'NEXT REVIEW QUEUE',
           source: 'Sidebar and module cleanup sequence',
           summary: [
-            'Inventory Admin / Unit Pricing review',
-            'Advanced Reports polish review',
-            'Exports & Integrations classification review',
+            'Inventory Settings / Unit Pricing governance review',
+            'Reports polish review',
+            'Data Exchange classification review',
             'Adjustments, Wastage, Transfers, and Stocktake polish review',
             'Receiving / Delivery Portal workflow review',
             'Orders workflow continuation',
@@ -454,7 +457,7 @@ const roadmapGroups = {
   hardware: [
     {
       title: 'Hardware & Sync Infrastructure',
-      description: 'Scanner device management, RFID integration, and hybrid barcode/RFID data pipelines.',
+      description: 'Scanner device management, optional RFID visibility, and hybrid barcode/RFID evidence pipelines.',
       tone: 'sky',
       icon: Wifi,
       items: [rfidScope],
@@ -529,7 +532,7 @@ const roadmapGroups = {
         {
           title: 'Supplier Intelligence',
           status: 'DEFERRED / DEPENDS ON HISTORY',
-          source: 'Reorder threshold discussion, Inventory Admin readiness',
+          source: 'Reorder threshold discussion, Inventory Settings readiness',
           summary: [
             'Supplier lead time should become a first-class input for reorder point calculations.',
             'Supplier delivery reliability and receipt accuracy measured after Orders and Receiving are trusted.',
@@ -558,10 +561,10 @@ const roadmapGroups = {
         {
           title: 'Cost Intelligence + Unit Valuation Suggestions v1',
           status: 'DEFERRED / FUTURE INTELLIGENCE',
-          source: 'Inventory Admin Unit Pricing review',
+          source: 'Inventory Settings Unit Pricing review',
           reason: 'Current unit pricing is manual and is used for inventory valuation. Later the system should suggest valuation costs using supplier purchase history, landed cost, average cost, and supplier price-change history.',
           summary: [
-            'Unit Price on Inventory Admin should represent internal cost / landed valuation, not necessarily customer-facing selling price.',
+            'Unit Price in Inventory Settings / Item governance should represent internal cost / landed valuation, not necessarily customer-facing selling price.',
             'Suggestions must be advisory only and require Admin approval before any cost value changes.',
           ],
           plannedFeatures: [
@@ -574,7 +577,7 @@ const roadmapGroups = {
           dependencies: [
             'Receiving price history',
             'Supplier records',
-            'Inventory Admin audit log',
+            'Inventory Settings audit log',
             'Advanced Reports valuation rules',
           ],
         },
@@ -789,7 +792,7 @@ const roadmapGroups = {
           source: 'Alert management gap — June 2026',
           reason: 'Inventory alerts (StockOutAlert, reorder alerts, wastage discrepancy, receiving discrepancy, markdown SLA warnings) are currently scattered across page-level widgets. A unified Alert Center provides a single triage surface where managers can see, acknowledge, and resolve all inventory alerts across modules — without duplicating the records those alerts reference.',
           summary: [
-            'A dedicated alert management view within Inventory Admin or a top-level Exceptions surface, listing all open, acknowledged, and resolved inventory alerts in one place.',
+            'A dedicated alert management view within Inventory Settings or a top-level Exceptions surface, listing all open, acknowledged, and resolved inventory alerts in one place.',
             'Does not store the source events — StockMovement, StockOutRecord, MarkdownReviewQueue, and ReceivingRecord remain the source of truth.',
             'Provides lifecycle management: Open, Acknowledged, Resolved, Deduped — matching the existing StockOutAlert status model.',
             'Role-gated: Staff see their own alerts, Supervisors see branch alerts, Managers and Admins see all.',
@@ -827,11 +830,11 @@ const roadmapGroups = {
           ],
         },
         {
-          title: 'Inventory Admin reporting roadmap',
+          title: 'Inventory Settings reporting governance roadmap',
           status: 'CONSOLIDATED FROM INVENTORY ADMIN',
           source: 'InventoryAdmin Roadmap tab',
           summary: [
-            'Inventory Admin remains the high-trust oversight hub for audit visibility, adjustment reporting, supplier scorecards, and inventory-level admin controls.',
+            'Inventory Settings remains the high-trust oversight hub for audit visibility, adjustment reporting, supplier scorecards, and inventory-level admin controls.',
           ],
           plannedFeatures: [
             'Stock value summary',
@@ -919,7 +922,7 @@ const roadmapGroups = {
         {
           title: 'POS receipt/refund inventory effects',
           status: 'DEPENDENCY / LATER MODULE',
-          source: 'POS future receipt lookup note and Inventory Admin readiness row',
+          source: 'POS future receipt lookup note and Inventory Settings readiness row',
           summary: [
             'Receipt lookup, returns, refunds, and POS deductions may affect inventory later, but should be validated in their own POS/returns scope first.',
             'Inventory reports should only reflect return/refund effects after a trusted movement contract exists.',
@@ -1174,8 +1177,8 @@ export default function InventoryRoadmap() {
           <Radio className="h-4 w-4 text-sky-600" strokeWidth={1.9} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-sky-900">New scope added: Hybrid RFID + Barcode Integration v1</p>
-          <p className="text-xs text-sky-700/80 mt-0.5">Scoped June 2026 — see Hardware & Sync tab for the full scope card.</p>
+          <p className="text-sm font-semibold text-sky-900">New scope added: Hybrid RFID Visibility Layer v1</p>
+          <p className="text-xs text-sky-700/80 mt-0.5">Scoped June 2026 as a later enterprise capability — see Hardware & Sync tab for the full scope card.</p>
         </div>
         <button
           onClick={() => setActiveTab('hardware')}
