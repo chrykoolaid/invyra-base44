@@ -1,0 +1,139 @@
+{
+  "name": "TransferDraft",
+  "type": "object",
+  "properties": {
+    "transfer_ref": {
+      "type": "string",
+      "description": "Human-readable reference e.g. TRF-2026-001"
+    },
+    "from_site_id": {
+      "type": "string"
+    },
+    "from_site_name": {
+      "type": "string"
+    },
+    "to_site_id": {
+      "type": "string"
+    },
+    "to_site_name": {
+      "type": "string"
+    },
+    "from_location_id": {
+      "type": "string"
+    },
+    "to_location_id": {
+      "type": "string"
+    },
+    "from_storage_area_id": {
+      "type": "string"
+    },
+    "to_storage_area_id": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Transfer reason code e.g. Replenishment, Stock Balancing"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "lines": {
+      "type": "array",
+      "description": "Array of {item_id, sku, item_name, qty, stock_at_draft}",
+      "items": {
+        "type": "object"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "IN_TRANSIT",
+        "RECEIVED",
+        "REJECTED",
+        "CANCELLED"
+      ],
+      "default": "PENDING_APPROVAL"
+    },
+    "drafted_by": {
+      "type": "string"
+    },
+    "drafted_by_name": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dispatched_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "received_by": {
+      "type": "string"
+    },
+    "received_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "received_lines": {
+      "type": "array",
+      "description": "Actual received quantities per line {item_id, qty_received, discrepancy_qty}",
+      "items": {
+        "type": "object"
+      }
+    },
+    "rejection_reason": {
+      "type": "string"
+    },
+    "rejected_by": {
+      "type": "string"
+    },
+    "rejected_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "out_movement_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "StockMovement IDs created on dispatch"
+    },
+    "in_movement_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "StockMovement IDs created on receive confirmation"
+    },
+    "has_discrepancy": {
+      "type": "boolean",
+      "default": false
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "from_site_id",
+    "to_site_id",
+    "lines",
+    "reason",
+    "status"
+  ]
+}

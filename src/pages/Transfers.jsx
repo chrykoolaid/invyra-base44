@@ -1,317 +1,119 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { envFilter, ENV_LIVE } from '@/lib/envFilter';
-import { postInventoryTransfer } from '@/lib/inventoryMovement';
-import { ArrowLeftRight, Plus, RefreshCw, ArrowRight, Trash2, MapPin } from 'lucide-react';
+import { envFilter } from '@/lib/envFilter';
+import { Plus } from 'lucide-react';
+import TransferForm from '@/components/transfers/TransferForm';
+import TransferPendingPanel from '@/components/transfers/TransferPendingPanel';
+import TransferInTransitPanel from '@/components/transfers/TransferInTransitPanel';
+import TransferHistory from '@/components/transfers/TransferHistory';
 
 export default function Transfers() {
   const [sites, setSites] = useState([]);
   const [items, setItems] = useState([]);
-  const [transfers, setTransfers] = useState([]);
   const [locations, setLocations] = useState([]);
   const [storageAreas, setStorageAreas] = useState([]);
+  const [drafts, setDrafts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [userRole, setUserRole] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  // Form state
-  const [fromSite, setFromSite] = useState('');
-  const [toSite, setToSite] = useState('');
-  const [fromLocation, setFromLocation] = useState('');
-  const [toLocation, setToLocation] = useState('');
-  const [fromStorageArea, setFromStorageArea] = useState('');
-  const [toStorageArea, setToStorageArea] = useState('');
-  const [lines, setLines] = useState([{ item_id: '', qty: '' }]);
-  const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
+  const canApprove = ['supervisor', 'manager', 'admin', 'owner'].includes((userRole || '').toLowerCase());
 
   const loadData = async () => {
     setLoading(true);
-    const [siteData, itemData, movements, locData, areaData] = await Promise.all([
-      base44.entities.Site.filter({ is_active: true }),
+    const [siteData, itemData, locData, areaData, draftData, user] = await Promise.all([
+      base44.entities.Site.filter({ is_active: true }, 'name', 100),
       base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500),
-      base44.entities.StockMovement.filter({ ...envFilter(), source_type: 'TRANSFER' }),
       base44.entities.Location.filter({ ...envFilter(), is_active: true }, 'name', 100),
       base44.entities.StorageArea.filter({ ...envFilter(), is_active: true }, 'name', 200),
+      base44.entities.TransferDraft.filter(envFilter(), '-submitted_at', 200),
+      base44.auth.me(),
     ]);
     setSites(siteData || []);
     setItems(itemData || []);
     setLocations(locData || []);
     setStorageAreas(areaData || []);
-
-    // Group movements into transfers by source_ref
-    const grouped = {};
-    (movements || []).forEach(m => {
-      if (!m.source_ref) return;
-      if (!grouped[m.source_ref]) grouped[m.source_ref] = { ref: m.source_ref, date: m.created_date, lines: [], out: [], in: [] };
-      if (m.direction === 'OUT') grouped[m.source_ref].out.push(m);
-      else grouped[m.source_ref].in.push(m);
-    });
-
-    const transferList = Object.values(grouped).sort((a, b) => new Date(b.date) - new Date(a.date));
-    setTransfers(transferList);
+    setDrafts(draftData || []);
+    setUserRole(user?.role || '');
     setLoading(false);
   };
 
   useEffect(() => { loadData(); }, []);
 
-  const addLine = () => setLines(prev => [...prev, { item_id: '', qty: '' }]);
-  const removeLine = (i) => setLines(prev => prev.filter((_, idx) => idx !== i));
-  const updateLine = (i, field, val) => setLines(prev => prev.map((l, idx) => idx === i ? { ...l, [field]: val } : l));
+  const pendingDrafts = drafts.filter(d => d.status === 'PENDING_APPROVAL');
+  const inTransitDrafts = drafts.filter(d => d.status === 'IN_TRANSIT');
 
-  const validLines = lines.filter(l => l.item_id && Number(l.qty) > 0);
-
-  const handleSubmit = async () => {
-    if (!fromSite || !toSite || fromSite === toSite || validLines.length === 0) return;
-    setSaving(true);
-
-    const ref = `TRF-${Date.now().toString(36).toUpperCase()}`;
-    const user = await base44.auth.me();
-    const workingItems = new Map(items.map(item => [item.id, { ...item, stock_per_site: { ...(item.stock_per_site || {}) } }]));
-
-    try {
-      for (const line of validLines) {
-        const item = workingItems.get(line.item_id);
-        if (!item) continue;
-        const result = await postInventoryTransfer({
-          item,
-          fromSite,
-          toSite,
-          qty: Number(line.qty),
-          fromLocationId: fromLocation || null,
-          toLocationId: toLocation || null,
-          fromStorageAreaId: fromStorageArea || null,
-          toStorageAreaId: toStorageArea || null,
-          sourceRef: ref,
-          notes,
-          environment: ENV_LIVE,
-          user,
-        });
-        const nextStockPerSite = {
-          ...(item.stock_per_site || {}),
-          [fromSite]: result.balance_after.from,
-          [toSite]: result.balance_after.to,
-        };
-        const nextTotal = Object.values(nextStockPerSite).reduce((sum, value) => sum + Number(value || 0), 0);
-        workingItems.set(item.id, { ...item, stock_per_site: nextStockPerSite, stock: nextTotal });
-      }
-    } catch (error) {
-      console.error('Transfer post failed', error);
-      setSaving(false);
-      return;
-    }
-
-    setSaving(false);
+  const handleSubmitted = (data) => {
     setShowForm(false);
-    setFromSite(''); setToSite(''); setFromLocation(''); setToLocation(''); setFromStorageArea(''); setToStorageArea(''); setLines([{ item_id: '', qty: '' }]); setNotes('');
+    setSuccessMsg(data?.self_approved
+      ? `Transfer ${data.ref} dispatched — stock deducted from source. Awaiting receiving confirmation.`
+      : `Transfer ${data.ref} submitted for approval.`
+    );
     loadData();
+    setTimeout(() => setSuccessMsg(''), 6000);
   };
 
-  const getSiteName = (id) => sites.find(s => s.id === id)?.name || id;
+  const handleReceived = (hasDiscrepancy) => {
+    setSuccessMsg(hasDiscrepancy
+      ? 'Transfer received with discrepancies. A HIGH alert has been raised in the Exception Center.'
+      : 'Transfer fully received. Ledger updated.'
+    );
+    loadData();
+    setTimeout(() => setSuccessMsg(''), 6000);
+  };
 
   return (
     <div className="p-5 lg:p-6 max-w-[1100px] space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-xl font-semibold text-foreground">Transfers</h1>
-          <p className="text-sm text-muted-foreground">Move stock between locations. Every transfer is posted to the inventory ledger.</p>
+          <p className="text-sm text-muted-foreground">
+            Move stock between sites with governed approval, in-transit tracking, and receiving confirmation.
+          </p>
         </div>
         <button
           onClick={() => setShowForm(v => !v)}
-          className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 transition-opacity font-medium flex-shrink-0"
+          className="flex items-center gap-2 h-9 px-4 text-sm rounded-xl bg-primary text-primary-foreground hover:opacity-90 font-medium flex-shrink-0"
         >
           <Plus size={14} /> New Transfer
         </button>
       </div>
 
-      {/* Create Transfer Form */}
-      {showForm && (
-        <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-foreground">Create Transfer</h2>
-
-          {/* Sites */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">From Site</label>
-              <select value={fromSite} onChange={e => setFromSite(e.target.value)}
-                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
-                <option value="">Select…</option>
-                {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">To Site</label>
-              <select value={toSite} onChange={e => setToSite(e.target.value)}
-                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
-                <option value="">Select…</option>
-                {sites.filter(s => s.id !== fromSite).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Locations & Storage Areas */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">From Location (optional)</label>
-              <select value={fromLocation} onChange={e => { setFromLocation(e.target.value); setFromStorageArea(''); }}
-                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
-                <option value="">All locations</option>
-                {locations.map(loc => (
-                  <option key={loc.id} value={loc.id}>{loc.name} ({loc.location_code})</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">To Location (optional)</label>
-              <select value={toLocation} onChange={e => { setToLocation(e.target.value); setToStorageArea(''); }}
-                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
-                <option value="">All locations</option>
-                {locations.map(loc => (
-                  <option key={loc.id} value={loc.id}>{loc.name} ({loc.location_code})</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">From Storage Area (optional)</label>
-              <select value={fromStorageArea} onChange={e => setFromStorageArea(e.target.value)}
-                disabled={!fromLocation}
-                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
-                <option value="">All areas</option>
-                {storageAreas.filter(sa => sa.location_id === fromLocation).map(sa => (
-                  <option key={sa.id} value={sa.id}>{sa.name} ({sa.storage_area_code})</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">To Storage Area (optional)</label>
-              <select value={toStorageArea} onChange={e => setToStorageArea(e.target.value)}
-                disabled={!toLocation}
-                className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
-                <option value="">All areas</option>
-                {storageAreas.filter(sa => sa.location_id === toLocation).map(sa => (
-                  <option key={sa.id} value={sa.id}>{sa.name} ({sa.storage_area_code})</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {fromSite && toSite && fromSite === toSite && (
-            <p className="text-xs text-destructive">Source and destination cannot be the same.</p>
-          )}
-
-          {/* Lines */}
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2">Items</label>
-            <div className="space-y-2">
-              {lines.map((line, i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <select value={line.item_id} onChange={e => updateLine(i, 'item_id', e.target.value)}
-                    className="flex-1 h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring">
-                    <option value="">Select item…</option>
-                    {items.map(it => <option key={it.id} value={it.id}>{it.name} ({it.sku})</option>)}
-                  </select>
-                  <input type="number" min={1} placeholder="Qty" value={line.qty}
-                    onChange={e => updateLine(i, 'qty', e.target.value)}
-                    className="w-20 h-9 border border-border rounded-lg px-2 text-sm text-center bg-background focus:outline-none focus:ring-1 focus:ring-ring" />
-                  {lines.length > 1 && (
-                    <button onClick={() => removeLine(i)} className="text-muted-foreground hover:text-destructive">
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <button onClick={addLine} className="mt-2 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-              <Plus size={12} /> Add item
-            </button>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1.5">Notes (optional)</label>
-            <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Driver name, reason…"
-              className="w-full h-9 border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring" />
-          </div>
-
-          <div className="flex gap-2 justify-end pt-2 border-t border-border">
-            <button onClick={() => setShowForm(false)} className="h-9 px-4 text-sm border border-border rounded-xl hover:bg-muted">Cancel</button>
-            <button
-              onClick={handleSubmit}
-              disabled={saving || !fromSite || !toSite || fromSite === toSite || validLines.length === 0}
-              className="h-9 px-5 text-sm bg-primary text-primary-foreground rounded-xl hover:opacity-90 disabled:opacity-40 font-medium"
-            >
-              {saving ? 'Posting…' : 'Post Transfer'}
-            </button>
-          </div>
+      {successMsg && (
+        <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${successMsg.includes('discrepanc') ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+          {successMsg.includes('discrepanc') ? '⚠ ' : '✓ '}{successMsg}
         </div>
       )}
 
-      {/* Transfer History */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-border bg-muted/25 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">Transfer History</h2>
-          <button onClick={loadData} disabled={loading} className="flex items-center gap-1.5 h-8 px-3 text-xs rounded border border-border hover:bg-muted disabled:opacity-50">
-            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} /> Refresh
-          </button>
-        </div>
+      {showForm && (
+        <TransferForm
+          sites={sites}
+          items={items}
+          locations={locations}
+          storageAreas={storageAreas}
+          userRole={userRole}
+          onSubmitted={handleSubmitted}
+          onCancel={() => setShowForm(false)}
+        />
+      )}
 
-        {loading ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">Loading transfers…</div>
-        ) : transfers.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted-foreground">No transfers yet. Create one above.</div>
-        ) : (
-          <div className="divide-y divide-border">
-            {transfers.map(trf => {
-              const outMovements = trf.out;
-              const inMovements = trf.in;
-              const fromSiteId = outMovements[0]?.site_id;
-              const toSiteId = inMovements[0]?.site_id;
-              const totalQty = outMovements.reduce((s, m) => s + (m.qty || 0), 0);
+      <TransferPendingPanel
+        drafts={pendingDrafts}
+        canApprove={canApprove}
+        onUpdated={loadData}
+      />
 
-              return (
-                <div key={trf.ref} className="px-5 py-4 hover:bg-muted/20 transition-colors">
-                  <div className="flex items-start justify-between gap-4 mb-2">
-                    <div className="flex items-center gap-3">
-                      <ArrowLeftRight size={16} className="text-primary flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-semibold text-foreground font-mono">{trf.ref}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(trf.date).toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                      <span className="rounded bg-muted px-2 py-0.5 text-xs">{getSiteName(fromSiteId)}</span>
-                      <ArrowRight size={14} />
-                      <span className="rounded bg-muted px-2 py-0.5 text-xs">{getSiteName(toSiteId)}</span>
-                      <span className="ml-2 text-xs text-foreground font-mono">{totalQty} units</span>
-                    </div>
-                  </div>
-                  <div className="ml-7 space-y-1">
-                    {outMovements.map(m => (
-                      <div key={m.id} className="text-xs text-muted-foreground flex gap-3">
-                        <span className="font-mono">{m.sku}</span>
-                        <span>{m.item_name}</span>
-                        <span className="font-medium text-foreground">{m.qty} units</span>
-                      </div>
-                    ))}
-                    {(outMovements[0]?.location_id || outMovements[0]?.storage_area_id) && (
-                      <div className="text-xs text-muted-foreground mt-1 flex gap-2">
-                        {outMovements[0]?.location_id && (
-                          <span className="flex items-center gap-1"><MapPin size={11} /> {locations.find(l => l.id === outMovements[0].location_id)?.name} → {locations.find(l => l.id === inMovements[0]?.location_id)?.name}</span>
-                        )}
-                      </div>
-                    )}
-                    {outMovements[0]?.notes && (
-                      <p className="text-xs italic text-muted-foreground mt-1">{outMovements[0].notes}</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <TransferInTransitPanel
+        drafts={inTransitDrafts}
+        onUpdated={handleReceived}
+      />
+
+      <TransferHistory
+        drafts={drafts}
+        loading={loading}
+        onRefresh={loadData}
+      />
     </div>
   );
 }
