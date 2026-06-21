@@ -1,33 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Plus, Edit2, Trash2, ChevronDown, MapPin } from 'lucide-react';
+import { ArchiveRestore, Edit2, MapPin, Plus, Power, ShieldCheck } from 'lucide-react';
 import LocationModal from './LocationModal';
-import StorageAreaModal from './StorageAreaModal';
 
-function StatusBadge({ status }) {
-  if (status === 'active') return <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Active</span>;
-  if (status === 'archived') return <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-50 text-slate-600 border border-slate-200">Archived</span>;
+function StatusBadge({ location }) {
+  const isArchived = !!location.is_archived;
+  const isActive = location.is_active !== false && !isArchived;
+  if (isArchived) return <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-50 text-slate-600 border border-slate-200">Archived</span>;
+  if (isActive) return <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Active</span>;
   return <span className="text-xs font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Inactive</span>;
 }
 
 export default function LocationManagementTab() {
   const [locations, setLocations] = useState([]);
   const [storageAreas, setStorageAreas] = useState([]);
+  const [balances, setBalances] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [expandedLoc, setExpandedLoc] = useState(null);
   const [showLocationModal, setShowLocationModal] = useState(false);
-  const [showStorageModal, setShowStorageModal] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
-  const [editingStorage, setEditingStorage] = useState(null);
-  const [selectedLocationId, setSelectedLocationId] = useState(null);
+  const [query, setQuery] = useState('');
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const locs = await base44.entities.Location.filter({ environment: 'LIVE' }, '-updated_date', 100);
-      const areas = await base44.entities.StorageArea.filter({ environment: 'LIVE' }, '-updated_date', 200);
+      const [locs, areas, stockBalances] = await Promise.all([
+        base44.entities.Location.filter({ environment: 'LIVE' }, 'name', 200),
+        base44.entities.StorageArea.filter({ environment: 'LIVE' }, 'name', 500),
+        base44.entities.ItemStockBalance.filter({ environment: 'LIVE' }, '-last_synced_at', 1000),
+      ]);
       setLocations(locs || []);
       setStorageAreas(areas || []);
+      setBalances(stockBalances || []);
     } catch (err) {
       console.error('Failed to load locations:', err);
     } finally {
@@ -37,34 +40,44 @@ export default function LocationManagementTab() {
 
   useEffect(() => { loadData(); }, []);
 
-  const handleDeleteLocation = async (locId) => {
-    if (!confirm('Delete this location? Any storage areas will remain orphaned.')) return;
+  const openNewLocation = () => {
+    setEditingLocation(null);
+    setShowLocationModal(true);
+  };
+
+  const openEditLocation = (location) => {
+    setEditingLocation(location);
+    setShowLocationModal(true);
+  };
+
+  const setLocationActiveState = async (location, isActive) => {
+    const hasStockHistory = balances.some(balance => balance.location_id === location.id);
+    const message = isActive
+      ? `Reactivate ${location.name}? This restores the location for visibility and future approved workflows.`
+      : hasStockHistory
+        ? `Deactivate ${location.name}? Historical stock balances and movements will be preserved.`
+        : `Deactivate ${location.name}? The record will remain available for history and setup review.`;
+    if (!confirm(message)) return;
+
     try {
-      await base44.entities.Location.delete(locId);
-      setLocations(prev => prev.filter(l => l.id !== locId));
+      await base44.entities.Location.update(location.id, { is_active: isActive, is_archived: false });
+      await loadData();
     } catch (err) {
-      alert('Failed to delete location');
+      console.error('Failed to update location status:', err);
+      alert('Failed to update location status.');
     }
   };
 
-  const handleDeleteStorageArea = async (saId) => {
-    if (!confirm('Delete this storage area?')) return;
-    try {
-      await base44.entities.StorageArea.delete(saId);
-      setStorageAreas(prev => prev.filter(s => s.id !== saId));
-    } catch (err) {
-      alert('Failed to delete storage area');
-    }
-  };
-
-  const openStorageModal = (locId) => {
-    setSelectedLocationId(locId);
-    setEditingStorage(null);
-    setShowStorageModal(true);
-  };
+  const filteredLocations = locations.filter(location => {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return String(location.name || '').toLowerCase().includes(q)
+      || String(location.location_code || '').toLowerCase().includes(q)
+      || String(location.location_type || '').toLowerCase().includes(q);
+  });
 
   if (loading) {
-    return <div className="p-4 text-center text-muted-foreground">Loading locations…</div>;
+    return <div className="p-8 text-center text-muted-foreground">Loading locations…</div>;
   }
 
   return (
@@ -73,118 +86,112 @@ export default function LocationManagementTab() {
         <LocationModal
           location={editingLocation}
           onClose={() => { setShowLocationModal(false); setEditingLocation(null); }}
-          onSaved={loadData}
+          onSaved={() => { setShowLocationModal(false); setEditingLocation(null); loadData(); }}
         />
       )}
 
-      {showStorageModal && (
-        <StorageAreaModal
-          locationId={selectedLocationId}
-          storageArea={editingStorage}
-          onClose={() => { setShowStorageModal(false); setEditingStorage(null); }}
-          onSaved={loadData}
-        />
-      )}
-
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Locations</h2>
+      <div className="border border-border rounded-2xl bg-card p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-foreground">Manage Locations</h2>
+            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-border bg-background text-muted-foreground font-semibold uppercase tracking-wide">
+              <ShieldCheck size={10} /> Metadata only
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Manage branch, warehouse, store, and backroom records. This tab does not change stock balances.
+          </p>
+        </div>
         <button
-          onClick={() => { setEditingLocation(null); setShowLocationModal(true); }}
-          className="flex items-center gap-1.5 h-8 px-3 text-xs bg-primary text-primary-foreground rounded hover:opacity-90 transition-opacity"
+          onClick={openNewLocation}
+          className="inline-flex items-center justify-center gap-1.5 h-9 px-4 text-sm bg-primary text-primary-foreground rounded-xl hover:opacity-90 font-medium"
         >
           <Plus size={14} /> Add Location
         </button>
       </div>
 
+      <div className="border border-border rounded-2xl bg-card p-4">
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search location name, code, or type..."
+          className="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm"
+        />
+      </div>
+
       {locations.length === 0 ? (
-        <div className="rounded border border-border bg-muted/20 px-4 py-6 text-center text-muted-foreground text-sm">
-          No locations defined yet. Create one to get started with multi-branch inventory visibility.
+        <div className="rounded-2xl border border-dashed border-border bg-card px-4 py-10 text-center">
+          <MapPin size={24} className="text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm font-medium text-foreground">No locations configured yet.</p>
+          <p className="text-xs text-muted-foreground mt-1">Add a location before assigning stock balances.</p>
         </div>
+      ) : filteredLocations.length === 0 ? (
+        <div className="rounded-2xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">No locations match the current search.</div>
       ) : (
-        <div className="space-y-2">
-          {locations.map((loc) => {
-            const isExpanded = expandedLoc === loc.id;
-            const areasForLoc = storageAreas.filter(s => s.location_id === loc.id);
-            const status = loc.is_archived ? 'archived' : loc.is_active ? 'active' : 'inactive';
-            return (
-              <div key={loc.id} className="rounded border border-border bg-card overflow-hidden">
-                <button
-                  onClick={() => setExpandedLoc(isExpanded ? null : loc.id)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors text-left"
-                >
-                  <div className="flex items-center gap-3 flex-1">
-                    <ChevronDown size={16} className={`text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                    <MapPin size={16} className="text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-foreground">{loc.name}</p>
-                      <p className="text-xs text-muted-foreground">{loc.location_code} · {loc.location_type}</p>
-                    </div>
-                  </div>
-                  <StatusBadge status={status} />
-                </button>
-
-                {isExpanded && (
-                  <div className="border-t border-border bg-muted/10 p-4 space-y-3">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {loc.city && <div><span className="text-muted-foreground">City:</span> {loc.city}</div>}
-                      {loc.contact_phone && <div><span className="text-muted-foreground">Phone:</span> {loc.contact_phone}</div>}
-                      {loc.contact_email && <div><span className="text-muted-foreground">Email:</span> {loc.contact_email}</div>}
-                      {loc.notes && <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> {loc.notes}</div>}
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => { setEditingLocation(loc); setShowLocationModal(true); }}
-                        className="flex items-center gap-1 px-2 py-1.5 text-xs border border-border rounded hover:bg-muted transition-colors"
-                      >
-                        <Edit2 size={12} /> Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteLocation(loc.id)}
-                        className="flex items-center gap-1 px-2 py-1.5 text-xs border border-red-200 text-red-600 rounded hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 size={12} /> Delete
-                      </button>
-                      <button
-                        onClick={() => openStorageModal(loc.id)}
-                        className="flex items-center gap-1 px-2 py-1.5 text-xs border border-border rounded hover:bg-muted transition-colors ml-auto"
-                      >
-                        <Plus size={12} /> Add Storage Area
-                      </button>
-                    </div>
-
-                    {areasForLoc.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border space-y-1">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Storage Areas</p>
-                        {areasForLoc.map((sa) => (
-                          <div key={sa.id} className="flex items-center justify-between px-3 py-2 rounded bg-background text-sm">
-                            <div>
-                              <p className="font-medium text-foreground">{sa.name}</p>
-                              <p className="text-xs text-muted-foreground">{sa.storage_area_code} · {sa.storage_type}</p>
-                            </div>
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => { setSelectedLocationId(loc.id); setEditingStorage(sa); setShowStorageModal(true); }}
-                                className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-                              >
-                                <Edit2 size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteStorageArea(sa.id)}
-                                className="p-1 text-red-500 hover:text-red-700 transition-colors"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="border border-border rounded-2xl bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[900px]">
+              <thead className="bg-muted/20 border-b border-border text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                <tr>
+                  <th className="text-left px-4 py-2.5 font-semibold">Location</th>
+                  <th className="text-left px-4 py-2.5 font-semibold">Code</th>
+                  <th className="text-left px-4 py-2.5 font-semibold">Type</th>
+                  <th className="text-left px-4 py-2.5 font-semibold">Status</th>
+                  <th className="text-right px-4 py-2.5 font-semibold">Storage Areas</th>
+                  <th className="text-left px-4 py-2.5 font-semibold">Description</th>
+                  <th className="text-right px-4 py-2.5 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredLocations.map(location => {
+                  const areaCount = storageAreas.filter(area => area.location_id === location.id).length;
+                  const hasStockHistory = balances.some(balance => balance.location_id === location.id);
+                  const isActive = location.is_active !== false && !location.is_archived;
+                  return (
+                    <tr key={location.id} className="bg-card hover:bg-muted/10">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-foreground">{location.name}</p>
+                        {hasStockHistory && <p className="text-[11px] text-muted-foreground mt-0.5">Historical stock records preserved</p>}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{location.location_code || '—'}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{location.location_type || '—'}</td>
+                      <td className="px-4 py-3"><StatusBadge location={location} /></td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground">{areaCount}</td>
+                      <td className="px-4 py-3 text-muted-foreground max-w-xs truncate">{location.address || location.notes || location.city || '—'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => openEditLocation(location)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs border border-border rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                          >
+                            <Edit2 size={12} /> Edit
+                          </button>
+                          {isActive ? (
+                            <button
+                              onClick={() => setLocationActiveState(location, false)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-50 transition-colors"
+                            >
+                              <Power size={12} /> Deactivate
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setLocationActiveState(location, true)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs border border-emerald-200 text-emerald-700 rounded-lg hover:bg-emerald-50 transition-colors"
+                            >
+                              <ArchiveRestore size={12} /> Reactivate
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground bg-muted/10">
+            Guardrail: Locations with stock history are never deleted from this page. Deactivation preserves historical records and does not create stock movements.
+          </div>
         </div>
       )}
     </div>

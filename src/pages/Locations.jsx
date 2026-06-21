@@ -1,13 +1,17 @@
 import { useState } from 'react';
+import OverviewTab from '@/components/locations/OverviewTab';
 import StockLookupTab from '@/components/locations/StockLookupTab';
 import BranchStockTab from '@/components/locations/BranchStockTab';
 import LocationManagementTab from '@/components/locations/LocationManagementTab';
-import { MapPin } from 'lucide-react';
+import StorageAreasTab from '@/components/locations/StorageAreasTab';
+import { MapPin, ShieldCheck } from 'lucide-react';
 
 const TABS = [
+  { key: 'overview', label: 'Overview' },
   { key: 'lookup', label: 'Stock Lookup' },
   { key: 'branches', label: 'Branch Stock View' },
   { key: 'locations', label: 'Manage Locations' },
+  { key: 'storage', label: 'Storage Areas' },
 ];
 
 function PillTab({ active, onClick, label }) {
@@ -26,7 +30,7 @@ function PillTab({ active, onClick, label }) {
 }
 
 export default function Locations() {
-  const [activeTab, setActiveTab] = useState('lookup');
+  const [activeTab, setActiveTab] = useState('overview');
 
   return (
     <div className="p-5 lg:p-6 space-y-4">
@@ -35,9 +39,12 @@ export default function Locations() {
           <div className="flex items-center gap-2">
             <MapPin size={18} className="text-muted-foreground" />
             <h1 className="text-xl font-semibold text-foreground">Locations</h1>
+            <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-border bg-card text-muted-foreground font-semibold uppercase tracking-wide">
+              <ShieldCheck size={10} /> Read-only visibility
+            </span>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Branch and storage area management. Search stock by item across locations. Stock changes must be made through Adjustments, Transfers, Receiving, or Wastage.
+          <p className="text-sm text-muted-foreground max-w-4xl">
+            Multi-location stock visibility for branches and storage areas. Stock changes must be made through Adjustments, Transfers, Receiving, Wastage, or other approved inventory workflows.
           </p>
         </div>
       </div>
@@ -53,9 +60,11 @@ export default function Locations() {
         ))}
       </div>
 
+      {activeTab === 'overview' && <OverviewTab />}
       {activeTab === 'lookup' && <StockLookupTab />}
       {activeTab === 'branches' && <BranchStockTab />}
       {activeTab === 'locations' && <LocationManagementTab />}
+      {activeTab === 'storage' && <StorageAreasTab />}
     </div>
   );
 }
