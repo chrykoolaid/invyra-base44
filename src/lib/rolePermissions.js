@@ -72,3 +72,11 @@ export function canDeleteStockOutDraft(role, user, record) {
   if (r === 'staff') return isOwnStockOutDraft(user, record);
   return ['supervisor', 'manager', 'admin', 'owner'].includes(r);
 }
+
+export function canApproveAdjustment(role) {
+  return ['supervisor', 'manager', 'admin', 'owner'].includes(normalise(role));
+}
+
+export function canSelfPostAdjustment(role) {
+  return ['supervisor', 'manager', 'admin', 'owner'].includes(normalise(role));
+}

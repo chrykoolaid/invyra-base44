@@ -1,0 +1,104 @@
+{
+  "name": "AdjustmentDraft",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name"
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "IN",
+        "OUT"
+      ]
+    },
+    "qty": {
+      "type": "number"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Selected reason label"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "storage_area_id": {
+      "type": "string"
+    },
+    "stock_at_draft": {
+      "type": "number",
+      "description": "Snapshot of on-hand qty when draft was created"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "DRAFT",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "REJECTED",
+        "POSTED"
+      ],
+      "default": "DRAFT"
+    },
+    "drafted_by": {
+      "type": "string",
+      "description": "User email who created the draft"
+    },
+    "drafted_by_name": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Supervisor/Manager who approved or rejected"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rejection_reason": {
+      "type": "string"
+    },
+    "linked_movement_id": {
+      "type": "string",
+      "description": "StockMovement.id created on posting"
+    },
+    "linked_alert_id": {
+      "type": "string",
+      "description": "Optional: StockOutAlert.id this resolves"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "item_id",
+    "sku",
+    "item_name",
+    "direction",
+    "qty",
+    "reason",
+    "status"
+  ]
+}
