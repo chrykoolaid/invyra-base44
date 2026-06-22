@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { envFilter } from '@/lib/envFilter';
 import { Lock, Plus, RefreshCw, CheckCircle2, ArrowUpRight, Package } from 'lucide-react';
 import PlaceHoldModal from './PlaceHoldModal';
+import EscalateToWastageModal from './EscalateToWastageModal';
 
 const statusStyle = {
   ACTIVE:    'bg-red-50 text-red-700 border-red-200',
@@ -30,6 +31,7 @@ export default function HoldsTab() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ACTIVE');
   const [showModal, setShowModal] = useState(false);
+  const [escalateHold, setEscalateHold] = useState(null);
   const [actioning, setActioning] = useState(null);
   const [releaseNotes, setReleaseNotes] = useState({});
 
@@ -70,8 +72,8 @@ export default function HoldsTab() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground">Holds / Quarantine</h2>
-            <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700">
-              Phase 2 — Hard Block Active
+            <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700">
+              Phase 3 — Escalation Active
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -172,9 +174,9 @@ export default function HoldsTab() {
                       <CheckCircle2 size={11} /> Release
                     </button>
                     <button
-                      disabled
-                      title="Escalation to Wastage — Phase 3"
-                      className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded border border-border bg-muted text-muted-foreground cursor-not-allowed opacity-50">
+                      onClick={() => setEscalateHold(hold)}
+                      disabled={actioning === hold.id}
+                      className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors disabled:opacity-50">
                       <ArrowUpRight size={11} /> Escalate
                     </button>
                   </div>
@@ -198,14 +200,22 @@ export default function HoldsTab() {
         </div>
       )}
 
-      <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-        <strong>Phase 2 — Hard Block:</strong> Active holds now block POS markdown sales (<code>validateMarkdownPOSSale</code>) and transfer submissions (<code>submitTransferDraft</code>). Release the hold in this tab to re-enable movement. Phase 3 will add escalation-to-wastage workflow.
+      <div className="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs text-purple-800">
+        <strong>Phase 3 — Escalation:</strong> Use <strong>Escalate</strong> to send a held item directly to a Wastage Draft. The hold is marked ESCALATED and the wastage record enters the normal supervisor approval workflow before any stock is deducted.
       </div>
 
       {showModal && (
         <PlaceHoldModal
           onClose={() => setShowModal(false)}
           onSaved={() => { setShowModal(false); load(); }}
+        />
+      )}
+
+      {escalateHold && (
+        <EscalateToWastageModal
+          hold={escalateHold}
+          onClose={() => setEscalateHold(null)}
+          onEscalated={() => { setEscalateHold(null); load(); }}
         />
       )}
     </div>
