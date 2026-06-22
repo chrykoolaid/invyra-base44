@@ -1,0 +1,108 @@
+{
+  "name": "ItemHold",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name"
+    },
+    "batch_id": {
+      "type": "string",
+      "description": "Optional: Reference to ItemBatch.id \u2014 if set, hold is batch-scoped"
+    },
+    "batch_number": {
+      "type": "string",
+      "description": "Denormalized batch number"
+    },
+    "location_id": {
+      "type": "string",
+      "description": "Optional: Reference to Location.id \u2014 if set, hold is location-scoped"
+    },
+    "location_name": {
+      "type": "string",
+      "description": "Denormalized location name"
+    },
+    "hold_reason": {
+      "type": "string",
+      "enum": [
+        "Supplier Recall",
+        "Contamination Concern",
+        "Damaged \u2014 Awaiting Decision",
+        "Expired \u2014 Blocked from Sale",
+        "Batch Under Investigation",
+        "Do-Not-Sell Manager Hold",
+        "Other"
+      ],
+      "description": "Controlled reason for placing the hold"
+    },
+    "hold_notes": {
+      "type": "string",
+      "description": "Free-text additional context"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "RELEASED",
+        "ESCALATED"
+      ],
+      "default": "ACTIVE",
+      "description": "ACTIVE = blocking; RELEASED = hold lifted; ESCALATED = sent to wastage/disposal"
+    },
+    "qty_on_hold": {
+      "type": "number",
+      "description": "Quantity placed under hold \u2014 informational in Phase 1"
+    },
+    "placed_by": {
+      "type": "string",
+      "description": "User email who placed the hold"
+    },
+    "placed_by_name": {
+      "type": "string"
+    },
+    "placed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "User email who released or escalated"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "release_notes": {
+      "type": "string",
+      "description": "Notes when releasing a hold"
+    },
+    "escalation_ref": {
+      "type": "string",
+      "description": "Reference to StockOutRecord.id if escalated to wastage"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "item_id",
+    "sku",
+    "item_name",
+    "hold_reason",
+    "status"
+  ]
+}
