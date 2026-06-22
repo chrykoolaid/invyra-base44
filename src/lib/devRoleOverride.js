@@ -1,4 +1,4 @@
-const VALID_LOCAL_DEV_ROLES = new Set(['staff', 'supervisor', 'manager', 'admin']);
+const VALID_LOCAL_DEV_ROLES = new Set(['staff', 'supervisor', 'manager', 'admin', 'owner']);
 
 export const LOCAL_DEV_ROLE_OVERRIDE_ENV = 'VITE_INVYRA_LOCAL_DEV_ROLE_OVERRIDE';
 

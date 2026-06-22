@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { CheckCircle2, X, Copy, ChevronDown } from 'lucide-react';
+import { CheckCircle2, Copy, ChevronDown } from 'lucide-react';
 
 export default function AlertLifecycleActions({ alert, onUpdated }) {
   const [loading, setLoading] = useState(false);

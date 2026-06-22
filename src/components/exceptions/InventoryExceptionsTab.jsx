@@ -47,7 +47,7 @@ export default function InventoryExceptionsTab() {
 
     const zeroCost = (items || []).filter(i => (!i.cost_per_unit || i.cost_per_unit === 0) && (i.stock || 0) > 0);
     if (zeroCost.length > 0) {
-      alerts.push({ id: 'zero-cost', severity: 'medium', title: 'Items Missing Unit Cost', description: `${zeroCost.length} item(s) have stock but no cost set — inventory valuation incomplete`, action_label: 'Inventory Admin', action_path: '/InventoryAdmin' });
+      alerts.push({ id: 'zero-cost', severity: 'medium', title: 'Items Missing Unit Cost', description: `${zeroCost.length} item(s) have stock but no cost set — inventory valuation incomplete`, action_label: 'Inventory Settings', action_path: '/InventorySettings' });
     }
 
     const order = { critical: 0, high: 1, medium: 2, low: 3 };

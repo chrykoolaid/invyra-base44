@@ -44,6 +44,80 @@
       "type": "boolean",
       "default": true
     },
+    "product_category": {
+      "type": "string",
+      "description": "Controlled product category for item governance"
+    },
+    "pack_size": {
+      "type": "string",
+      "description": "Operational pack size or pack rule label for item governance"
+    },
+    "tax_group": {
+      "type": "string",
+      "description": "Reference tax group label, if configured"
+    },
+    "pos_sellable": {
+      "type": "boolean",
+      "description": "Whether the item is allowed to be sold at POS. Metadata only; does not change stock or price."
+    },
+    "reorder_eligible": {
+      "type": "boolean",
+      "description": "Whether the item is eligible for reorder workflows. Metadata only."
+    },
+    "expiry_tracking_required": {
+      "type": "boolean",
+      "description": "Whether expiry tracking is required for this item. Metadata only."
+    },
+    "batch_tracking_required": {
+      "type": "boolean",
+      "description": "Whether batch/lot tracking is required for this item. Metadata only."
+    },
+    "markdown_eligible": {
+      "type": "boolean",
+      "description": "Whether the item is eligible for markdown workflows. Metadata only."
+    },
+    "wastage_eligible": {
+      "type": "boolean",
+      "description": "Whether the item is eligible for wastage/stock-out exception workflows. Metadata only."
+    },
+    "stocktake_eligible": {
+      "type": "boolean",
+      "description": "Whether the item is eligible for stocktake workflows. Metadata only."
+    },
+    "transfer_eligible": {
+      "type": "boolean",
+      "description": "Whether the item is eligible for transfer workflows. Metadata only."
+    },
+    "supplier_item_code": {
+      "type": "string",
+      "description": "Preferred supplier item/reference code. Supplier reference only; Inventory remains identity owner."
+    },
+    "supplier_pack_size": {
+      "type": "string",
+      "description": "Preferred supplier pack size reference. Metadata only."
+    },
+    "supplier_uom": {
+      "type": "string",
+      "description": "Preferred supplier unit-of-measure reference. Metadata only."
+    },
+    "supplier_reference_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When preferred supplier reference metadata was last updated"
+    },
+    "governance_notes": {
+      "type": "string",
+      "description": "Read-only-first item governance notes"
+    },
+    "governance_updated_by": {
+      "type": "string",
+      "description": "User/email that last updated item governance metadata"
+    },
+    "governance_updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When item governance metadata was last updated"
+    },
     "environment": {
       "type": "string",
       "enum": [

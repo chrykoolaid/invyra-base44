@@ -149,7 +149,7 @@ const actionQueue = [
   {
     title: 'Complete missing threshold setup',
     reason: 'Three SKUs cannot participate cleanly in dashboard reorder logic yet.',
-    to: '/InventoryAdmin',
+    to: '/InventorySettings',
   },
   {
     title: 'Review wastage exception trend',
@@ -179,7 +179,7 @@ const quickActions = [
   { label: 'Run Gap Scan', to: '/GapScan' },
   { label: 'Open Receiving', to: '/Receiving' },
   { label: 'Reorder Review', to: '/ReorderReview' },
-  { label: 'Inventory Admin', to: '/InventoryAdmin' },
+  { label: 'Inventory Settings', to: '/InventorySettings' },
 ];
 
 const statusStyle = {
@@ -391,14 +391,14 @@ export default function Dashboard() {
       actions.push({
         title: `Set reorder thresholds for ${missingThresholdItems.length} item${missingThresholdItems.length !== 1 ? 's' : ''}`,
         reason: `${missingThresholdItems.slice(0, 3).map(i => i.name).join(', ')} cannot trigger alerts without thresholds.`,
-        to: '/InventoryAdmin',
+        to: '/InventorySettings',
       });
     }
     if (missingCostItems.length > 0) {
       actions.push({
         title: `Add cost data for ${missingCostItems.length} item${missingCostItems.length !== 1 ? 's' : ''}`,
         reason: `${missingCostItems.slice(0, 2).map(i => i.name).join(', ')} — inventory valuation incomplete.`,
-        to: '/InventoryAdmin',
+        to: '/InventorySettings',
       });
     }
     if (actions.length === 0) {
@@ -568,7 +568,7 @@ export default function Dashboard() {
           </div>
         </Panel>
 
-        <Panel title="Setup Health" actionLabel="Open admin" actionTo="/InventoryAdmin">
+        <Panel title="Setup Health" actionLabel="Open admin" actionTo="/InventorySettings">
           <div className="p-3 space-y-2.5">
             {liveSetupHealth.map((row) => (
               <div key={row.label} className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-3">

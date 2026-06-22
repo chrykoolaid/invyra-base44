@@ -25,6 +25,9 @@ export const ROUTE_PERMISSIONS = {
   '/Movements':          'supervisor',
   '/Exceptions':         'supervisor',
   '/DeliveryPortal':     'supervisor',
+  '/Locations':          'supervisor',
+  '/ExpiryTracking':     'supervisor',
+  '/SupplierPortal':     'manager',
   '/Suppliers':          'manager',
   '/ReorderReview':      'manager',
   '/Orders':             'manager',
@@ -33,6 +36,7 @@ export const ROUTE_PERMISSIONS = {
   '/TimeTracking':       'manager',
   '/InventoryAdmin':        'admin',
   '/ExportsIntegrations':   'admin',
+  '/InventorySettings':     'admin',
   '/InventoryRoadmap':      'admin',
   '/LocalForecastVerification': 'admin',
   '/Markdown':              'staff',
@@ -46,7 +50,7 @@ export const ROUTE_PERMISSIONS = {
   '/Training/Manager':      'manager',
 };
 
-const ROLE_RANK = { staff: 1, supervisor: 2, manager: 3, admin: 4 };
+const ROLE_RANK = { staff: 1, supervisor: 2, manager: 3, admin: 4, owner: 5 };
 
 /** Returns true if `userRole` meets or exceeds `requiredRole`. */
 export function hasAccess(userRole, requiredRole) {
@@ -65,12 +69,13 @@ export function canAccessRoute(userRole, path) {
 
 /** Human-readable role label. */
 export function roleLabel(role) {
-  return { admin: 'Admin', manager: 'Manager', supervisor: 'Supervisor', staff: 'Staff' }[role] ?? role;
+  return { owner: 'Owner', admin: 'Admin', manager: 'Manager', supervisor: 'Supervisor', staff: 'Staff' }[role] ?? role;
 }
 
 /** Badge colour class for a role chip. */
 export function roleBadgeClass(role) {
   return {
+    owner:      'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
     admin:      'bg-violet-100 text-violet-700 border-violet-200',
     manager:    'bg-blue-100 text-blue-700 border-blue-200',
     supervisor: 'bg-amber-100 text-amber-700 border-amber-200',
