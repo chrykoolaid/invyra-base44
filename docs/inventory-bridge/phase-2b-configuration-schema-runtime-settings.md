@@ -141,19 +141,19 @@ A device not present in the trusted device allow-list must not be accepted as tr
 
 ## Event-type allow-list
 
-Accepted event types must be explicit.
+Accepted event types must be explicit and must align with the existing ScanOps event contract identifiers documented in the Phase 1G inbound-ledger schema and validation material.
 
 A future allow-list may include evidence-only event types such as:
 
 ```text
-scan_observation
-stock_count_evidence
-wastage_capture_evidence
-markdown_capture_evidence
-location_observation
+SCANOPS_FLOOR_GAP_EVIDENCE
+SCANOPS_WASTAGE_EVIDENCE
+SCANOPS_STORE_USE_EVIDENCE
+SCANOPS_SCANNER_INTAKE_EVIDENCE
+SCANOPS_MARKDOWN_EVIDENCE
 ```
 
-This list does not authorize any operational mutation. Event types are evidence categories only.
+This list does not authorize any operational mutation. Event types are evidence categories only. Any rename or alias from these identifiers must be handled as a separately documented migration rather than silently changing the allow-list names.
 
 ## Schema-version allow-list
 
