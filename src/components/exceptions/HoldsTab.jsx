@@ -70,8 +70,8 @@ export default function HoldsTab() {
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-semibold text-foreground">Holds / Quarantine</h2>
-            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-              Phase 1 — Soft Hold
+            <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700">
+              Phase 2 — Hard Block Active
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -198,8 +198,8 @@ export default function HoldsTab() {
         </div>
       )}
 
-      <div className="rounded-xl border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-        <strong>Phase 1 — Soft Hold:</strong> Holds are evidentiary records only. Stock counts and POS sale eligibility are not yet blocked by the system. Phase 2 will integrate hard-block enforcement into POS and transfer workflows.
+      <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+        <strong>Phase 2 — Hard Block:</strong> Active holds now block POS markdown sales (<code>validateMarkdownPOSSale</code>) and transfer submissions (<code>submitTransferDraft</code>). Release the hold in this tab to re-enable movement. Phase 3 will add escalation-to-wastage workflow.
       </div>
 
       {showModal && (

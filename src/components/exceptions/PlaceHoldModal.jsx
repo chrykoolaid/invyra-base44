@@ -148,8 +148,8 @@ export default function PlaceHoldModal({ onClose, onSaved }) {
               className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring resize-none" />
           </label>
 
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Phase 1 — Soft Hold: this records the quarantine for triage. It does not yet block POS sales or transfers (Phase 2).
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+            <strong>Phase 2 — Hard Block:</strong> Placing this hold will immediately block POS markdown sales and transfer submissions for this item until released.
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1 border-t border-border">

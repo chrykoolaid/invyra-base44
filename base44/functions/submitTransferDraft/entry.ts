@@ -37,6 +37,20 @@ Deno.serve(async (req) => {
     if (qty > stockOnHand) {
       return Response.json({ error: `Over-transfer blocked: ${item.name} has ${stockOnHand} on hand, cannot transfer ${qty}` }, { status: 409 });
     }
+    // Phase 2: Active Hold block
+    try {
+      const activeHolds = await base44.asServiceRole.entities.ItemHold.filter({ item_id: item.id, status: 'ACTIVE', environment: environment || 'LIVE' });
+      if (activeHolds && activeHolds.length > 0) {
+        const hold = activeHolds[0];
+        return Response.json({
+          error: `Transfer blocked: ${item.name} (${item.sku}) has an active hold — "${hold.hold_reason}". Release the hold in Exceptions → Holds/Quarantine before transferring.`,
+          hold_id: hold.id,
+          hold_reason: hold.hold_reason,
+        }, { status: 409 });
+      }
+    } catch (_) {
+      // If hold check fails, allow transfer to proceed (fail-open for availability)
+    }
     enrichedLines.push({ item_id: item.id, sku: item.sku, item_name: item.name, qty, stock_at_draft: stockOnHand });
   }
 
