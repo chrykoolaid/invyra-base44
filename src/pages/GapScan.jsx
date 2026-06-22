@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Play, Download, Lightbulb, Upload, AlertCircle, ScanLine } from 'lucide-react';
+import { Play, Download, Lightbulb, Upload, AlertCircle, ScanLine, ClipboardList, PackagePlus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { base44 } from '@/api/base44Client';
 import ScanDataImportModal from '@/components/ScanDataImportModal';
+import FillTasksTab from '@/components/gapscan/FillTasksTab';
+import CreateFillTaskModal from '@/components/gapscan/CreateFillTaskModal';
 
 // Derive risk/flag from days left
 const getRiskAndFlag = (daysLeft, stock) => {
@@ -84,6 +86,7 @@ const buildTrendData = (movements) => {
 
 export default function GapScan() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('scan');
   const [lookback, setLookback] = useState(14);
   const [selected, setSelected] = useState(new Set());
   const [showExplanation, setShowExplanation] = useState(false);
@@ -95,6 +98,7 @@ export default function GapScan() {
   const [importedFrom, setImportedFrom] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [trendData, setTrendData] = useState([]);
+  const [fillTaskRow, setFillTaskRow] = useState(null); // row for which modal is open
   const hasResults = results.length > 0;
 
   const handleRunScan = async () => {
@@ -193,6 +197,13 @@ export default function GapScan() {
           onImportSuccess={handleImportSuccess}
         />
       )}
+      {fillTaskRow && (
+        <CreateFillTaskModal
+          scanRow={fillTaskRow}
+          onClose={() => setFillTaskRow(null)}
+          onCreated={() => { setFillTaskRow(null); setActiveTab('fill-tasks'); }}
+        />
+      )}
       {/* Title */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-semibold text-foreground">Gap Scan</h1>
@@ -203,6 +214,27 @@ export default function GapScan() {
           <ScanLine size={15} /> Floor Scan Mode
         </Link>
       </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-border mb-5">
+        {[
+          { key: 'scan', label: 'Gap Scan' },
+          { key: 'fill-tasks', label: 'Fill Tasks', icon: ClipboardList },
+        ].map(tab => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+            className={`h-9 px-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}>
+            {tab.icon && <tab.icon size={13} className="inline mr-1.5 -mt-0.5" />}
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Fill Tasks Tab */}
+      {activeTab === 'fill-tasks' && <FillTasksTab />}
+
+      {activeTab === 'scan' && (<>
 
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
@@ -403,7 +435,7 @@ export default function GapScan() {
                       className="cursor-pointer"
                     />
                   </th>
-                  {['SKU', 'Item', 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag'].map(h => (
+                  {['SKU', 'Item', 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag', ''].map(h => (
                     <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -447,6 +479,14 @@ export default function GapScan() {
                         {row.flag}
                       </span>
                     </td>
+                    <td className="px-4 py-2.5">
+                      <button
+                        onClick={e => { e.stopPropagation(); setFillTaskRow(row); }}
+                        title="Create fill task"
+                        className="inline-flex items-center gap-1 h-7 px-2.5 text-xs rounded border border-border hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-colors text-muted-foreground whitespace-nowrap">
+                        <PackagePlus size={11} /> Fill Task
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -454,6 +494,7 @@ export default function GapScan() {
           </div>
         </>
       )}
+      </>)}
     </div>
   );
 }
