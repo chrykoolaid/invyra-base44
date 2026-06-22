@@ -31,6 +31,7 @@
     "validate:inventory-bridge-release-plan-draft-projection": "node scripts/validate-inventory-bridge-release-plan-draft-projection.mjs",
     "validate:inventory-bridge-stack-evidence-manifest": "node scripts/validate-inventory-bridge-stack-evidence-manifest.mjs",
     "validate:inventory-bridge-stack-readiness-review-manifest": "node scripts/validate-inventory-bridge-stack-readiness-review-manifest.mjs",
+    "validate:inventory-bridge-disabled-configuration": "node scripts/validate-inventory-bridge-disabled-configuration.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
