@@ -154,12 +154,10 @@
             "type": "object",
             "properties": {
               "code": {
-                "type": "string",
-                "description": "Unique reason code (e.g., 'DAMAGED', 'EXPIRED')"
+                "type": "string"
               },
               "label": {
-                "type": "string",
-                "description": "Human-readable label"
+                "type": "string"
               },
               "description": {
                 "type": "string"
@@ -219,12 +217,10 @@
             "type": "object",
             "properties": {
               "code": {
-                "type": "string",
-                "description": "Unique reason code (e.g., 'STAFF_REFRESHMENT', 'CLEANING')"
+                "type": "string"
               },
               "label": {
-                "type": "string",
-                "description": "Human-readable label"
+                "type": "string"
               },
               "description": {
                 "type": "string"
@@ -269,6 +265,73 @@
           ]
         }
       }
+    },
+    "cycle_count_tasks": {
+      "type": "array",
+      "description": "Saved cycle count task definitions for the Cycle Count Planner under Stocktake",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique task ID (client-generated)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Human-readable task name e.g. Daily High-Value Count"
+          },
+          "description": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "Daily",
+              "Weekly",
+              "Monthly",
+              "Ad-hoc"
+            ],
+            "default": "Weekly"
+          },
+          "filter_category": {
+            "type": "string",
+            "description": "Filter by product_category value"
+          },
+          "filter_min_cost": {
+            "type": "number",
+            "description": "Only include items with cost_per_unit >= this value"
+          },
+          "filter_low_stock_only": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only include items at or below reorder_point"
+          },
+          "filter_skus": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Explicit SKU list \u2014 if set, overrides other filters"
+          },
+          "is_active": {
+            "type": "boolean",
+            "default": true
+          },
+          "created_by": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "frequency"
+        ]
+      },
+      "default": []
     },
     "config_version": {
       "type": "number",
