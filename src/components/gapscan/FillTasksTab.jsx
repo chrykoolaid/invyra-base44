@@ -122,7 +122,7 @@ export default function FillTasksTab() {
         <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-10 text-center space-y-2">
           <Package size={24} className="mx-auto text-muted-foreground" />
           <p className="text-sm text-muted-foreground">No {filter !== 'ALL' ? filter.toLowerCase() : ''} fill tasks.</p>
-          <p className="text-xs text-muted-foreground">Run a Gap Scan and use "Create Fill Task" on a flagged row to get started.</p>
+          <p className="text-xs text-muted-foreground">Run a Gap Scan and use "Add Selected to Fill Tasks" or a row-level Fill Task action on a suggested row to get started.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -142,6 +142,13 @@ export default function FillTasksTab() {
                     {task.shelf_location_name && <span>→ {task.shelf_location_name}</span>}
                     {task.backroom_storage_area_name && <span>From: {task.backroom_storage_area_name}</span>}
                     {task.assigned_to_name && <span className="flex items-center gap-1"><User size={10} /> {task.assigned_to_name}</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-3 mt-1 text-[11px] text-muted-foreground">
+                    {task.source && <span>Source: <strong className="text-foreground">{task.source}</strong></span>}
+                    {task.system_stock != null && <span>System stock: <strong className="text-foreground">{task.system_stock}</strong></span>}
+                    {task.avg_use_per_day != null && <span>Avg use/day: <strong className="text-foreground">{task.avg_use_per_day}</strong></span>}
+                    {task.days_left != null && <span>Days left: <strong className="text-foreground">{task.days_left}</strong></span>}
+                    {task.suggested_order_qty != null && <span>Suggested qty: <strong className="text-foreground">{task.suggested_order_qty}</strong></span>}
                   </div>
                   {task.notes && <p className="text-xs text-muted-foreground italic mt-1">{task.notes}</p>}
                   <p className="text-[11px] text-muted-foreground mt-1">

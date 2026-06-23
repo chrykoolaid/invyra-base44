@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter } from '@/lib/envFilter';
+import {
+  buildGapScanFillTaskPayload,
+  hasOpenGapScanFillTaskForRow,
+  isActiveFillTask,
+  isFillTaskEligible,
+} from '@/lib/gapScanFillTasks';
 import { X } from 'lucide-react';
 
 const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
@@ -30,7 +36,6 @@ export default function CreateFillTaskModal({ scanRow, onClose, onCreated }) {
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const selectedLocation = locations.find(l => l.id === form.shelf_location_id);
   const filteredAreas = storageAreas.filter(sa =>
     !form.shelf_location_id || sa.location_id === form.shelf_location_id
   );
@@ -41,9 +46,25 @@ export default function CreateFillTaskModal({ scanRow, onClose, onCreated }) {
     setError('');
 
     try {
+      if (!isFillTaskEligible(scanRow)) {
+        setError('This row does not meet Gap Scan fill-task rules. No task was created.');
+        return;
+      }
+
       const user = await base44.auth.me();
       const shelfLocation = locations.find(l => l.id === form.shelf_location_id);
       const backroomArea = storageAreas.find(sa => sa.id === form.backroom_storage_area_id);
+
+      const activeTasks = await base44.entities.FillTask.filter(envFilter(), '-created_date', 500);
+      const duplicateCheckRow = {
+        ...scanRow,
+        location_id: form.shelf_location_id || scanRow.location_id || null,
+        shelf_location_id: form.shelf_location_id || scanRow.shelf_location_id || null,
+      };
+      if (hasOpenGapScanFillTaskForRow(duplicateCheckRow, (activeTasks || []).filter(isActiveFillTask))) {
+        setError('An open Fill Task already exists for this SKU/location from Gap Scan. Duplicate task was skipped.');
+        return;
+      }
 
       // Resolve item_id from InventoryItem. Do not fall back to SKU as item_id.
       const items = await base44.entities.InventoryItem.filter({ ...envFilter(), sku: scanRow.sku }, 'name', 1);
@@ -53,21 +74,28 @@ export default function CreateFillTaskModal({ scanRow, onClose, onCreated }) {
         return;
       }
 
-      const created = await base44.entities.FillTask.create({
-        ...envFilter(),
+      const taskRow = {
+        ...scanRow,
         item_id: item.id,
-        sku: scanRow.sku,
-        item_name: scanRow.name,
-        status: 'OPEN',
-        qty_requested: form.qty_requested ? Number(form.qty_requested) : null,
+        location_id: form.shelf_location_id || scanRow.location_id || null,
+        location_name: shelfLocation?.name || scanRow.location_name || null,
         shelf_location_id: form.shelf_location_id || null,
         shelf_location_name: shelfLocation?.name || null,
-        backroom_storage_area_id: form.backroom_storage_area_id || null,
-        backroom_storage_area_name: backroomArea?.name || null,
-        source_gap_scan_sku: scanRow.sku,
-        priority: form.priority,
-        notes: form.notes || null,
-      });
+      };
+
+      const created = await base44.entities.FillTask.create(buildGapScanFillTaskPayload({
+        row: taskRow,
+        user,
+        overrides: {
+          qty_requested: form.qty_requested ? Number(form.qty_requested) : null,
+          shelf_location_id: form.shelf_location_id || null,
+          shelf_location_name: shelfLocation?.name || null,
+          backroom_storage_area_id: form.backroom_storage_area_id || null,
+          backroom_storage_area_name: backroomArea?.name || null,
+          priority: form.priority,
+          notes: form.notes || 'Created from Gap Scan manual promotion. No StockMovement posted.',
+        },
+      }));
 
       await base44.entities.AuditLog.create({
         ...envFilter(),
@@ -87,7 +115,7 @@ export default function CreateFillTaskModal({ scanRow, onClose, onCreated }) {
         notes: 'Evidentiary shelf replenishment task only. No StockMovement created.',
       });
 
-      onCreated();
+      onCreated(created);
     } catch (err) {
       console.error('Failed to create Fill Task:', err);
       setError('Failed to create Fill Task. No stock movement was posted.');
