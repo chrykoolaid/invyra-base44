@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Play, Download, Lightbulb, Upload, AlertCircle, ScanLine, ClipboardList, PackagePlus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -18,37 +18,188 @@ const getRiskAndFlag = (daysLeft, stock) => {
   return                       { risk: 'None',     flag: 'OK'       };
 };
 
-// Build scan rows from live inventory items + stock movements in the lookback window
-const buildScanData = (items, movements, lookbackDays) => {
+const parseNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const toTimestamp = (value) => {
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const getMovementDate = (movement) => movement.created_date || movement.posted_at || movement.updated_date;
+const getPOSLineDate = (line) => line.created_date || line.posted_at || line.updated_date;
+
+const isPostedMovement = (movement) => (movement.status || 'POSTED') === 'POSTED';
+const isUsageMovement = (movement) =>
+  isPostedMovement(movement) &&
+  movement.direction === 'OUT' &&
+  (movement.movement_type === 'SALE' || movement.source_type === 'POS');
+
+const buildStockBalanceMap = (items, balances = [], movements = []) => {
+  const balanceBySku = new Map();
+
+  (balances || []).forEach(balance => {
+    if (!balance?.sku) return;
+    balanceBySku.set(
+      balance.sku,
+      (balanceBySku.get(balance.sku) || 0) + parseNumber(balance.on_hand_qty, 0)
+    );
+  });
+
+  const latestMovementBySku = new Map();
+  (movements || []).forEach(movement => {
+    if (!movement?.sku || !isPostedMovement(movement) || movement.balance_after == null) return;
+    const current = latestMovementBySku.get(movement.sku);
+    const currentTs = current ? toTimestamp(getMovementDate(current)) : -1;
+    const nextTs = toTimestamp(getMovementDate(movement));
+    if (!current || nextTs >= currentTs) latestMovementBySku.set(movement.sku, movement);
+  });
+
+  const stockBySku = new Map();
+  (items || []).forEach(item => {
+    if (!item?.sku) return;
+
+    if (balanceBySku.has(item.sku)) {
+      stockBySku.set(item.sku, {
+        stock: balanceBySku.get(item.sku),
+        source: 'ItemStockBalance',
+      });
+      return;
+    }
+
+    const latestMovement = latestMovementBySku.get(item.sku);
+    if (latestMovement) {
+      stockBySku.set(item.sku, {
+        stock: parseNumber(latestMovement.balance_after, 0),
+        source: 'StockMovement.balance_after',
+      });
+      return;
+    }
+
+    stockBySku.set(item.sku, {
+      stock: parseNumber(item.stock, 0),
+      source: 'InventoryItem.stock',
+    });
+  });
+
+  return stockBySku;
+};
+
+const buildUsageMap = (movements = [], posLines = [], lookbackDays) => {
   const cutoff = Date.now() - lookbackDays * 24 * 60 * 60 * 1000;
+  const movementUsageBySku = new Map();
+  const posUsageBySku = new Map();
+
+  movements
+    .filter(movement => isUsageMovement(movement) && toTimestamp(getMovementDate(movement)) >= cutoff)
+    .forEach(movement => {
+      movementUsageBySku.set(
+        movement.sku,
+        (movementUsageBySku.get(movement.sku) || 0) + parseNumber(movement.qty, 0)
+      );
+    });
+
+  posLines
+    .filter(line =>
+      line?.sku &&
+      !line.is_reversed &&
+      !line.reversal_of &&
+      toTimestamp(getPOSLineDate(line)) >= cutoff
+    )
+    .forEach(line => {
+      posUsageBySku.set(
+        line.sku,
+        (posUsageBySku.get(line.sku) || 0) + parseNumber(line.qty, 0)
+      );
+    });
+
+  const usageBySku = new Map();
+  const skus = new Set([...movementUsageBySku.keys(), ...posUsageBySku.keys()]);
+
+  skus.forEach(sku => {
+    if (movementUsageBySku.has(sku)) {
+      usageBySku.set(sku, {
+        qty: movementUsageBySku.get(sku),
+        source: 'StockMovement.SALE',
+      });
+      return;
+    }
+
+    usageBySku.set(sku, {
+      qty: posUsageBySku.get(sku) || 0,
+      source: 'POSLineItem',
+    });
+  });
+
+  return usageBySku;
+};
+
+// Build scan rows from live inventory truth. Gap Scan reads; it does not create inventory truth.
+const buildScanData = ({ items = [], balances = [], movements = [], posLines = [], lookbackDays }) => {
+  const stockBySku = buildStockBalanceMap(items, balances, movements);
+  const usageBySku = buildUsageMap(movements, posLines, lookbackDays);
 
   return items.map(item => {
-    // Sum outbound movements in the lookback window for avg use/day
-    const outbound = movements.filter(m =>
-      m.sku === item.sku &&
-      m.direction === 'OUT' &&
-      m.status === 'POSTED' &&
-      new Date(m.created_date).getTime() >= cutoff
-    );
-    const totalOut = outbound.reduce((s, m) => s + (m.qty ?? 0), 0);
-    const avgUse = lookbackDays > 0 ? Math.round((totalOut / lookbackDays) * 10) / 10 : 0;
-    const daysLeft = avgUse > 0 ? Math.round(item.stock / avgUse) : null;
-    const suggested = item.reorder_qty ?? 0;
-    const { risk, flag } = getRiskAndFlag(daysLeft ?? 999, item.stock);
+    const stockRecord = stockBySku.get(item.sku) || { stock: 0, source: 'InventoryItem.stock' };
+    const usageRecord = usageBySku.get(item.sku) || { qty: 0, source: 'No usage history' };
+    const systemStock = parseNumber(stockRecord.stock, 0);
+    const totalUse = parseNumber(usageRecord.qty, 0);
+    const avgUse = lookbackDays > 0 ? Math.round((totalUse / lookbackDays) * 10) / 10 : 0;
+    const daysLeft = avgUse > 0 ? Math.round(systemStock / avgUse) : null;
+    const suggested = parseNumber(item.reorder_qty, 0);
+    const { risk, flag } = getRiskAndFlag(daysLeft ?? 999, systemStock);
 
     return {
-      sku:         item.sku,
-      name:        item.name,
-      systemStock: item.stock,
-      onHand:      item.stock, // physical = system until a floor scan overrides it
+      sku: item.sku,
+      name: item.name,
+      systemStock,
+      onHand: systemStock,
       avgUse,
-      daysLeft:    daysLeft ?? '—',
-      suggested:   item.stock === 0 || (daysLeft != null && daysLeft <= 14) ? suggested : 0,
+      daysLeft: daysLeft ?? '—',
+      suggested: systemStock === 0 || (daysLeft != null && daysLeft <= 14) ? suggested : 0,
       risk,
       flag,
-      unit:        item.unit,
+      unit: item.unit,
+      source: 'SYSTEM_TRUTH',
+      stockSource: stockRecord.source,
+      usageSource: usageRecord.source,
+      hasPhysicalScan: false,
     };
   });
+};
+
+const normalizePhysicalScanQty = (row) =>
+  parseNumber(row.physical_qty ?? row.physicalQty ?? row.scan_qty ?? row.scanQty ?? row.count ?? row.onHand ?? row.qty, 0);
+
+const buildPhysicalScanRows = ({ scanRows = [], items = [], balances = [], movements = [], posLines = [], lookbackDays }) => {
+  const itemBySku = new Map(items.map(item => [item.sku, item]));
+  const systemRowsBySku = new Map(buildScanData({ items, balances, movements, posLines, lookbackDays }).map(row => [row.sku, row]));
+
+  return scanRows
+    .map(scanRow => {
+      const sku = String(scanRow.sku || '').trim();
+      if (!sku || !itemBySku.has(sku)) return null;
+
+      const systemRow = systemRowsBySku.get(sku);
+      const physicalQty = normalizePhysicalScanQty(scanRow);
+      const daysLeft = systemRow.avgUse > 0 ? Math.round(physicalQty / systemRow.avgUse) : null;
+      const { risk, flag } = getRiskAndFlag(daysLeft ?? 999, physicalQty);
+
+      return {
+        ...systemRow,
+        onHand: physicalQty,
+        daysLeft: daysLeft ?? '—',
+        suggested: physicalQty === 0 || (daysLeft != null && daysLeft <= 14) ? systemRow.suggested || parseNumber(itemBySku.get(sku)?.reorder_qty, 0) : 0,
+        risk,
+        flag,
+        source: 'PHYSICAL_SCAN_EVIDENCE',
+        scanReference: scanRow.scan_id || scanRow.session_id || scanRow.source_ref || '',
+        hasPhysicalScan: true,
+      };
+    })
+    .filter(Boolean);
 };
 
 const flagStyle = {
@@ -64,15 +215,15 @@ const daysLeftStyle = (days) => {
   return 'text-foreground';
 };
 
-// Build real 30-day trend from OUT stock movements grouped by day
-const buildTrendData = (movements) => {
+// Build real 30-day usage trend from posted SALE/POS movements grouped by day.
+const buildTrendData = (movements = []) => {
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
   const byDay = {};
   movements
-    .filter(m => m.direction === 'OUT' && m.status === 'POSTED' && new Date(m.created_date).getTime() >= cutoff)
-    .forEach(m => {
-      const day = new Date(m.created_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      byDay[day] = (byDay[day] || 0) + 1;
+    .filter(movement => isUsageMovement(movement) && toTimestamp(getMovementDate(movement)) >= cutoff)
+    .forEach(movement => {
+      const day = new Date(getMovementDate(movement)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      byDay[day] = (byDay[day] || 0) + parseNumber(movement.qty, 0);
     });
 
   const data = [];
@@ -80,7 +231,7 @@ const buildTrendData = (movements) => {
     const d = new Date();
     d.setDate(d.getDate() - i);
     const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    data.push({ date: label, missing: byDay[label] || 0 });
+    data.push({ date: label, usage: byDay[label] || 0 });
   }
   return data;
 };
@@ -94,61 +245,70 @@ export default function GapScan() {
   const [highlightedRow, setHighlightedRow] = useState(null);
   const [results, setResults] = useState([]);
   const [scanning, setScanning] = useState(false);
-  const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState('');
   const [importedFrom, setImportedFrom] = useState('');
   const [showImportModal, setShowImportModal] = useState(false);
   const [trendData, setTrendData] = useState([]);
+  const [hasPhysicalScanData, setHasPhysicalScanData] = useState(false);
   const [fillTaskRow, setFillTaskRow] = useState(null); // row for which modal is open
   const hasResults = results.length > 0;
+
+  const clearScanOutput = () => {
+    setResults([]);
+    setTrendData([]);
+    setSelected(new Set());
+    setShowExplanation(false);
+    setHighlightedRow(null);
+    setImportedFrom('');
+    setImportError('');
+    setHasPhysicalScanData(false);
+  };
+
+  const loadInventoryTruth = async () => {
+    const [items, balances, movements, posLines] = await Promise.all([
+      base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }),
+      base44.entities.ItemStockBalance.filter(envFilter(), '-last_synced_at', 1000),
+      base44.entities.StockMovement.filter(envFilter(), '-created_date', 1000),
+      base44.entities.POSLineItem.filter(envFilter(), '-created_date', 1000),
+    ]);
+
+    return {
+      items: items || [],
+      balances: balances || [],
+      movements: movements || [],
+      posLines: posLines || [],
+    };
+  };
+
+  const sortResults = (rows) => [...rows].sort((a, b) => {
+    const order = { Critical: 0, High: 1, Medium: 2, Low: 3, None: 4 };
+    return (order[a.risk] ?? 5) - (order[b.risk] ?? 5);
+  });
+
+  const handleLookbackChange = (value) => {
+    setLookback(value);
+    clearScanOutput();
+  };
 
   const handleRunScan = async () => {
     setScanning(true);
     setImportError('');
     setImportedFrom('');
+    setHasPhysicalScanData(false);
+
     try {
-      const [items, movements] = await Promise.all([
-        base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }),
-        base44.entities.StockMovement.filter(envFilter(), '-created_date', 500),
-      ]);
-      const data = buildScanData(items, movements, lookback);
-      data.sort((a, b) => {
-        const order = { Critical: 0, High: 1, Medium: 2, Low: 3, None: 4 };
-        return (order[a.risk] ?? 5) - (order[b.risk] ?? 5);
-      });
-      setResults(data);
-      setTrendData(buildTrendData(movements));
+      const inventoryTruth = await loadInventoryTruth();
+      const data = buildScanData({ ...inventoryTruth, lookbackDays: lookback });
+      setResults(sortResults(data));
+      setTrendData(buildTrendData(inventoryTruth.movements));
       setSelected(new Set());
       setShowExplanation(false);
       setHighlightedRow(null);
     } catch (e) {
+      clearScanOutput();
       setImportError(`Scan failed: ${e.message}`);
-    }
-    setScanning(false);
-  };
-
-  useEffect(() => { handleRunScan(); }, []);
-
-  const handleImportFromScanner = async () => {
-    setImporting(true);
-    setImportError('');
-    try {
-      const response = await base44.functions.invoke('receiveGapScanData', {
-        scanData: [],
-        trigger: 'manual_fetch',
-      });
-      
-      if (response.data?.success && response.data?.data) {
-        setResults(response.data.data);
-        setImportedFrom(`Imported ${response.data.data.length} items from scanner at ${new Date(response.data.receivedAt).toLocaleTimeString()}`);
-        setSelected(new Set());
-        setShowExplanation(false);
-        setHighlightedRow(null);
-      }
-    } catch (err) {
-      setImportError(`Import failed: ${err.message}`);
     } finally {
-      setImporting(false);
+      setScanning(false);
     }
   };
 
@@ -168,8 +328,17 @@ export default function GapScan() {
     if (selected.size === 0) return '';
 
     const selectedItems = results.filter(r => selected.has(r.sku));
-    const avgDaysLeft = selectedItems.reduce((sum, r) => sum + r.daysLeft, 0) / selectedItems.length;
+    const numericDaysLeft = selectedItems
+      .map(r => r.daysLeft)
+      .filter(days => typeof days === 'number');
+    const avgDaysLeft = numericDaysLeft.length > 0
+      ? numericDaysLeft.reduce((sum, days) => sum + days, 0) / numericDaysLeft.length
+      : null;
     const avgUsage = selectedItems.reduce((sum, r) => sum + r.avgUse, 0) / selectedItems.length;
+
+    if (avgDaysLeft == null) {
+      return 'No usage history exists in the selected lookback period. Current stock is visible, but days-left risk cannot be calculated yet.';
+    }
 
     if (avgDaysLeft <= 3 && avgUsage > 2) {
       return 'High usage rate with low remaining stock. Suggested reorder to maintain 14-day coverage.';
@@ -181,13 +350,35 @@ export default function GapScan() {
     return 'Review usage patterns and adjust reorder quantities as needed.';
   };
 
-  const handleImportSuccess = (data) => {
-    setResults(data);
-    setSelected(new Set());
-    setShowExplanation(false);
-    setHighlightedRow(null);
-    setImportedFrom(`Imported ${data.length} items from scan file`);
+  const handleImportSuccess = async (data) => {
+    setScanning(true);
     setImportError('');
+
+    try {
+      const inventoryTruth = await loadInventoryTruth();
+      const physicalRows = buildPhysicalScanRows({
+        scanRows: data || [],
+        ...inventoryTruth,
+        lookbackDays: lookback,
+      });
+
+      if (physicalRows.length === 0) {
+        throw new Error('No imported scan rows matched active inventory items.');
+      }
+
+      setResults(sortResults(physicalRows));
+      setTrendData(buildTrendData(inventoryTruth.movements));
+      setSelected(new Set());
+      setShowExplanation(false);
+      setHighlightedRow(null);
+      setHasPhysicalScanData(physicalRows.length > 0);
+      setImportedFrom(`Imported ${physicalRows.length} physical scan item${physicalRows.length !== 1 ? 's' : ''} from scan file`);
+    } catch (err) {
+      clearScanOutput();
+      setImportError(`Import failed: ${err.message}`);
+    } finally {
+      setScanning(false);
+    }
   };
 
   return (
@@ -243,7 +434,7 @@ export default function GapScan() {
           <span className="text-xs text-muted-foreground whitespace-nowrap">Lookback</span>
           <select
             value={lookback}
-            onChange={e => setLookback(Number(e.target.value))}
+            onChange={e => handleLookbackChange(Number(e.target.value))}
             className="text-sm bg-transparent focus:outline-none cursor-pointer"
           >
             {[7, 14, 21, 30].map(d => (
@@ -306,6 +497,12 @@ export default function GapScan() {
         </div>
       )}
 
+      {hasResults && (
+        <div className="mb-5 p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600">
+          Source of truth: item identity from InventoryItem, system stock from ItemStockBalance/StockMovement/InventoryItem, and usage from posted SALE/POS records. {hasPhysicalScanData ? 'Physical counts are evidence only and are not system stock.' : 'Gap Scan does not post movements or adjust stock.'}
+        </div>
+      )}
+
       {/* Explanation panel */}
       {showExplanation && selected.size > 0 && (
         <div className="mb-5 p-4 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
@@ -344,7 +541,7 @@ export default function GapScan() {
       {/* 30-day trend chart */}
       {hasResults && (
         <div className="mb-6 border border-border rounded bg-card p-5">
-          <h3 className="text-sm font-semibold text-foreground mb-4">Outbound movements trend (last 30 days)</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-4">Posted sale/usage trend (last 30 days)</h3>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={trendData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -354,7 +551,7 @@ export default function GapScan() {
                 contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }}
                 labelStyle={{ color: 'var(--foreground)' }}
               />
-              <Line type="monotone" dataKey="missing" stroke="hsl(0, 70%, 50%)" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="usage" stroke="hsl(0, 70%, 50%)" dot={false} strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -371,57 +568,64 @@ export default function GapScan() {
         </div>
       ) : (
         <>
-          {/* Side-by-side comparison view */}
-          <div className="mb-6 border border-border rounded bg-card p-5">
-            <h3 className="text-sm font-semibold text-foreground mb-4">System vs. Physical Scan Comparison</h3>
-            <div className="grid grid-cols-1 gap-4">
-              {results.map((row) => {
-                const discrepancy = Math.abs(row.systemStock - row.onHand);
-                const discrepancyPercent = row.systemStock > 0 ? Math.round((discrepancy / row.systemStock) * 100) : 0;
-                const hasDiscrepancy = discrepancy > 0;
-                
-                return (
-                  <div
-                    key={row.sku}
-                    className={`rounded-lg border px-4 py-3 transition-colors ${
-                      hasDiscrepancy
-                        ? 'border-red-200 bg-red-50/30'
-                        : 'border-green-200 bg-green-50/30'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="font-mono text-xs text-muted-foreground">{row.sku}</p>
-                        <p className="font-medium text-foreground">{row.name}</p>
+          {/* Side-by-side comparison view. Only visible for actual imported scanner/floor evidence. */}
+          {hasPhysicalScanData && (
+            <div className="mb-6 border border-border rounded bg-card p-5">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-foreground">System vs. Physical Scan Comparison</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Physical scan counts are evidence only. Variances do not adjust stock and must be resolved through Stocktake, Transfer, or Adjustment workflows.
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                {results.filter(row => row.hasPhysicalScan).map((row) => {
+                  const discrepancy = Math.abs(row.systemStock - row.onHand);
+                  const discrepancyPercent = row.systemStock > 0 ? Math.round((discrepancy / row.systemStock) * 100) : 0;
+                  const hasDiscrepancy = discrepancy > 0;
+                  
+                  return (
+                    <div
+                      key={row.sku}
+                      className={`rounded-lg border px-4 py-3 transition-colors ${
+                        hasDiscrepancy
+                          ? 'border-red-200 bg-red-50/30'
+                          : 'border-green-200 bg-green-50/30'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="font-mono text-xs text-muted-foreground">{row.sku}</p>
+                          <p className="font-medium text-foreground">{row.name}</p>
+                        </div>
+                        {hasDiscrepancy && (
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+                            {discrepancyPercent}% variance
+                          </span>
+                        )}
                       </div>
-                      {hasDiscrepancy && (
-                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
-                          {discrepancyPercent}% variance
-                        </span>
-                      )}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="text-center border-r border-border/20">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">System Stock</p>
+                          <p className="text-2xl font-bold text-foreground">{row.systemStock?.toLocaleString() ?? 'N/A'}</p>
+                        </div>
+                        <div className="text-center border-r border-border/20">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Physical Scan</p>
+                          <p className="text-2xl font-bold text-foreground">{row.onHand.toLocaleString()}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Difference</p>
+                          <p className={`text-2xl font-bold ${hasDiscrepancy ? 'text-red-600' : 'text-green-600'}`}>
+                            {hasDiscrepancy ? (row.systemStock > row.onHand ? '−' : '+') : ''}
+                            {discrepancy.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="text-center border-r border-border/20">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">System Stock</p>
-                        <p className="text-2xl font-bold text-foreground">{row.systemStock?.toLocaleString() ?? 'N/A'}</p>
-                      </div>
-                      <div className="text-center border-r border-border/20">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Physical Scan</p>
-                        <p className="text-2xl font-bold text-foreground">{row.onHand.toLocaleString()}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Difference</p>
-                        <p className={`text-2xl font-bold ${hasDiscrepancy ? 'text-red-600' : 'text-green-600'}`}>
-                          {hasDiscrepancy ? (row.systemStock > row.onHand ? '−' : '+') : ''}
-                          {discrepancy.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Original table */}
           <div className="border border-border rounded overflow-hidden">
@@ -436,7 +640,7 @@ export default function GapScan() {
                       className="cursor-pointer"
                     />
                   </th>
-                  {['SKU', 'Item', 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag', ''].map(h => (
+                  {['SKU', 'Item', hasPhysicalScanData ? 'Physical Count' : 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag', ''].map(h => (
                     <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
