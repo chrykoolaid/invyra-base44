@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter } from '@/lib/envFilter';
-import { Plus, Play, Pencil, Trash2, CalendarClock, X } from 'lucide-react';
+import { Plus, Play, Pencil, Trash2, CalendarClock, X, ClipboardCheck, TimerReset, CheckCircle2, ListTodo, ShieldCheck } from 'lucide-react';
 
 const FREQUENCIES = ['Daily', 'Weekly', 'Monthly', 'Ad-hoc'];
 const CATEGORIES = ['Food & Beverage', 'Cleaning & Sanitation', 'Office Supplies', 'Packaging', 'Equipment', 'Perishable', 'Non-Perishable', 'Other'];
@@ -29,6 +29,48 @@ function emptyTask() {
     filter_skus: [],
     is_active: true,
   };
+}
+
+function isThisMonth(dateValue) {
+  if (!dateValue) return false;
+  const d = new Date(dateValue);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+}
+
+function isDueThisWeek(dateValue) {
+  if (!dateValue) return false;
+  const d = new Date(dateValue);
+  if (Number.isNaN(d.getTime())) return false;
+  const now = new Date();
+  const end = new Date(now);
+  end.setDate(end.getDate() + 7);
+  return d >= now && d <= end;
+}
+
+function SummaryCard({ icon: Icon, label, value, tone = 'default' }) {
+  const tones = {
+    default: 'border-border bg-card text-foreground',
+    blue: 'border-blue-200 bg-blue-50 text-blue-900',
+    amber: 'border-amber-200 bg-amber-50 text-amber-900',
+    green: 'border-green-200 bg-green-50 text-green-900',
+    slate: 'border-slate-200 bg-slate-50 text-slate-900',
+  };
+
+  return (
+    <div className={`rounded-xl border px-4 py-3 ${tones[tone] || tones.default}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+          <p className="mt-1 text-2xl font-semibold leading-none">{value}</p>
+        </div>
+        <div className="h-9 w-9 rounded-lg border border-current/10 bg-white/60 flex items-center justify-center">
+          <Icon size={18} />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function TaskFormModal({ task, onSave, onClose }) {
@@ -59,7 +101,7 @@ function TaskFormModal({ task, onSave, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
       <div className="w-full max-w-lg bg-card border border-border rounded-xl shadow-xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <h2 className="text-sm font-semibold text-foreground">{task.name ? 'Edit Task' : 'New Cycle Count Task'}</h2>
+          <h2 className="text-sm font-semibold text-foreground">{task.name ? 'Edit Cycle Count Task' : 'New Cycle Count Task'}</h2>
           <button onClick={onClose} className="h-7 w-7 flex items-center justify-center rounded hover:bg-muted text-muted-foreground">
             <X size={15} />
           </button>
@@ -69,7 +111,7 @@ function TaskFormModal({ task, onSave, onClose }) {
             <label className="col-span-2 space-y-1">
               <span className="text-xs text-muted-foreground">Task Name *</span>
               <input value={form.name} onChange={e => set('name', e.target.value)} required
-                placeholder="e.g. Daily High-Value Count"
+                placeholder="e.g. Weekly High-Value Count"
                 className="h-9 w-full border border-border rounded-lg px-3 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring" />
             </label>
             <label className="space-y-1">
@@ -99,7 +141,6 @@ function TaskFormModal({ task, onSave, onClose }) {
             </label>
           </div>
 
-          {/* SKU list */}
           <div className="space-y-2">
             <span className="text-xs text-muted-foreground">Specific SKUs (overrides filters above)</span>
             <div className="flex gap-2">
@@ -125,7 +166,7 @@ function TaskFormModal({ task, onSave, onClose }) {
           <label className="space-y-1 block">
             <span className="text-xs text-muted-foreground">Description (optional)</span>
             <textarea value={form.description} onChange={e => set('description', e.target.value)}
-              rows={2} placeholder="Brief note on purpose of this count task…"
+              rows={2} placeholder="Brief note on the purpose of this cycle count…"
               className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-1 focus:ring-ring resize-none" />
           </label>
 
@@ -170,6 +211,10 @@ export default function CycleCountPlanner({ onStartCount }) {
   }, []);
 
   const canEditPlan = ['manager', 'admin', 'owner'].includes((userRole || '').toLowerCase());
+  const activeTasks = tasks.filter(task => task.is_active && !task.is_archived);
+  const dueThisWeek = tasks.filter(task => task.is_active && isDueThisWeek(task.next_due_at)).length;
+  const inProgress = tasks.filter(task => String(task.status || '').toUpperCase() === 'IN_PROGRESS').length;
+  const completedThisMonth = tasks.filter(task => isThisMonth(task.completed_at || task.last_completed_at)).length;
 
   const persist = async (updatedTasks, actionType = 'CYCLE_COUNT_PLAN_UPDATED', notes = '') => {
     if (!canEditPlan) { setError('Only Manager, Admin, or Owner roles can edit cycle count plan definitions.'); return; }
@@ -209,6 +254,9 @@ export default function CycleCountPlanner({ onStartCount }) {
         notes,
       });
       setTasks(updatedTasks);
+      if (config) {
+        setConfig({ ...config, cycle_count_tasks: updatedTasks });
+      }
     } catch (err) {
       console.error('Failed to save cycle count planner:', err);
       setError('Failed to save cycle count plan definition.');
@@ -250,76 +298,127 @@ export default function CycleCountPlanner({ onStartCount }) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">Cycle Count Planner</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Define focused count tasks. Starting one launches a pre-filtered Stocktake session.</p>
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-1">
+          <h2 className="text-base font-semibold text-foreground">Cycle Count Planner</h2>
+          <p className="text-sm text-muted-foreground">Plan focused stock counts without starting a full stocktake.</p>
+          <div className="flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 max-w-3xl">
+            <ShieldCheck size={14} className="mt-0.5 shrink-0" />
+            <span>Managers/Admins/Owners can create and edit plans. Supervisors can start approved active counts. No stock movement is posted until a count is completed through the governed Stocktake workflow.</span>
+          </div>
         </div>
-        <button onClick={() => canEditPlan ? setEditingTask(emptyTask()) : setError('Only Manager, Admin, or Owner roles can create cycle count plan definitions.')}
+        <button
+          onClick={() => canEditPlan ? setEditingTask(emptyTask()) : setError('Only Manager, Admin, or Owner roles can create cycle count plan definitions.')}
           disabled={!canEditPlan}
-          className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium border border-primary/40 rounded bg-primary/5 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-          <Plus size={13} /> New Task
+          className="inline-flex items-center justify-center gap-1.5 h-9 px-4 text-sm font-medium border border-primary/40 rounded-lg bg-primary/5 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus size={14} /> New Cycle Count Task
         </button>
       </div>
 
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard icon={ClipboardCheck} label="Active Tasks" value={activeTasks.length} tone="blue" />
+        <SummaryCard icon={CalendarClock} label="Due This Week" value={dueThisWeek} tone="amber" />
+        <SummaryCard icon={TimerReset} label="In Progress" value={inProgress} tone="slate" />
+        <SummaryCard icon={CheckCircle2} label="Completed This Month" value={completedThisMonth} tone="green" />
+      </div>
+
       {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
-      {!canEditPlan && <p className="text-xs text-muted-foreground rounded-lg border border-border bg-muted/30 px-3 py-2">Planner definitions are Manager/Admin/Owner controlled. Supervisors can start active approved counts.</p>}
+
+      {!canEditPlan && (
+        <p className="text-xs text-muted-foreground rounded-lg border border-border bg-muted/30 px-3 py-2">
+          Planner definitions are Manager/Admin/Owner controlled. Supervisors can start active approved counts only.
+        </p>
+      )}
 
       {tasks.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center space-y-2">
-          <CalendarClock size={24} className="mx-auto text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">No cycle count tasks defined yet.</p>
-          <p className="text-xs text-muted-foreground">Create a task to set up a recurring focused count (e.g. high-value items, specific category).</p>
+        <div className="rounded-xl border border-dashed border-border bg-muted/20 px-5 py-8 text-center space-y-3">
+          <div className="mx-auto h-12 w-12 rounded-full bg-background border border-border flex items-center justify-center">
+            <ListTodo size={22} className="text-muted-foreground" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-base font-medium text-foreground">No cycle count tasks yet</p>
+            <p className="text-sm text-muted-foreground max-w-2xl mx-auto">
+              Cycle counts help you check focused groups of stock without starting a full stocktake. Create tasks for high-value items, fast movers, expiry-sensitive products, or selected locations.
+            </p>
+          </div>
+          <div className="rounded-lg border border-border bg-background px-4 py-3 text-left max-w-3xl mx-auto">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">How it works</p>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              <li>• A cycle count task defines which items should be counted.</li>
+              <li>• Starting a task opens a focused Stocktake session instead of a full-store count.</li>
+              <li>• Variances are still governed by the normal Stocktake workflow.</li>
+            </ul>
+          </div>
+          {canEditPlan ? (
+            <div className="pt-1">
+              <button
+                onClick={() => setEditingTask(emptyTask())}
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-4 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90"
+              >
+                <Plus size={14} /> Create Cycle Count Task
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No active cycle count tasks are available to start.</p>
+          )}
         </div>
       ) : (
-        <div className="space-y-2">
-          {tasks.map(task => (
-            <div key={task.id}
-              className={`rounded-xl border bg-card px-4 py-3 flex items-start justify-between gap-4 transition-opacity ${task.is_active ? 'border-border opacity-100' : 'border-border/50 opacity-60'}`}>
-              <div className="min-w-0 space-y-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-foreground">{task.name}</span>
-                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${freqBadge[task.frequency] || freqBadge['Ad-hoc']}`}>
-                    {task.frequency}
-                  </span>
-                  {!task.is_active && (
-                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                      Inactive
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border bg-muted/10 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Planner Board</p>
+            <p className="mt-1 text-sm text-muted-foreground">Manage recurring count definitions here. Starting a task launches a pre-filtered Stocktake session.</p>
+          </div>
+
+          <div className="space-y-2">
+            {tasks.map(task => (
+              <div key={task.id}
+                className={`rounded-xl border bg-card px-4 py-3 flex flex-col gap-3 md:flex-row md:items-start md:justify-between transition-opacity ${task.is_active ? 'border-border opacity-100' : 'border-border/50 opacity-60'}`}>
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">{task.name}</span>
+                    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${freqBadge[task.frequency] || freqBadge['Ad-hoc']}`}>
+                      {task.frequency}
                     </span>
-                  )}
+                    {!task.is_active && (
+                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{buildFilterLabel(task)}</p>
+                  {task.description && <p className="text-xs text-muted-foreground italic">{task.description}</p>}
                 </div>
-                <p className="text-xs text-muted-foreground">{buildFilterLabel(task)}</p>
-                {task.description && <p className="text-xs text-muted-foreground italic">{task.description}</p>}
+                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                  <button onClick={() => task.is_active && onStartCount(task)}
+                    title="Start count session"
+                    disabled={!task.is_active}
+                    className="inline-flex items-center gap-1 h-8 px-3 text-xs font-medium rounded-lg border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50">
+                    <Play size={12} /> Start Count
+                  </button>
+                  <button onClick={() => canEditPlan ? setEditingTask({ ...task }) : setError('Only Manager, Admin, or Owner roles can edit cycle count plan definitions.')}
+                    disabled={!canEditPlan}
+                    title="Edit task"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Pencil size={13} />
+                  </button>
+                  <button onClick={() => handleToggleActive(task.id)}
+                    disabled={!canEditPlan}
+                    title={task.is_active ? 'Deactivate' : 'Activate'}
+                    className="h-8 px-3 text-xs rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed">
+                    {task.is_active ? 'Pause' : 'Enable'}
+                  </button>
+                  <button onClick={() => handleDelete(task.id)}
+                    disabled={!canEditPlan}
+                    title="Deactivate task"
+                    className="h-8 w-8 flex items-center justify-center rounded-lg border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button onClick={() => task.is_active && onStartCount(task)}
-                  title="Start count session"
-                  disabled={!task.is_active}
-                  className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50">
-                  <Play size={11} /> Start
-                </button>
-                <button onClick={() => canEditPlan ? setEditingTask({ ...task }) : setError('Only Manager, Admin, or Owner roles can edit cycle count plan definitions.')}
-                  disabled={!canEditPlan}
-                  title="Edit task"
-                  className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-muted transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed">
-                  <Pencil size={12} />
-                </button>
-                <button onClick={() => handleToggleActive(task.id)}
-                  disabled={!canEditPlan}
-                  title={task.is_active ? 'Deactivate' : 'Activate'}
-                  className="h-7 px-2 text-xs rounded border border-border hover:bg-muted transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed">
-                  {task.is_active ? 'Pause' : 'Enable'}
-                </button>
-                <button onClick={() => handleDelete(task.id)}
-                  disabled={!canEditPlan}
-                  title="Deactivate task"
-                  className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed">
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
