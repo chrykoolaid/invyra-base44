@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Layers, ScanLine, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Info, Layers, ScanLine, ShieldCheck } from 'lucide-react';
 import ExpiryOverviewTab from '@/components/expiry/ExpiryOverviewTab';
 import BarcodeLookupTab from '@/components/expiry/BarcodeLookupTab';
 import BatchRegisterTab from '@/components/expiry/BatchRegisterTab';
@@ -33,16 +33,25 @@ export default function ExpiryTracking() {
 
   return (
     <div className="p-5 lg:p-6 space-y-5 max-w-[1280px]">
-      <div className="space-y-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-xl font-semibold text-foreground">Expiry & Barcode Tracking</h1>
-          <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            <ShieldCheck size={11} /> Tracking Only
-          </span>
+      <div className="space-y-3">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold text-foreground">Expiry & Barcode Tracking</h1>
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <ShieldCheck size={11} /> Tracking Only
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground max-w-4xl leading-relaxed">
+            Track expiry dates, barcodes, batches, and lots. Near-expiry stock is surfaced for Markdown or Wastage review, but this page does not post pricing, write-offs, or stock adjustments.
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground max-w-4xl leading-relaxed">
-          Track expiry dates, barcodes, batches, and lots. Identifies near-expiry stock for Markdown and Wastage action — does not perform pricing, write-offs, or stock adjustments.
-        </p>
+
+        <div className="rounded-2xl border border-border bg-muted/30 px-4 py-3 flex items-start gap-3">
+          <Info size={15} className="text-muted-foreground mt-0.5 flex-shrink-0" />
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Expiry & Batches is visibility-only.</strong> Use Markdown for controlled price reductions and Wastage for governed stock-out decisions.
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

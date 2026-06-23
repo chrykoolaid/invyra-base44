@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter } from '@/lib/envFilter';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { Plus, Search, ChevronDown } from 'lucide-react';
+import { Info, Plus, Search, ChevronDown } from 'lucide-react';
 import AddBatchModal from './AddBatchModal';
 
 const STATUS_FILTERS = ['All', 'Active', 'Near Expiry', 'Expired', 'Depleted', 'Quarantine'];
@@ -81,6 +81,18 @@ export default function BatchRegisterTab() {
         ))}
       </div>
 
+      <div className="rounded-2xl border border-border bg-muted/30 p-4">
+        <div className="flex items-start gap-3">
+          <Info size={15} className="text-muted-foreground mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-foreground">What gets tracked</p>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              Batch number, lot number, SKU / item, expiry date, quantity, location, received date, and status. Batch records support visibility only and do not post stock movements.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">
@@ -126,7 +138,12 @@ export default function BatchRegisterTab() {
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-muted-foreground text-sm">No batches found.</td></tr>
+                <tr>
+                  <td colSpan={9} className="px-4 py-12 text-center">
+                    <p className="text-sm font-medium text-foreground">No batches found.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Add a batch to start tracking expiry, lot, and barcode information.</p>
+                  </td>
+                </tr>
               )}
               {filtered.map((b, i) => {
                 const bucket = expiryStatusBucket(b.expiry_date);
