@@ -7,6 +7,13 @@ import { envFilter } from '@/lib/envFilter';
 import ScanDataImportModal from '@/components/ScanDataImportModal';
 import FillTasksTab from '@/components/gapscan/FillTasksTab';
 import CreateFillTaskModal from '@/components/gapscan/CreateFillTaskModal';
+import {
+  buildGapScanFillTaskPayload,
+  getFillTaskIdentityKey,
+  hasOpenGapScanFillTaskForRow,
+  isActiveFillTask,
+  isFillTaskEligible,
+} from '@/lib/gapScanFillTasks';
 
 // Derive risk/flag from days left
 const getRiskAndFlag = (daysLeft, stock) => {
@@ -153,7 +160,10 @@ const buildScanData = ({ items = [], balances = [], movements = [], posLines = [
 
     return {
       sku: item.sku,
+      item_id: item.id,
       name: item.name,
+      location_id: item.location_id || item.default_location_id || null,
+      location_name: item.location_name || item.default_location_name || null,
       systemStock,
       onHand: systemStock,
       avgUse,
@@ -252,6 +262,11 @@ export default function GapScan() {
   const [hasPhysicalScanData, setHasPhysicalScanData] = useState(false);
   const [hasRunScan, setHasRunScan] = useState(false);
   const [fillTaskRow, setFillTaskRow] = useState(null); // row for which modal is open
+  const [openFillTasks, setOpenFillTasks] = useState([]);
+  const [createdFillTaskKeys, setCreatedFillTaskKeys] = useState(new Set());
+  const [creatingFillTasks, setCreatingFillTasks] = useState(false);
+  const [fillTaskNotice, setFillTaskNotice] = useState(null);
+  const [fillTaskRefreshKey, setFillTaskRefreshKey] = useState(0);
   const hasResults = hasRunScan && results.length > 0;
 
   const clearScanOutput = () => {
@@ -264,6 +279,9 @@ export default function GapScan() {
     setImportError('');
     setHasPhysicalScanData(false);
     setHasRunScan(false);
+    setOpenFillTasks([]);
+    setCreatedFillTaskKeys(new Set());
+    setFillTaskNotice(null);
   };
 
   const loadInventoryTruth = async () => {
@@ -280,6 +298,52 @@ export default function GapScan() {
       movements: movements || [],
       posLines: posLines || [],
     };
+  };
+
+  const loadActiveFillTasks = async () => {
+    try {
+      const rows = await base44.entities.FillTask.filter(envFilter(), '-created_date', 500);
+      return (rows || []).filter(isActiveFillTask);
+    } catch (err) {
+      console.warn('Unable to load active Fill Tasks for Gap Scan badge state:', err);
+      return [];
+    }
+  };
+
+  const getRowTaskBadge = (row) => {
+    const key = getFillTaskIdentityKey(row);
+    if (createdFillTaskKeys.has(key)) {
+      return { label: 'Added', tone: 'bg-green-50 text-green-700 border-green-200' };
+    }
+    if (hasOpenGapScanFillTaskForRow(row, openFillTasks)) {
+      return { label: 'Open Task', tone: 'bg-blue-50 text-blue-700 border-blue-200' };
+    }
+    if (isFillTaskEligible(row)) {
+      return { label: 'Suggested', tone: 'bg-amber-50 text-amber-700 border-amber-200' };
+    }
+    return { label: 'Not Added', tone: 'bg-slate-100 text-slate-500 border-slate-200' };
+  };
+
+  const canCreateFillTaskForRow = (row) => (
+    isFillTaskEligible(row) &&
+    !createdFillTaskKeys.has(getFillTaskIdentityKey(row)) &&
+    !hasOpenGapScanFillTaskForRow(row, openFillTasks)
+  );
+
+  const buildFillTaskNoticeText = (notice) => {
+    if (!notice) return '';
+    const parts = [];
+    parts.push(`${notice.created} Fill Task${notice.created === 1 ? '' : 's'} created.`);
+    if (notice.duplicates > 0) {
+      parts.push(`${notice.duplicates} selected item${notice.duplicates === 1 ? '' : 's'} already had open Fill Tasks and ${notice.duplicates === 1 ? 'was' : 'were'} skipped.`);
+    }
+    if (notice.ineligible > 0) {
+      parts.push(`${notice.ineligible} selected item${notice.ineligible === 1 ? '' : 's'} did not meet Gap Scan fill-task rules and ${notice.ineligible === 1 ? 'was' : 'were'} skipped.`);
+    }
+    if (notice.missingItems > 0) {
+      parts.push(`${notice.missingItems} selected item${notice.missingItems === 1 ? '' : 's'} could not be matched to InventoryItem and ${notice.missingItems === 1 ? 'was' : 'were'} skipped.`);
+    }
+    return parts.join(' ');
   };
 
   const sortResults = (rows) => [...rows].sort((a, b) => {
@@ -299,11 +363,14 @@ export default function GapScan() {
     setHasPhysicalScanData(false);
 
     try {
-      const inventoryTruth = await loadInventoryTruth();
+      const [inventoryTruth, activeTasks] = await Promise.all([loadInventoryTruth(), loadActiveFillTasks()]);
       const data = buildScanData({ ...inventoryTruth, lookbackDays: lookback });
       setResults(sortResults(data));
+      setOpenFillTasks(activeTasks);
       setTrendData(buildTrendData(inventoryTruth.movements));
       setSelected(new Set());
+      setCreatedFillTaskKeys(new Set());
+      setFillTaskNotice(null);
       setShowExplanation(false);
       setHighlightedRow(null);
       setHasRunScan(true);
@@ -358,7 +425,7 @@ export default function GapScan() {
     setImportError('');
 
     try {
-      const inventoryTruth = await loadInventoryTruth();
+      const [inventoryTruth, activeTasks] = await Promise.all([loadInventoryTruth(), loadActiveFillTasks()]);
       const physicalRows = buildPhysicalScanRows({
         scanRows: data || [],
         ...inventoryTruth,
@@ -370,8 +437,11 @@ export default function GapScan() {
       }
 
       setResults(sortResults(physicalRows));
+      setOpenFillTasks(activeTasks);
       setTrendData(buildTrendData(inventoryTruth.movements));
       setSelected(new Set());
+      setCreatedFillTaskKeys(new Set());
+      setFillTaskNotice(null);
       setShowExplanation(false);
       setHighlightedRow(null);
       setHasPhysicalScanData(physicalRows.length > 0);
@@ -383,6 +453,94 @@ export default function GapScan() {
     } finally {
       setScanning(false);
     }
+  };
+
+  const handleBulkAddToFillTasks = async () => {
+    if (selected.size === 0 || creatingFillTasks) return;
+
+    setCreatingFillTasks(true);
+    setFillTaskNotice(null);
+    setImportError('');
+
+    try {
+      const selectedRows = results.filter(row => selected.has(row.sku));
+      const activeTasks = await loadActiveFillTasks();
+      const taskState = [...activeTasks];
+      const user = await base44.auth.me();
+      const createdKeys = [];
+      let created = 0;
+      let duplicates = 0;
+      let ineligible = 0;
+      let missingItems = 0;
+
+      for (const row of selectedRows) {
+        if (!isFillTaskEligible(row)) {
+          ineligible += 1;
+          continue;
+        }
+
+        if (hasOpenGapScanFillTaskForRow(row, taskState)) {
+          duplicates += 1;
+          continue;
+        }
+
+        if (!row.item_id) {
+          missingItems += 1;
+          continue;
+        }
+
+        const payload = buildGapScanFillTaskPayload({ row, user });
+        const createdTask = await base44.entities.FillTask.create(payload);
+        taskState.push({ ...payload, id: createdTask?.id });
+        createdKeys.push(getFillTaskIdentityKey(row));
+        created += 1;
+
+        try {
+          await base44.entities.AuditLog.create({
+            ...envFilter(),
+            item_id: row.item_id,
+            sku: row.sku,
+            item_name: row.name,
+            change_type: 'ITEM_UPDATE',
+            action_type: 'FILL_TASK_CREATED',
+            field_name: 'FillTask.status',
+            old_value: '',
+            new_value: 'OPEN',
+            changed_by: user?.email || user?.full_name || '',
+            actor_role: user?.role || '',
+            source_module: 'GapScan',
+            source_record_id: createdTask?.id || '',
+            linked_source_record: createdTask?.id || '',
+            notes: 'Gap Scan manual bulk promotion. Evidentiary fill task only. No StockMovement created.',
+          });
+        } catch (auditErr) {
+          console.warn('Fill Task created, but audit entry failed:', auditErr);
+        }
+      }
+
+      setOpenFillTasks(taskState);
+      setCreatedFillTaskKeys(prev => new Set([...prev, ...createdKeys]));
+      setFillTaskRefreshKey(prev => prev + 1);
+      setSelected(new Set());
+      setFillTaskNotice({ type: created > 0 ? 'success' : 'info', created, duplicates, ineligible, missingItems });
+    } catch (err) {
+      console.error('Failed to create selected Fill Tasks:', err);
+      setFillTaskNotice({
+        type: 'error',
+        message: 'Could not create Fill Tasks. No StockMovement, stock adjustment, order, or reorder draft was posted.',
+      });
+    } finally {
+      setCreatingFillTasks(false);
+    }
+  };
+
+  const handleSingleFillTaskCreated = async (createdTask, row) => {
+    setFillTaskRow(null);
+    const activeTasks = await loadActiveFillTasks();
+    setOpenFillTasks(activeTasks);
+    setCreatedFillTaskKeys(prev => new Set([...prev, getFillTaskIdentityKey(row)]));
+    setFillTaskRefreshKey(prev => prev + 1);
+    setFillTaskNotice({ type: 'success', created: 1, duplicates: 0, ineligible: 0, missingItems: 0 });
   };
 
   return (
@@ -397,7 +555,7 @@ export default function GapScan() {
         <CreateFillTaskModal
           scanRow={fillTaskRow}
           onClose={() => setFillTaskRow(null)}
-          onCreated={() => { setFillTaskRow(null); setActiveTab('fill-tasks'); }}
+          onCreated={(createdTask) => handleSingleFillTaskCreated(createdTask, fillTaskRow)}
         />
       )}
       {/* Title */}
@@ -428,7 +586,7 @@ export default function GapScan() {
       </div>
 
       {/* Fill Tasks Tab */}
-      {activeTab === 'fill-tasks' && <FillTasksTab />}
+      {activeTab === 'fill-tasks' && <FillTasksTab key={fillTaskRefreshKey} />}
 
       {activeTab === 'scan' && (<>
 
@@ -477,6 +635,16 @@ export default function GapScan() {
           <Lightbulb size={13} /> Explain Selected {selected.size > 0 && `(${selected.size})`}
         </button>
 
+        {hasResults && (
+          <button
+            disabled={selected.size === 0 || creatingFillTasks}
+            onClick={handleBulkAddToFillTasks}
+            className="flex items-center gap-1.5 h-8 px-3 text-sm border border-primary/30 rounded bg-primary/5 hover:bg-primary/10 transition-colors text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <PackagePlus size={13} /> {creatingFillTasks ? 'Adding…' : 'Add Selected to Fill Tasks'} {selected.size > 0 && `(${selected.size})`}
+          </button>
+        )}
+
         <span className="ml-auto text-xs text-muted-foreground">
           {hasResults ? `${results.length} items scanned` : 'No scan run'}
         </span>
@@ -498,6 +666,26 @@ export default function GapScan() {
       {importedFrom && (
         <div className="mb-5 p-3 bg-green-50 border border-green-200 rounded text-xs text-green-700">
           ✓ {importedFrom}
+        </div>
+      )}
+
+      {fillTaskNotice && (
+        <div className={`mb-5 p-3 rounded text-xs flex items-center justify-between gap-3 ${
+          fillTaskNotice.type === 'error'
+            ? 'bg-red-50 border border-red-200 text-red-700'
+            : fillTaskNotice.type === 'info'
+              ? 'bg-slate-50 border border-slate-200 text-slate-700'
+              : 'bg-green-50 border border-green-200 text-green-700'
+        }`}>
+          <span>{fillTaskNotice.message || buildFillTaskNoticeText(fillTaskNotice)}</span>
+          {fillTaskNotice.type !== 'error' && fillTaskNotice.created > 0 && (
+            <button
+              onClick={() => setActiveTab('fill-tasks')}
+              className="h-7 px-2.5 rounded border border-current/20 bg-white/50 hover:bg-white text-xs font-medium"
+            >
+              View Fill Tasks
+            </button>
+          )}
         </div>
       )}
 
@@ -644,13 +832,16 @@ export default function GapScan() {
                       className="cursor-pointer"
                     />
                   </th>
-                  {['SKU', 'Item', hasPhysicalScanData ? 'Physical Count' : 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag', ''].map(h => (
+                  {['SKU', 'Item', hasPhysicalScanData ? 'Physical Count' : 'On Hand', 'Avg Use / Day', 'Days Left', 'Suggested Order', 'Risk', 'Flag', 'Task', ''].map(h => (
                     <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {results.map((row, i) => (
+                {results.map((row, i) => {
+                  const taskBadge = getRowTaskBadge(row);
+                  const canCreate = canCreateFillTaskForRow(row);
+                  return (
                   <tr
                     key={row.sku}
                     onClick={() => toggleRow(row.sku)}
@@ -689,15 +880,22 @@ export default function GapScan() {
                       </span>
                     </td>
                     <td className="px-4 py-2.5">
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium whitespace-nowrap ${taskBadge.tone}`}>
+                        {taskBadge.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5">
                       <button
-                        onClick={e => { e.stopPropagation(); setFillTaskRow(row); }}
-                        title="Create fill task"
-                        className="inline-flex items-center gap-1 h-7 px-2.5 text-xs rounded border border-border hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-colors text-muted-foreground whitespace-nowrap">
+                        onClick={e => { e.stopPropagation(); if (canCreate) setFillTaskRow(row); }}
+                        disabled={!canCreate}
+                        title={canCreate ? 'Create fill task' : 'Fill task is not suggested or already exists'}
+                        className="inline-flex items-center gap-1 h-7 px-2.5 text-xs rounded border border-border hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-colors text-muted-foreground whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-muted-foreground disabled:hover:border-border">
                         <PackagePlus size={11} /> Fill Task
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

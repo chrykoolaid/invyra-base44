@@ -14,12 +14,13 @@ import { getConfiguration, initConfiguration, saveConfigurationSection } from '@
 import SettingsSectionShell from '@/components/settings/SettingsSectionShell';
 import SettingsField from '@/components/settings/SettingsField';
 import LockedFeatureBadge from '@/components/settings/LockedFeatureBadge';
-import { Lock, Settings, ShieldCheck, Bell, RefreshCw, Cpu, Share2, FileSpreadsheet, FileUp, PlugZap, CircleAlert } from 'lucide-react';
+import { Lock, Settings, ShieldCheck, Bell, RefreshCw, Cpu, Share2, FileSpreadsheet, FileUp, PlugZap, CircleAlert, ClipboardList } from 'lucide-react';
 
 const TABS = [
   { id: 'general',       label: 'General',                  icon: Settings    },
   { id: 'inventory',     label: 'Inventory Rules',          icon: ShieldCheck  },
   { id: 'reorder',       label: 'Reorder Behaviour',        icon: RefreshCw    },
+  { id: 'gap-scan',      label: 'Gap Scan / Replenishment', icon: ClipboardList },
   { id: 'devices',       label: 'Sync & Devices',           icon: Cpu         },
   { id: 'data-exchange', label: 'Data Exchange',            icon: Share2      },
   { id: 'compliance',    label: 'Environment & Compliance', icon: Lock        },
@@ -183,6 +184,45 @@ function TabReorder({ config, onSave, saving, saveResult }) {
     </SettingsSectionShell>
   );
 }
+
+// ─── Tab: Gap Scan / Replenishment ───────────────────────────────────────────
+function TabGapScanReplenishment() {
+  return (
+    <SettingsSectionShell
+      title="Gap Scan / Replenishment"
+      description="Roadmap-only planning for future Fill Task creation modes. Active behaviour remains manual-only."
+      hideSave
+    >
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl border border-amber-200 bg-white/70">
+            <CircleAlert className="h-4 w-4 text-amber-700" strokeWidth={2} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-amber-900">Manual only is the current default</p>
+            <p className="text-sm leading-relaxed text-amber-800/90">
+              Gap Scan may suggest replenishment rows, but it does not auto-create Fill Tasks on page load or Run Scan. Automation remains a future Admin setting after staff workflow testing.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <SettingsField label="Fill Task Creation Mode" hint="Future setting. Current active behaviour is manual-only.">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+            Manual only
+          </span>
+          <LockedFeatureBadge label="Future Options Planned" reason="Suggest only, auto-create critical only, and auto-create critical + watch will stay disabled until Fill Task lifecycle is proven in live staff flow." />
+        </div>
+      </SettingsField>
+
+      <SettingsField label="Automation Boundary" hint="Protects Gap Scan, Reorder Review, Orders, Stocktake, and StockMovement separation.">
+        <LockedFeatureBadge label="Locked" reason="No automatic Fill Task creation, stock movement, reorder draft, purchase order, stock adjustment, or Item Master mutation is active from this settings plan." />
+      </SettingsField>
+    </SettingsSectionShell>
+  );
+}
+
 
 // ─── Tab: Environment & Compliance ───────────────────────────────────────────
 function TabCompliance({ config, onSave, saving, saveResult }) {
@@ -482,7 +522,7 @@ export default function InventorySettings() {
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
-          const isLocked = tab.id === 'devices' || tab.id === 'data-exchange';
+          const isLocked = tab.id === 'devices' || tab.id === 'data-exchange' || tab.id === 'gap-scan';
           return (
             <button
               key={tab.id}
@@ -510,6 +550,7 @@ export default function InventorySettings() {
         {activeTab === 'general'       && <TabGeneral       {...tabProps} />}
         {activeTab === 'inventory'     && <TabInventory     {...tabProps} />}
         {activeTab === 'reorder'       && <TabReorder       {...tabProps} />}
+        {activeTab === 'gap-scan'      && <TabGapScanReplenishment />}
         {activeTab === 'compliance'    && <TabCompliance    {...tabProps} />}
         {activeTab === 'notifications' && <TabNotifications {...tabProps} />}
         {activeTab === 'devices'       && <TabDevices />}

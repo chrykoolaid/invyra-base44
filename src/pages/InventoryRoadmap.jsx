@@ -404,17 +404,20 @@ const roadmapGroups = {
         },
         {
           title: 'Replenishment / Fill Tasks',
-          status: 'GAP / ADD UNDER GAP SCAN',
-          source: 'Module progression review — June 2026',
+          status: 'FOUNDATION ACTIVE / MANUAL PROMOTION V1',
+          source: 'Module progression review + Gap Scan manual promotion pass — June 2026',
           reason: 'Gap Scan can identify an empty shelf even when backroom stock exists. That should create a fill/replenishment task, not a supplier reorder or a stocktake variance.',
           summary: [
             'Use case: shelf is empty or low, backroom has stock, staff need to refill shelf, no purchase order required.',
-            'Place under Gap Scan as Fill Tasks / Replenishment Tasks.',
+            'Placed under Gap Scan as Fill Tasks / Replenishment Tasks.',
+            'Manual promotion v1 allows selected Gap Scan rows to become OPEN Fill Tasks only after staff action.',
+            'Duplicate active GAP_SCAN Fill Tasks are skipped by SKU/location/source, and OK/None rows remain visible but are not suggested.',
             'Keep it evidentiary and task-based; do not post ledger movements unless a governed transfer/location movement contract exists.',
           ],
           ownershipRules: [
-            'Gap Scan owns shelf observation and fill task creation.',
-            'Locations/StorageArea supplies backroom/shelf stock context.',
+            'Gap Scan owns shelf observation and manual fill task promotion.',
+            'Fill Tasks owns the operational queue after staff confirmation.',
+            'Locations/StorageArea supplies backroom/shelf stock context when safely available.',
             'Reorder Review only takes over when supplier replenishment is actually needed.',
             'Stocktake owns variance/reconciliation, not routine shelf-fill work.',
           ],
@@ -978,6 +981,7 @@ const roadmapGroups = {
           source: 'Forecasting, pricing, and supplier roadmap discussions',
           summary: [
             'Do not automate purchasing',
+            'Do not auto-create Gap Scan Fill Tasks beyond the current manual-only workflow',
             'Do not auto-change unit costs or customer selling prices',
             'Do not add supplier scorecards yet',
             'Do not add AI before inventory operations are stable with real history',
