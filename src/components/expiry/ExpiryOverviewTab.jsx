@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter } from '@/lib/envFilter';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, format, parseISO } from 'date-fns';
 import { AlertTriangle, CalendarClock, Layers, RefreshCw, ScanLine, ShieldCheck } from 'lucide-react';
 
 function daysUntil(expiryDate) {
@@ -11,9 +11,31 @@ function daysUntil(expiryDate) {
   return differenceInDays(parsed, new Date());
 }
 
+function formatExpiry(expiryDate) {
+  if (!expiryDate) return '—';
+  const parsed = parseISO(expiryDate);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  return format(parsed, 'dd MMM yyyy');
+}
+
+function daysLabel(days) {
+  if (days === null || Number.isNaN(days)) return '—';
+  if (days < 0) return `${Math.abs(days)}d overdue`;
+  if (days === 0) return 'Today';
+  return `${days}d`;
+}
+
+function suggestedPath(row, days) {
+  if (row.action_flag === 'Ready for Markdown') return 'Review for Markdown';
+  if (row.action_flag === 'Ready for Wastage') return 'Review for Wastage';
+  if (days !== null && days < 0) return 'Review for Wastage';
+  if (days !== null && days <= 14) return 'Review for Markdown';
+  return 'Monitor';
+}
+
 function SummaryCard({ label, value, helper }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 min-h-[112px] flex flex-col justify-between">
+    <div className="rounded-2xl border border-border bg-card p-4 min-h-[104px] flex flex-col justify-between">
       <div>
         <p className="text-xs font-medium text-muted-foreground">{label}</p>
         <p className="text-3xl font-bold text-foreground mt-2 leading-none">{value}</p>
@@ -23,24 +45,14 @@ function SummaryCard({ label, value, helper }) {
   );
 }
 
-function NeedsAttentionRow({ label, count, guidance, tone = 'default' }) {
-  const toneClass = tone === 'warning'
-    ? 'bg-amber-50 text-amber-700 border-amber-200'
-    : tone === 'danger'
-      ? 'bg-red-50 text-red-700 border-red-200'
+function PathBadge({ label }) {
+  const cls = label === 'Review for Wastage'
+    ? 'bg-red-50 text-red-700 border-red-200'
+    : label === 'Review for Markdown'
+      ? 'bg-amber-50 text-amber-700 border-amber-200'
       : 'bg-muted text-muted-foreground border-border';
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-[1fr_90px_190px] gap-2 md:gap-4 px-4 py-3 border-t border-border first:border-t-0 items-center">
-      <div className="text-sm font-medium text-foreground">{label}</div>
-      <div>
-        <span className={`inline-flex items-center justify-center min-w-8 h-6 px-2 rounded-full border text-xs font-semibold ${toneClass}`}>
-          {count}
-        </span>
-      </div>
-      <div className="text-xs text-muted-foreground">{guidance}</div>
-    </div>
-  );
+  return <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${cls}`}>{label}</span>;
 }
 
 export default function ExpiryOverviewTab({ onSelectTab }) {
@@ -66,35 +78,40 @@ export default function ExpiryOverviewTab({ onSelectTab }) {
 
   useEffect(() => { load(); }, []);
 
+  const expiryRows = useMemo(() => (
+    balances.length > 0 ? balances : batches
+  ), [balances, batches]);
+
   const stats = useMemo(() => {
-    const activeBatches = batches.filter(b => b.status !== 'Depleted' && b.status !== 'Disposed').length;
-    const expiredBatches = batches.filter(b => (daysUntil(b.expiry_date) ?? 9999) < 0 || b.status === 'Expired').length;
-    const nearExpiryBatches = batches.filter(b => {
-      const days = daysUntil(b.expiry_date);
-      return days !== null && days >= 0 && days <= 30;
-    }).length;
-    const missingExpiry = batches.filter(b => !b.expiry_date).length;
-    const missingStorageArea = batches.filter(b => !b.location_id || !b.storage_area_id).length;
-    const unlinkedBarcodes = barcodes.filter(b => !b.item_id || !b.sku).length;
-    const markdownReady = balances.filter(b => b.action_flag === 'Ready for Markdown').length;
-    const wastageReady = balances.filter(b => b.action_flag === 'Ready for Wastage').length;
-    const fefoReady = balances.filter(b => b.action_flag === 'Priority FEFO').length;
-    const needsAttention = expiredBatches + nearExpiryBatches + missingExpiry + missingStorageArea + unlinkedBarcodes + markdownReady + wastageReady;
+    const c = { expired: 0, today: 0, week: 0, fortnight: 0, month: 0, healthy: 0 };
+
+    expiryRows.forEach(row => {
+      const days = daysUntil(row.expiry_date);
+      if (days === null) return;
+      if (days < 0) c.expired++;
+      else if (days === 0) c.today++;
+      else if (days <= 7) c.week++;
+      else if (days <= 14) c.fortnight++;
+      else if (days <= 30) c.month++;
+      else c.healthy++;
+    });
 
     return {
-      activeBatches,
-      nearExpiryBatches,
-      expiredBatches,
-      missingExpiry,
-      missingStorageArea,
-      unlinkedBarcodes,
-      markdownReady,
-      wastageReady,
-      fefoReady,
-      needsAttention,
+      ...c,
       barcodeCount: barcodes.length,
     };
-  }, [batches, balances, barcodes]);
+  }, [expiryRows, barcodes.length]);
+
+  const attentionRows = useMemo(() => {
+    return expiryRows
+      .map(row => {
+        const days = daysUntil(row.expiry_date);
+        return { ...row, days };
+      })
+      .filter(row => row.days !== null && (row.days <= 30 || row.action_flag === 'Ready for Markdown' || row.action_flag === 'Ready for Wastage'))
+      .sort((a, b) => a.days - b.days)
+      .slice(0, 10);
+  }, [expiryRows]);
 
   return (
     <div className="space-y-5">
@@ -106,7 +123,7 @@ export default function ExpiryOverviewTab({ onSelectTab }) {
           <div className="space-y-1">
             <h2 className="text-base font-semibold text-foreground">Expiry, batch, and barcode visibility</h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
-              This module tracks barcodes, batches, lots, and expiry exposure. It can guide Markdown, Wastage, and FEFO review, but does not perform pricing changes, write-offs, or stock adjustments.
+              Review expired and near-expiry stock evidence. This page can route attention to Markdown or Wastage review, but it does not create markdowns, write off waste, post movements, or adjust stock.
             </p>
           </div>
         </div>
@@ -119,30 +136,64 @@ export default function ExpiryOverviewTab({ onSelectTab }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
-        <SummaryCard label="Active Batches" value={stats.activeBatches} helper="Tracked batch or lot records" />
-        <SummaryCard label="Near Expiry" value={stats.nearExpiryBatches} helper="Batches within 30 days" />
-        <SummaryCard label="Expired" value={stats.expiredBatches} helper="Expired batches needing review" />
-        <SummaryCard label="Barcode Links" value={stats.barcodeCount} helper="Registered scannable codes" />
-        <SummaryCard label="Needs Attention" value={stats.needsAttention} helper={lastViewed ? `Viewed ${lastViewed}` : 'No refresh recorded'} />
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <SummaryCard label="Expired" value={stats.expired} helper="Past expiry date" />
+        <SummaryCard label="Due Today" value={stats.today} helper="Expires today" />
+        <SummaryCard label="≤7 Days" value={stats.week} helper="Urgent review window" />
+        <SummaryCard label="≤14 Days" value={stats.fortnight} helper="Markdown review window" />
+        <SummaryCard label="≤30 Days" value={stats.month} helper="Monitor or plan action" />
+        <SummaryCard label="Healthy" value={stats.healthy} helper="More than 30 days" />
       </div>
 
       <div className="rounded-2xl border border-border bg-card overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-border bg-muted/20 flex items-center gap-2">
-          <AlertTriangle size={15} className="text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-foreground">Needs Attention</h2>
+        <div className="px-5 py-3.5 border-b border-border bg-muted/20 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={15} className="text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Needs Attention</h2>
+          </div>
+          <span className="text-xs text-muted-foreground">{lastViewed ? `Viewed ${lastViewed}` : 'No refresh recorded'}</span>
         </div>
-        {stats.needsAttention === 0 ? (
-          <div className="px-5 py-10 text-center text-sm text-muted-foreground">No expiry or barcode setup issues found.</div>
+
+        {loading ? (
+          <div className="flex justify-center py-10">
+            <div className="w-6 h-6 border-2 border-border border-t-primary rounded-full animate-spin" />
+          </div>
+        ) : batches.length === 0 && balances.length === 0 ? (
+          <div className="px-5 py-12 text-center">
+            <p className="text-sm font-medium text-foreground">No expiry batches recorded yet.</p>
+            <p className="text-xs text-muted-foreground mt-1">Add batches in Batch & Lot Register or scan an item in Barcode Lookup.</p>
+          </div>
+        ) : attentionRows.length === 0 ? (
+          <div className="px-5 py-10 text-center text-sm text-muted-foreground">No expired or near-expiry batches need attention right now.</div>
         ) : (
-          <div>
-            <NeedsAttentionRow label="Near-expiry batches needing review" count={stats.nearExpiryBatches} guidance="Review expiry window" tone={stats.nearExpiryBatches > 0 ? 'warning' : 'default'} />
-            <NeedsAttentionRow label="Expired batches still tracked" count={stats.expiredBatches} guidance="Route to Wastage if required" tone={stats.expiredBatches > 0 ? 'danger' : 'default'} />
-            <NeedsAttentionRow label="Barcode records without item assignment" count={stats.unlinkedBarcodes} guidance="Complete barcode link" tone={stats.unlinkedBarcodes > 0 ? 'warning' : 'default'} />
-            <NeedsAttentionRow label="Batches without expiry date" count={stats.missingExpiry} guidance="Complete batch data" tone={stats.missingExpiry > 0 ? 'warning' : 'default'} />
-            <NeedsAttentionRow label="Batches missing location or storage area" count={stats.missingStorageArea} guidance="Review setup" tone={stats.missingStorageArea > 0 ? 'warning' : 'default'} />
-            <NeedsAttentionRow label="Ready for Markdown" count={stats.markdownReady} guidance="Open Markdown workflow" tone={stats.markdownReady > 0 ? 'warning' : 'default'} />
-            <NeedsAttentionRow label="Ready for Wastage" count={stats.wastageReady} guidance="Open Wastage workflow" tone={stats.wastageReady > 0 ? 'danger' : 'default'} />
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted text-muted-foreground text-xs uppercase tracking-wide">
+                <tr>
+                  {['Item', 'Batch', 'Location', 'Expiry', 'Days Left', 'Suggested Next Step'].map(h => (
+                    <th key={h} className="text-left px-4 py-2.5 font-medium whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {attentionRows.map((row, i) => {
+                  const path = suggestedPath(row, row.days);
+                  return (
+                    <tr key={row.id || `${row.sku}-${row.batch_number}-${i}`} className={`border-t border-border ${i % 2 === 0 ? 'bg-card' : 'bg-background'}`}>
+                      <td className="px-4 py-2.5">
+                        <p className="font-medium text-foreground">{row.item_name || 'Unnamed item'}</p>
+                        <p className="font-mono text-xs text-muted-foreground">{row.sku || 'No SKU'}</p>
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-xs">{row.batch_number || row.lot_number || '—'}</td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.location_name || '—'}{row.storage_area_name ? ` · ${row.storage_area_name}` : ''}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">{formatExpiry(row.expiry_date)}</td>
+                      <td className={`px-4 py-2.5 whitespace-nowrap ${row.days < 0 ? 'text-red-600 font-semibold' : row.days <= 7 ? 'text-orange-600 font-semibold' : 'text-foreground'}`}>{daysLabel(row.days)}</td>
+                      <td className="px-4 py-2.5"><PathBadge label={path} /></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -154,7 +205,7 @@ export default function ExpiryOverviewTab({ onSelectTab }) {
         >
           <ScanLine size={16} className="text-muted-foreground mb-3" />
           <p className="text-sm font-semibold text-foreground">Barcode Lookup</p>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Search barcode, SKU, or batch number without changing stock.</p>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Search barcode, SKU, batch number, or lot number without changing stock.</p>
         </button>
         <button
           onClick={() => onSelectTab('batches')}
@@ -162,7 +213,7 @@ export default function ExpiryOverviewTab({ onSelectTab }) {
         >
           <Layers size={16} className="text-muted-foreground mb-3" />
           <p className="text-sm font-semibold text-foreground">Batch & Lot Register</p>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Maintain batch metadata and expiry records for tracking.</p>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Add and maintain batch metadata for expiry visibility only.</p>
         </button>
         <button
           onClick={() => onSelectTab('expiry')}

@@ -17,7 +17,6 @@
         "Warehouse",
         "Store",
         "Backroom",
-        "Storage",
         "Office",
         "Other"
       ],
@@ -45,6 +44,10 @@
     "contact_email": {
       "type": "string"
     },
+    "default_receiving_area": {
+      "type": "string",
+      "description": "Optional default storage area name or code for receiving"
+    },
     "is_active": {
       "type": "boolean",
       "default": true
@@ -68,10 +71,6 @@
     "stocktake_blocked": {
       "type": "boolean",
       "default": false
-    },
-    "default_receiving_area": {
-      "type": "string",
-      "description": "Optional default receiving storage area name or code for this location"
     },
     "notes": {
       "type": "string"

@@ -62,7 +62,7 @@ export default function NearExpiryTab() {
             <p className="text-xs font-semibold uppercase tracking-widest text-amber-700 mb-1">Ready for Markdown</p>
             <p className="text-2xl font-bold text-amber-700">{actionCounts.markdown}</p>
           </div>
-          <Link to="/Markdown" className="text-xs text-amber-600 hover:text-amber-800 flex items-center gap-1 transition-colors">
+          <Link to="/Markdown" title="Navigation only — does not create a markdown record" className="text-xs text-amber-600 hover:text-amber-800 flex items-center gap-1 transition-colors">
             Open Markdown <ArrowRight size={11} />
           </Link>
         </div>
@@ -71,7 +71,7 @@ export default function NearExpiryTab() {
             <p className="text-xs font-semibold uppercase tracking-widest text-red-700 mb-1">Ready for Wastage</p>
             <p className="text-2xl font-bold text-red-700">{actionCounts.wastage}</p>
           </div>
-          <Link to="/Wastage" className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 transition-colors">
+          <Link to="/Wastage" title="Navigation only — does not create a wastage record" className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1 transition-colors">
             Open Wastage <ArrowRight size={11} />
           </Link>
         </div>
@@ -85,7 +85,7 @@ export default function NearExpiryTab() {
       <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 flex items-start gap-3">
         <AlertTriangle size={14} className="text-muted-foreground mt-0.5 flex-shrink-0" />
         <p className="text-xs text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">FEFO guidance:</strong> First Expired, First Out. Items with the nearest expiry should be used, sold, transferred, or marked down before newer stock. This view does not perform write-offs or pricing changes — use Wastage or Markdown modules for those actions.
+          <strong className="text-foreground">FEFO guidance:</strong> First Expired, First Out. Items with the nearest expiry should be used, sold, transferred, or marked down before newer stock. This view does not perform write-offs or pricing changes. Open Markdown and Open Wastage are navigation-only links and do not auto-create records.
         </p>
       </div>
 
@@ -125,7 +125,7 @@ export default function NearExpiryTab() {
               {filtered.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground text-sm">
-                    {balances.length === 0 ? 'No expiry balances recorded yet. Add batches in the Batch & Lot Register tab.' : `No items in the "${window}" window.`}
+                    {balances.length === 0 ? 'No expiry balances recorded yet. Add batches in Batch & Lot Register to enable near-expiry alerts.' : `No items in the "${window}" window.`}
                   </td>
                 </tr>
               )}
