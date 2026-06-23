@@ -20,6 +20,7 @@
         "Shop Floor",
         "Backroom",
         "Receiving Bay",
+        "Quarantine",
         "Returns Area",
         "Damaged Goods",
         "Chiller",
@@ -28,10 +29,6 @@
         "Shelf",
         "Bin",
         "Stockroom",
-        "Receiving Area",
-        "Damaged Stock",
-        "Quarantine",
-        "Zone",
         "Other"
       ],
       "default": "Shop Floor"
@@ -59,7 +56,7 @@
     "quarantine_allowed": {
       "type": "boolean",
       "default": false,
-      "description": "Whether this storage area can be used for held/quarantined stock metadata"
+      "description": "Whether this area is designated for quarantine/hold stock"
     },
     "notes": {
       "type": "string"
