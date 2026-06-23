@@ -250,8 +250,9 @@ export default function GapScan() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [trendData, setTrendData] = useState([]);
   const [hasPhysicalScanData, setHasPhysicalScanData] = useState(false);
+  const [hasRunScan, setHasRunScan] = useState(false);
   const [fillTaskRow, setFillTaskRow] = useState(null); // row for which modal is open
-  const hasResults = results.length > 0;
+  const hasResults = hasRunScan && results.length > 0;
 
   const clearScanOutput = () => {
     setResults([]);
@@ -262,6 +263,7 @@ export default function GapScan() {
     setImportedFrom('');
     setImportError('');
     setHasPhysicalScanData(false);
+    setHasRunScan(false);
   };
 
   const loadInventoryTruth = async () => {
@@ -304,6 +306,7 @@ export default function GapScan() {
       setSelected(new Set());
       setShowExplanation(false);
       setHighlightedRow(null);
+      setHasRunScan(true);
     } catch (e) {
       clearScanOutput();
       setImportError(`Scan failed: ${e.message}`);
@@ -372,6 +375,7 @@ export default function GapScan() {
       setShowExplanation(false);
       setHighlightedRow(null);
       setHasPhysicalScanData(physicalRows.length > 0);
+      setHasRunScan(true);
       setImportedFrom(`Imported ${physicalRows.length} physical scan item${physicalRows.length !== 1 ? 's' : ''} from scan file`);
     } catch (err) {
       clearScanOutput();
