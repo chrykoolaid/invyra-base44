@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { ShieldCheck, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -26,7 +27,7 @@ export default function LocationModal({ location, onClose, onSaved }) {
     receiving_blocked: location?.receiving_blocked ?? false,
     stocktake_blocked: location?.stocktake_blocked ?? false,
     notes: location?.notes || '',
-    environment: 'LIVE',
+    ...envFilter(),
   });
   const [saving, setSaving] = useState(false);
 

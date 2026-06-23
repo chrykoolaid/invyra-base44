@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { Plus, Trash2 } from 'lucide-react';
 
 const REASONS = [
@@ -38,22 +39,28 @@ export default function TransferForm({ sites, items, locations, storageAreas, us
     setSaving(true);
     setError('');
 
-    const res = await base44.functions.invoke('submitTransferDraft', {
-      from_site_id: fromSite,
-      to_site_id: toSite,
-      from_location_id: fromLocation,
-      to_location_id: toLocation,
-      from_storage_area_id: fromStorageArea,
-      to_storage_area_id: toStorageArea,
-      lines: validLines.map(l => ({ item_id: l.item_id, qty: Number(l.qty) })),
-      reason,
-      notes,
-      environment: 'LIVE',
-    });
+    try {
+      const res = await base44.functions.invoke('submitTransferDraft', {
+        from_site_id: fromSite,
+        to_site_id: toSite,
+        from_location_id: fromLocation,
+        to_location_id: toLocation,
+        from_storage_area_id: fromStorageArea,
+        to_storage_area_id: toStorageArea,
+        lines: validLines.map(l => ({ item_id: l.item_id, qty: Number(l.qty) })),
+        reason,
+        notes,
+        ...envFilter(),
+      });
 
-    setSaving(false);
-    if (res.data?.error) { setError(res.data.error); return; }
-    onSubmitted(res.data);
+      if (res.data?.error) { setError(res.data.error); return; }
+      onSubmitted(res.data);
+    } catch (err) {
+      console.error('Failed to submit transfer:', err);
+      setError('Failed to submit transfer. No transfer movement was posted.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const fromAreas = storageAreas.filter(sa => sa.location_id === fromLocation);

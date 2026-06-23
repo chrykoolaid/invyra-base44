@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { envFilter } from '@/lib/envFilter';
-import { Lock, Plus, RefreshCw, CheckCircle2, ArrowUpRight, Package } from 'lucide-react';
+import { Plus, RefreshCw, CheckCircle2, ArrowUpRight, Package } from 'lucide-react';
 import PlaceHoldModal from './PlaceHoldModal';
 import EscalateToWastageModal from './EscalateToWastageModal';
 
@@ -34,27 +34,69 @@ export default function HoldsTab() {
   const [escalateHold, setEscalateHold] = useState(null);
   const [actioning, setActioning] = useState(null);
   const [releaseNotes, setReleaseNotes] = useState({});
+  const [userRole, setUserRole] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const load = async () => {
     setLoading(true);
-    const rows = await base44.entities.ItemHold.filter(envFilter(), '-created_date', 300);
-    setHolds(rows || []);
-    setLoading(false);
+    setActionError('');
+    try {
+      const [rows, user] = await Promise.all([
+        base44.entities.ItemHold.filter(envFilter(), '-created_date', 300),
+        base44.auth.me(),
+      ]);
+      setHolds(rows || []);
+      setUserRole(user?.role || '');
+    } catch (err) {
+      console.error('Failed to load holds:', err);
+      setActionError('Failed to load holds.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
 
+  const canGovernHold = ['manager', 'admin', 'owner'].includes((userRole || '').toLowerCase());
+
   const handleRelease = async (hold) => {
+    if (!canGovernHold) { setActionError('Only Manager, Admin, or Owner roles can release holds.'); return; }
     setActioning(hold.id);
-    const user = await base44.auth.me();
-    await base44.entities.ItemHold.update(hold.id, {
-      status: 'RELEASED',
-      reviewed_by: user?.email || '',
-      reviewed_at: new Date().toISOString(),
-      release_notes: releaseNotes[hold.id] || '',
-    });
-    await load();
-    setActioning(null);
+    setActionError('');
+    try {
+      const user = await base44.auth.me();
+      const actor = user?.email || user?.full_name || '';
+      const notes = releaseNotes[hold.id] || '';
+      await base44.entities.ItemHold.update(hold.id, {
+        status: 'RELEASED',
+        reviewed_by: actor,
+        reviewed_at: new Date().toISOString(),
+        release_notes: notes,
+      });
+      await base44.entities.AuditLog.create({
+        ...envFilter(),
+        item_id: hold.item_id,
+        sku: hold.sku,
+        item_name: hold.item_name,
+        change_type: 'ITEM_UPDATE',
+        action_type: 'ITEM_HOLD_RELEASED',
+        field_name: 'ItemHold.status',
+        old_value: hold.status || 'ACTIVE',
+        new_value: 'RELEASED',
+        changed_by: actor,
+        actor_role: user?.role || '',
+        source_module: 'ExceptionsHolds',
+        source_record_id: hold.id,
+        linked_source_record: hold.id,
+        notes,
+      });
+      await load();
+    } catch (err) {
+      console.error('Failed to release hold:', err);
+      setActionError('Failed to release hold. No stock movement was posted.');
+    } finally {
+      setActioning(null);
+    }
   };
 
   const filtered = filter === 'ALL' ? holds : holds.filter(h => h.status === filter);
@@ -90,6 +132,8 @@ export default function HoldsTab() {
           </button>
         </div>
       </div>
+
+      {actionError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{actionError}</p>}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
@@ -165,7 +209,7 @@ export default function HoldsTab() {
                   </p>
                 </div>
 
-                {hold.status === 'ACTIVE' && (
+                {hold.status === 'ACTIVE' && canGovernHold && (
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => handleRelease(hold)}
@@ -174,7 +218,7 @@ export default function HoldsTab() {
                       <CheckCircle2 size={11} /> Release
                     </button>
                     <button
-                      onClick={() => setEscalateHold(hold)}
+                      onClick={() => canGovernHold ? setEscalateHold(hold) : setActionError('Only Manager, Admin, or Owner roles can escalate holds.')}
                       disabled={actioning === hold.id}
                       className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors disabled:opacity-50">
                       <ArrowUpRight size={11} /> Escalate
@@ -201,7 +245,7 @@ export default function HoldsTab() {
       )}
 
       <div className="rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs text-purple-800">
-        <strong>Phase 3 — Escalation:</strong> Use <strong>Escalate</strong> to send a held item directly to a Wastage Draft. The hold is marked ESCALATED and the wastage record enters the normal supervisor approval workflow before any stock is deducted.
+        <strong>Holds V1 scope:</strong> Active holds block markdown POS validation and transfer submission where hold verification succeeds. Release/escalation is Manager/Admin/Owner controlled. Broader item-use blocking and batch/location-specific enforcement remain planned hardening.
       </div>
 
       {showModal && (

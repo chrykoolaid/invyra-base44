@@ -16,6 +16,7 @@ export default function CreateFillTaskModal({ scanRow, onClose, onCreated }) {
     priority: scanRow.risk === 'Critical' ? 'Critical' : scanRow.risk === 'High' ? 'High' : 'Medium',
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -37,33 +38,62 @@ export default function CreateFillTaskModal({ scanRow, onClose, onCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    const user = await base44.auth.me();
+    setError('');
 
-    const shelfLocation = locations.find(l => l.id === form.shelf_location_id);
-    const backroomArea = storageAreas.find(sa => sa.id === form.backroom_storage_area_id);
+    try {
+      const user = await base44.auth.me();
+      const shelfLocation = locations.find(l => l.id === form.shelf_location_id);
+      const backroomArea = storageAreas.find(sa => sa.id === form.backroom_storage_area_id);
 
-    // Resolve item_id from inventory
-    const items = await base44.entities.InventoryItem.filter({ ...envFilter(), sku: scanRow.sku }, 'name', 1);
-    const item = items?.[0] || null;
+      // Resolve item_id from InventoryItem. Do not fall back to SKU as item_id.
+      const items = await base44.entities.InventoryItem.filter({ ...envFilter(), sku: scanRow.sku }, 'name', 1);
+      const item = items?.[0] || null;
+      if (!item?.id) {
+        setError(`Cannot create Fill Task: inventory item not found for SKU ${scanRow.sku}.`);
+        return;
+      }
 
-    await base44.entities.FillTask.create({
-      ...envFilter(),
-      item_id: item?.id || scanRow.sku,
-      sku: scanRow.sku,
-      item_name: scanRow.name,
-      status: 'OPEN',
-      qty_requested: form.qty_requested ? Number(form.qty_requested) : null,
-      shelf_location_id: form.shelf_location_id || null,
-      shelf_location_name: shelfLocation?.name || null,
-      backroom_storage_area_id: form.backroom_storage_area_id || null,
-      backroom_storage_area_name: backroomArea?.name || null,
-      source_gap_scan_sku: scanRow.sku,
-      priority: form.priority,
-      notes: form.notes || null,
-    });
+      const created = await base44.entities.FillTask.create({
+        ...envFilter(),
+        item_id: item.id,
+        sku: scanRow.sku,
+        item_name: scanRow.name,
+        status: 'OPEN',
+        qty_requested: form.qty_requested ? Number(form.qty_requested) : null,
+        shelf_location_id: form.shelf_location_id || null,
+        shelf_location_name: shelfLocation?.name || null,
+        backroom_storage_area_id: form.backroom_storage_area_id || null,
+        backroom_storage_area_name: backroomArea?.name || null,
+        source_gap_scan_sku: scanRow.sku,
+        priority: form.priority,
+        notes: form.notes || null,
+      });
 
-    setSaving(false);
-    onCreated();
+      await base44.entities.AuditLog.create({
+        ...envFilter(),
+        item_id: item.id,
+        sku: item.sku || scanRow.sku,
+        item_name: item.name || scanRow.name,
+        change_type: 'ITEM_UPDATE',
+        action_type: 'FILL_TASK_CREATED',
+        field_name: 'FillTask.status',
+        old_value: '',
+        new_value: 'OPEN',
+        changed_by: user?.email || user?.full_name || '',
+        actor_role: user?.role || '',
+        source_module: 'GapScan',
+        source_record_id: created?.id || '',
+        linked_source_record: created?.id || '',
+        notes: 'Evidentiary shelf replenishment task only. No StockMovement created.',
+      });
+
+      onCreated();
+    } catch (err) {
+      console.error('Failed to create Fill Task:', err);
+      setError('Failed to create Fill Task. No stock movement was posted.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -80,6 +110,7 @@ export default function CreateFillTaskModal({ scanRow, onClose, onCreated }) {
         </div>
 
         <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
+          {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1">
               <span className="text-xs text-muted-foreground">Qty to Move</span>

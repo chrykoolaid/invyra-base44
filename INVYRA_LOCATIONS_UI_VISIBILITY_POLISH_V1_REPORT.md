@@ -38,3 +38,12 @@ Implemented a Locations-only UI polish and workflow boundary pass.
 - `src/components/locations/StorageAreasTab.jsx`
 - `src/components/locations/LocationModal.jsx`
 - `src/components/locations/StorageAreaModal.jsx`
+
+
+## Cleanup Update
+
+- Location schema was aligned with the UI-supported location types, including Store and Backroom.
+- StorageArea schema was aligned with the UI-supported storage types, including Shop Floor, Receiving Bay, Returns Area, Damaged Goods, Chiller, Freezer, and High Value Cage.
+- `default_receiving_area` was added to Location metadata.
+- `quarantine_allowed` was added to StorageArea metadata.
+- Locations and Storage Areas now use the shared `envFilter()` helper instead of hardcoded LIVE payloads in the updated roadmap components.

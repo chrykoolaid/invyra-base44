@@ -37,19 +37,27 @@ Deno.serve(async (req) => {
     if (qty > stockOnHand) {
       return Response.json({ error: `Over-transfer blocked: ${item.name} has ${stockOnHand} on hand, cannot transfer ${qty}` }, { status: 409 });
     }
-    // Phase 2: Active Hold block
+    // Holds V1: block transfers when a relevant active hold exists.
+    // Item-wide holds apply everywhere. Location-scoped holds apply when the source
+    // location matches, or when no source location was supplied and scope cannot be proven safe.
     try {
       const activeHolds = await base44.asServiceRole.entities.ItemHold.filter({ item_id: item.id, status: 'ACTIVE', environment: environment || 'LIVE' });
-      if (activeHolds && activeHolds.length > 0) {
-        const hold = activeHolds[0];
+      const blockingHolds = (activeHolds || []).filter(hold =>
+        !hold.location_id || !from_location_id || hold.location_id === from_location_id
+      );
+      if (blockingHolds.length > 0) {
+        const hold = blockingHolds[0];
         return Response.json({
           error: `Transfer blocked: ${item.name} (${item.sku}) has an active hold — "${hold.hold_reason}". Release the hold in Exceptions → Holds/Quarantine before transferring.`,
           hold_id: hold.id,
           hold_reason: hold.hold_reason,
         }, { status: 409 });
       }
-    } catch (_) {
-      // If hold check fails, allow transfer to proceed (fail-open for availability)
+    } catch (err) {
+      console.error('Transfer hold verification failed:', err);
+      return Response.json({
+        error: `Transfer blocked: hold verification could not be completed for ${item.name} (${item.sku}). Try again or contact an administrator.`,
+      }, { status: 503 });
     }
     enrichedLines.push({ item_id: item.id, sku: item.sku, item_name: item.name, qty, stock_at_draft: stockOnHand });
   }

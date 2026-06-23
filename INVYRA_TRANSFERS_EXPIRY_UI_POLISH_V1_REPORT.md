@@ -27,12 +27,11 @@ Added `src/components/transfers/TransferOverviewTab.jsx`.
 - Governed workflow explanation
 - Summary cards:
   - Pending Approval
-  - Approved
   - In Transit
   - Completed This Month
   - Needs Attention
 - Transfer pipeline:
-  - Pending Approval → Approved → In Transit → Received
+  - Pending Approval → In Transit → Received
 - Needs Attention section:
   - Transfers awaiting approval
   - Transfers awaiting receiving
@@ -51,6 +50,7 @@ Added `src/components/transfers/TransferOverviewTab.jsx`.
 - No new direct stock mutation path was introduced.
 - Receiving confirmation still uses the existing `confirmTransferReceived` workflow.
 - Approval still uses the existing `approveTransferDraft` and `rejectTransferDraft` workflow.
+- The overview no longer presents `APPROVED` as a normal intermediate stage because the active workflow dispatches approved transfers directly to `IN_TRANSIT`. Legacy `APPROVED` records are treated as awaiting receiving.
 
 ## Expiry & Barcode Tracking Changes
 

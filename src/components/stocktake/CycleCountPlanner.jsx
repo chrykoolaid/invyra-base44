@@ -150,35 +150,71 @@ export default function CycleCountPlanner({ onStartCount }) {
   const [saving, setSaving] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [configId, setConfigId] = useState(null);
+  const [userRole, setUserRole] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    base44.entities.SystemConfiguration.filter(envFilter(), '-created_date', 1)
-      .then(rows => {
+    Promise.all([
+      base44.entities.SystemConfiguration.filter(envFilter(), '-created_date', 1),
+      base44.auth.me(),
+    ])
+      .then(([rows, user]) => {
         const cfg = rows?.[0] || null;
         setConfig(cfg);
         setConfigId(cfg?.id || null);
         setTasks(cfg?.cycle_count_tasks || []);
+        setUserRole(user?.role || '');
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  const persist = async (updatedTasks) => {
+  const canEditPlan = ['manager', 'admin', 'owner'].includes((userRole || '').toLowerCase());
+
+  const persist = async (updatedTasks, actionType = 'CYCLE_COUNT_PLAN_UPDATED', notes = '') => {
+    if (!canEditPlan) { setError('Only Manager, Admin, or Owner roles can edit cycle count plan definitions.'); return; }
     setSaving(true);
-    const user = await base44.auth.me();
-    const payload = {
-      cycle_count_tasks: updatedTasks,
-      last_saved_by: user?.email || '',
-      last_saved_at: new Date().toISOString(),
-    };
-    if (configId) {
-      await base44.entities.SystemConfiguration.update(configId, payload);
-    } else {
-      const created = await base44.entities.SystemConfiguration.create({ ...envFilter(), ...payload });
-      setConfigId(created.id);
+    setError('');
+    try {
+      const user = await base44.auth.me();
+      const actor = user?.email || user?.full_name || '';
+      const payload = {
+        cycle_count_tasks: updatedTasks,
+        last_saved_by: actor,
+        last_saved_at: new Date().toISOString(),
+      };
+      let nextConfigId = configId;
+      if (configId) {
+        await base44.entities.SystemConfiguration.update(configId, payload);
+      } else {
+        const created = await base44.entities.SystemConfiguration.create({ ...envFilter(), ...payload });
+        nextConfigId = created.id;
+        setConfigId(created.id);
+      }
+      await base44.entities.AuditLog.create({
+        ...envFilter(),
+        item_id: 'SYSTEM_CONFIGURATION',
+        sku: 'SYSTEM_CONFIGURATION',
+        item_name: 'Cycle Count Planner',
+        change_type: 'ITEM_UPDATE',
+        action_type: actionType,
+        field_name: 'SystemConfiguration.cycle_count_tasks',
+        old_value: String(tasks.length),
+        new_value: String(updatedTasks.length),
+        changed_by: actor,
+        actor_role: user?.role || '',
+        source_module: 'StocktakeCycleCountPlanner',
+        source_record_id: nextConfigId || '',
+        linked_source_record: nextConfigId || '',
+        notes,
+      });
+      setTasks(updatedTasks);
+    } catch (err) {
+      console.error('Failed to save cycle count planner:', err);
+      setError('Failed to save cycle count plan definition.');
+    } finally {
+      setSaving(false);
     }
-    setTasks(updatedTasks);
-    setSaving(false);
   };
 
   const handleSaveTask = async (task) => {
@@ -186,16 +222,18 @@ export default function CycleCountPlanner({ onStartCount }) {
     const updated = existing
       ? tasks.map(t => t.id === task.id ? task : t)
       : [...tasks, { ...task, created_by: '', created_at: new Date().toISOString() }];
-    await persist(updated);
-    setEditingTask(null);
+    await persist(updated, existing ? 'CYCLE_COUNT_PLAN_UPDATED' : 'CYCLE_COUNT_PLAN_CREATED', task.name);
+    if (canEditPlan) setEditingTask(null);
   };
 
   const handleDelete = async (id) => {
-    await persist(tasks.filter(t => t.id !== id));
+    const target = tasks.find(t => t.id === id);
+    await persist(tasks.map(t => t.id === id ? { ...t, is_active: false, is_archived: true, archived_at: new Date().toISOString() } : t), 'CYCLE_COUNT_PLAN_DEACTIVATED', target?.name || id);
   };
 
   const handleToggleActive = async (id) => {
-    await persist(tasks.map(t => t.id === id ? { ...t, is_active: !t.is_active } : t));
+    const target = tasks.find(t => t.id === id);
+    await persist(tasks.map(t => t.id === id ? { ...t, is_active: !t.is_active } : t), 'CYCLE_COUNT_PLAN_STATUS_CHANGED', target?.name || id);
   };
 
   const buildFilterLabel = (task) => {
@@ -218,11 +256,15 @@ export default function CycleCountPlanner({ onStartCount }) {
           <h2 className="text-sm font-semibold text-foreground">Cycle Count Planner</h2>
           <p className="text-xs text-muted-foreground mt-0.5">Define focused count tasks. Starting one launches a pre-filtered Stocktake session.</p>
         </div>
-        <button onClick={() => setEditingTask(emptyTask())}
-          className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium border border-primary/40 rounded bg-primary/5 text-primary hover:bg-primary/10 transition-colors">
+        <button onClick={() => canEditPlan ? setEditingTask(emptyTask()) : setError('Only Manager, Admin, or Owner roles can create cycle count plan definitions.')}
+          disabled={!canEditPlan}
+          className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-medium border border-primary/40 rounded bg-primary/5 text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
           <Plus size={13} /> New Task
         </button>
       </div>
+
+      {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
+      {!canEditPlan && <p className="text-xs text-muted-foreground rounded-lg border border-border bg-muted/30 px-3 py-2">Planner definitions are Manager/Admin/Owner controlled. Supervisors can start active approved counts.</p>}
 
       {tasks.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center space-y-2">
@@ -251,24 +293,28 @@ export default function CycleCountPlanner({ onStartCount }) {
                 {task.description && <p className="text-xs text-muted-foreground italic">{task.description}</p>}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <button onClick={() => onStartCount(task)}
+                <button onClick={() => task.is_active && onStartCount(task)}
                   title="Start count session"
-                  className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors">
+                  disabled={!task.is_active}
+                  className="inline-flex items-center gap-1 h-7 px-2.5 text-xs font-medium rounded border border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50">
                   <Play size={11} /> Start
                 </button>
-                <button onClick={() => setEditingTask({ ...task })}
+                <button onClick={() => canEditPlan ? setEditingTask({ ...task }) : setError('Only Manager, Admin, or Owner roles can edit cycle count plan definitions.')}
+                  disabled={!canEditPlan}
                   title="Edit task"
-                  className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-muted transition-colors text-muted-foreground">
+                  className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-muted transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed">
                   <Pencil size={12} />
                 </button>
                 <button onClick={() => handleToggleActive(task.id)}
+                  disabled={!canEditPlan}
                   title={task.is_active ? 'Deactivate' : 'Activate'}
-                  className="h-7 px-2 text-xs rounded border border-border hover:bg-muted transition-colors text-muted-foreground">
+                  className="h-7 px-2 text-xs rounded border border-border hover:bg-muted transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed">
                   {task.is_active ? 'Pause' : 'Enable'}
                 </button>
                 <button onClick={() => handleDelete(task.id)}
-                  title="Delete task"
-                  className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors text-muted-foreground">
+                  disabled={!canEditPlan}
+                  title="Deactivate task"
+                  className="h-7 w-7 flex items-center justify-center rounded border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors text-muted-foreground disabled:opacity-50 disabled:cursor-not-allowed">
                   <Trash2 size={12} />
                 </button>
               </div>
@@ -281,7 +327,7 @@ export default function CycleCountPlanner({ onStartCount }) {
         <p className="text-xs text-muted-foreground text-center">Saving…</p>
       )}
 
-      {editingTask && (
+      {editingTask && canEditPlan && (
         <TaskFormModal
           task={editingTask}
           onSave={handleSaveTask}

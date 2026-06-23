@@ -8,7 +8,7 @@ Inventory Item Governance v1
 
 ## Summary
 
-Added a read-only-first Product Governance / Item Master foundation inside the existing Item Details workflow.
+Added a controlled Product Governance / Item Master foundation inside the existing Item Details workflow. V1 now includes active metadata editing through a governed backend function.
 
 Location:
 
@@ -43,9 +43,13 @@ Added a Product Governance section inside Item Details with:
 - Supplier reference card
 - Governance notes / audit preview
 - Empty states for missing governance metadata, barcode aliases, supplier reference, and audit history
-- Disabled “Edit Governance — Planned” button for future Admin/Supervisor metadata editing
+- Active “Edit Governance” workflow for controlled metadata edits
+- Manager/Admin/Owner backend role gate
+- Required governance reason
+- Strict backend allowlist for metadata fields only
+- AuditLog write for governance updates
 
-### Read-Only Data Reads
+### Data Reads and Controlled Metadata Write
 
 The panel reads:
 
@@ -53,7 +57,7 @@ The panel reads:
 - `ItemBarcode` rows matching `item_id` and/or `sku`
 - `AuditLog` rows matching `item_id` or `sku` for preview only
 
-These are all read-only calls.
+The active write path is limited to `base44/functions/updateItemGovernance/entry.ts`, which updates allowlisted metadata fields only.
 
 ### InventoryItem Optional Metadata Fields
 
@@ -95,6 +99,7 @@ Confirmed:
 - No ScanOps bridge behavior was activated.
 - No supplier catalogue import was activated.
 - No Item Master pricing mutation was added.
+- Governance editing is metadata-only and cannot update stock, quantity, cost, price, reorder quantity, StockMovement, POS, Markdown, Wastage, Supplier ownership, or Transfer workflow records.
 - No new sidebar module was added.
 - No duplicate Item Master page was created.
 - No fake/mock governance data was added for LIVE mode.
@@ -126,8 +131,8 @@ This is the expected local environment notice and not a build failure.
 
 Deferred by design:
 
-- Admin/Supervisor governance edit workflow
-- Audit-logged governance metadata saves
+- Field-level governance diff previews
+- More advanced governance approval queues
 - Supplier catalogue references/imports
 - Advanced catalogue validation
 - RFID tag/reference support

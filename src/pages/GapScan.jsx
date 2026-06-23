@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Play, Download, Lightbulb, Upload, AlertCircle, ScanLine, ClipboardList, PackagePlus } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import ScanDataImportModal from '@/components/ScanDataImportModal';
 import FillTasksTab from '@/components/gapscan/FillTasksTab';
 import CreateFillTaskModal from '@/components/gapscan/CreateFillTaskModal';
@@ -107,8 +108,8 @@ export default function GapScan() {
     setImportedFrom('');
     try {
       const [items, movements] = await Promise.all([
-        base44.entities.InventoryItem.filter({ environment: 'LIVE', is_active: true }),
-        base44.entities.StockMovement.filter({ environment: 'LIVE' }, '-created_date', 500),
+        base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }),
+        base44.entities.StockMovement.filter(envFilter(), '-created_date', 500),
       ]);
       const data = buildScanData(items, movements, lookback);
       data.sort((a, b) => {

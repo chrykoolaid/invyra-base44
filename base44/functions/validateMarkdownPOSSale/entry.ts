@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
         pass('hold_check', 'No active hold on this item');
       }
     } catch (_) {
-      pass('hold_check', 'Hold check skipped — could not verify');
+      fail('hold_check', 'Hold check could not be verified. Sale blocked until verification succeeds.');
     }
   } else {
     pass('hold_check', 'No item_id/sku provided — hold check skipped');

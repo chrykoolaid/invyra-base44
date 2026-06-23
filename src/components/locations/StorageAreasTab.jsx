@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { ArchiveRestore, Edit2, Plus, Power, ShieldCheck, Warehouse } from 'lucide-react';
 import StorageAreaModal from './StorageAreaModal';
 
@@ -33,9 +34,9 @@ export default function StorageAreasTab() {
     setLoading(true);
     try {
       const [locs, areas, stockBalances] = await Promise.all([
-        base44.entities.Location.filter({ environment: 'LIVE' }, 'name', 200),
-        base44.entities.StorageArea.filter({ environment: 'LIVE' }, 'name', 500),
-        base44.entities.ItemStockBalance.filter({ environment: 'LIVE' }, '-last_synced_at', 1000),
+        base44.entities.Location.filter(envFilter(), 'name', 200),
+        base44.entities.StorageArea.filter(envFilter(), 'name', 500),
+        base44.entities.ItemStockBalance.filter(envFilter(), '-last_synced_at', 1000),
       ]);
       setLocations(locs || []);
       setStorageAreas(areas || []);

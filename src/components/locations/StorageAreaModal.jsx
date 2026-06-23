@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { ShieldCheck, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -19,7 +20,7 @@ export default function StorageAreaModal({ storageArea, locationId, locations = 
     stocktake_allowed: storageArea?.stocktake_allowed ?? true,
     quarantine_allowed: storageArea?.quarantine_allowed ?? storageArea?.storage_type === 'Quarantine',
     notes: storageArea?.notes || '',
-    environment: 'LIVE',
+    ...envFilter(),
   });
   const [saving, setSaving] = useState(false);
 

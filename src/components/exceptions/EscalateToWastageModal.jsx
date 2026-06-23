@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { X, ArrowUpRight } from 'lucide-react';
 
 const WASTAGE_REASONS = [
@@ -25,35 +26,63 @@ export default function EscalateToWastageModal({ hold, onClose, onEscalated }) {
     setSaving(true);
     setError('');
 
-    // 1. Create a StockOutRecord (DRAFT) via the existing backend function
-    const response = await base44.functions.invoke('createStockOutRecord', {
-      sku: hold.sku,
-      item_id: hold.item_id,
-      item_name: hold.item_name,
-      stock_out_class: form.stock_out_class,
-      quantity: Number(form.quantity),
-      reason_category: form.reason_category,
-      reason_notes: form.reason_notes || `Escalated from ItemHold: ${hold.hold_reason}`,
-      location: hold.location_name || '',
-      source: 'MANUAL',
-      source_reference: `HOLD-ESC-${hold.id.slice(-6).toUpperCase()}`,
-      environment: hold.environment || 'LIVE',
-    });
+    try {
+      const user = await base44.auth.me();
+      const actor = user?.email || user?.full_name || '';
+      const environment = hold.environment || envFilter().environment;
 
-    const recordId = response?.data?.record?.id;
+      // 1. Create a StockOutRecord (DRAFT) via the existing backend function.
+      const response = await base44.functions.invoke('createStockOutRecord', {
+        sku: hold.sku,
+        item_id: hold.item_id,
+        item_name: hold.item_name,
+        stock_out_class: form.stock_out_class,
+        quantity: Number(form.quantity),
+        reason_category: form.reason_category,
+        reason_notes: form.reason_notes || `Escalated from ItemHold: ${hold.hold_reason}`,
+        location: hold.location_name || '',
+        source: 'MANUAL',
+        source_reference: `HOLD-ESC-${hold.id.slice(-6).toUpperCase()}`,
+        environment,
+      });
 
-    // 2. Mark the hold as ESCALATED with a reference to the StockOutRecord
-    const user = await base44.auth.me();
-    await base44.entities.ItemHold.update(hold.id, {
-      status: 'ESCALATED',
-      reviewed_by: user?.email || '',
-      reviewed_at: new Date().toISOString(),
-      escalation_ref: recordId || '',
-      release_notes: form.reason_notes || '',
-    });
+      if (response?.data?.error) { setError(response.data.error); return; }
+      const recordId = response?.data?.record?.id || response?.data?.record_id || '';
 
-    setSaving(false);
-    onEscalated(recordId);
+      // 2. Mark the hold as ESCALATED with a reference to the StockOutRecord.
+      await base44.entities.ItemHold.update(hold.id, {
+        status: 'ESCALATED',
+        reviewed_by: actor,
+        reviewed_at: new Date().toISOString(),
+        escalation_ref: recordId,
+        release_notes: form.reason_notes || '',
+      });
+
+      await base44.entities.AuditLog.create({
+        environment,
+        item_id: hold.item_id,
+        sku: hold.sku,
+        item_name: hold.item_name,
+        change_type: 'ITEM_UPDATE',
+        action_type: 'ITEM_HOLD_ESCALATED',
+        field_name: 'ItemHold.status',
+        old_value: hold.status || 'ACTIVE',
+        new_value: 'ESCALATED',
+        changed_by: actor,
+        actor_role: user?.role || '',
+        source_module: 'ExceptionsHolds',
+        source_record_id: hold.id,
+        linked_source_record: recordId || hold.id,
+        notes: form.reason_notes || form.reason_category,
+      });
+
+      onEscalated(recordId);
+    } catch (err) {
+      console.error('Failed to escalate hold:', err);
+      setError('Failed to escalate hold. No stock movement was posted.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

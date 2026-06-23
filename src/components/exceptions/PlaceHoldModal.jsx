@@ -51,32 +51,59 @@ export default function PlaceHoldModal({ onClose, onSaved }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.item_id || !form.hold_reason) { setError('Item and reason are required.'); return; }
+    if (!selectedItem?.id) { setError('Selected item could not be resolved.'); return; }
     setSaving(true);
     setError('');
-    const user = await base44.auth.me();
-    const selectedBatch = batches.find(b => b.id === form.batch_id);
-    const selectedLocation = locations.find(l => l.id === form.location_id);
 
-    await base44.entities.ItemHold.create({
-      ...envFilter(),
-      item_id: form.item_id,
-      sku: selectedItem?.sku || '',
-      item_name: selectedItem?.name || '',
-      batch_id: form.batch_id || undefined,
-      batch_number: selectedBatch?.batch_number || undefined,
-      location_id: form.location_id || undefined,
-      location_name: selectedLocation?.name || undefined,
-      hold_reason: form.hold_reason,
-      hold_notes: form.hold_notes || undefined,
-      qty_on_hold: form.qty_on_hold ? Number(form.qty_on_hold) : undefined,
-      status: 'ACTIVE',
-      placed_by: user?.email || '',
-      placed_by_name: user?.full_name || '',
-      placed_at: new Date().toISOString(),
-    });
+    try {
+      const user = await base44.auth.me();
+      const actor = user?.email || user?.full_name || '';
+      const selectedBatch = batches.find(b => b.id === form.batch_id);
+      const selectedLocation = locations.find(l => l.id === form.location_id);
 
-    setSaving(false);
-    onSaved();
+      const hold = await base44.entities.ItemHold.create({
+        ...envFilter(),
+        item_id: form.item_id,
+        sku: selectedItem?.sku || '',
+        item_name: selectedItem?.name || '',
+        batch_id: form.batch_id || undefined,
+        batch_number: selectedBatch?.batch_number || undefined,
+        location_id: form.location_id || undefined,
+        location_name: selectedLocation?.name || undefined,
+        hold_reason: form.hold_reason,
+        hold_notes: form.hold_notes || undefined,
+        qty_on_hold: form.qty_on_hold ? Number(form.qty_on_hold) : undefined,
+        status: 'ACTIVE',
+        placed_by: actor,
+        placed_by_name: user?.full_name || '',
+        placed_at: new Date().toISOString(),
+      });
+
+      await base44.entities.AuditLog.create({
+        ...envFilter(),
+        item_id: selectedItem.id,
+        sku: selectedItem.sku || '',
+        item_name: selectedItem.name || '',
+        change_type: 'ITEM_UPDATE',
+        action_type: 'ITEM_HOLD_PLACED',
+        field_name: 'ItemHold.status',
+        old_value: '',
+        new_value: 'ACTIVE',
+        changed_by: actor,
+        actor_role: user?.role || '',
+        source_module: 'ExceptionsHolds',
+        source_record_id: hold?.id || '',
+        linked_source_record: hold?.id || '',
+        notes: form.hold_notes || form.hold_reason,
+      });
+
+      onSaved();
+    } catch (err) {
+      console.error('Failed to place hold:', err);
+      setError('Failed to place hold. No stock movement was posted.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -149,7 +176,7 @@ export default function PlaceHoldModal({ onClose, onSaved }) {
           </label>
 
           <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
-            <strong>Phase 2 — Hard Block:</strong> Placing this hold will immediately block POS markdown sales and transfer submissions for this item until released.
+            <strong>Holds V1:</strong> Placing this hold blocks markdown POS validation and transfer submission where hold verification succeeds. Broader item-use blocking and batch/location-specific enforcement are planned hardening.
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-1 border-t border-border">

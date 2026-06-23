@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { AlertTriangle, MapPin, Package, RefreshCw, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -84,10 +85,10 @@ export default function BranchStockTab() {
     setLoading(true);
     try {
       const [locs, areas, bal, inv] = await Promise.all([
-        base44.entities.Location.filter({ environment: 'LIVE' }, 'name', 200),
-        base44.entities.StorageArea.filter({ environment: 'LIVE' }, 'name', 500),
-        base44.entities.ItemStockBalance.filter({ environment: 'LIVE' }, '-last_synced_at', 1000),
-        base44.entities.InventoryItem.filter({ environment: 'LIVE', is_active: true }, 'name', 500),
+        base44.entities.Location.filter(envFilter(), 'name', 200),
+        base44.entities.StorageArea.filter(envFilter(), 'name', 500),
+        base44.entities.ItemStockBalance.filter(envFilter(), '-last_synced_at', 1000),
+        base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500),
       ]);
       setLocations(locs || []);
       setStorageAreas(areas || []);

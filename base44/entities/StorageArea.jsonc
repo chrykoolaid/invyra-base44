@@ -17,6 +17,14 @@
     "storage_type": {
       "type": "string",
       "enum": [
+        "Shop Floor",
+        "Backroom",
+        "Receiving Bay",
+        "Returns Area",
+        "Damaged Goods",
+        "Chiller",
+        "Freezer",
+        "High Value Cage",
         "Shelf",
         "Bin",
         "Stockroom",
@@ -26,7 +34,7 @@
         "Zone",
         "Other"
       ],
-      "default": "Shelf"
+      "default": "Shop Floor"
     },
     "is_active": {
       "type": "boolean",
@@ -47,6 +55,11 @@
     "stocktake_allowed": {
       "type": "boolean",
       "default": true
+    },
+    "quarantine_allowed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this storage area can be used for held/quarantined stock metadata"
     },
     "notes": {
       "type": "string"

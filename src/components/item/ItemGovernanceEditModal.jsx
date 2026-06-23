@@ -62,14 +62,21 @@ export default function ItemGovernanceEditModal({ item, onClose, onSaved }) {
     if (!reason.trim()) { setError('A reason for this change is required.'); return; }
     setSaving(true);
     setError('');
-    const res = await base44.functions.invoke('updateItemGovernance', {
-      item_id: item.id,
-      governance_reason: reason.trim(),
-      ...form,
-    });
-    setSaving(false);
-    if (res.data?.error) { setError(res.data.error); return; }
-    onSaved(res.data.item);
+
+    try {
+      const res = await base44.functions.invoke('updateItemGovernance', {
+        item_id: item.id,
+        governance_reason: reason.trim(),
+        ...form,
+      });
+      if (res.data?.error) { setError(res.data.error); return; }
+      onSaved(res.data.item);
+    } catch (err) {
+      console.error('Failed to save item governance:', err);
+      setError('Failed to save governance metadata. No stock, price, or movement data was changed.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

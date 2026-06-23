@@ -77,9 +77,8 @@ export default function Transfers() {
   useEffect(() => { loadData(); }, []);
 
   const pendingDrafts = drafts.filter(d => d.status === 'PENDING_APPROVAL');
-  const inTransitDrafts = drafts.filter(d => d.status === 'IN_TRANSIT');
-  const approvedDrafts = drafts.filter(d => d.status === 'APPROVED');
-  const activeDrafts = drafts.filter(d => ['PENDING_APPROVAL', 'APPROVED', 'IN_TRANSIT'].includes(d.status));
+  const inTransitDrafts = drafts.filter(d => ['IN_TRANSIT', 'APPROVED'].includes(d.status)); // APPROVED retained only for legacy records
+  const activeDrafts = drafts.filter(d => ['PENDING_APPROVAL', 'IN_TRANSIT', 'APPROVED'].includes(d.status));
 
   const openTransferForm = () => {
     setShowForm(true);
@@ -174,7 +173,7 @@ export default function Transfers() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-foreground">Active Transfers</h2>
-                <p className="text-xs text-muted-foreground mt-1">Drafts awaiting approval, approved transfers, and in-transit transfers are shown here.</p>
+                <p className="text-xs text-muted-foreground mt-1">Drafts awaiting approval and in-transit transfers are shown here. Legacy APPROVED records are treated as awaiting receiving.</p>
               </div>
               <div className="text-xs text-muted-foreground">
                 {activeDrafts.length} active transfer{activeDrafts.length !== 1 ? 's' : ''}
@@ -187,28 +186,6 @@ export default function Transfers() {
             canApprove={canApprove}
             onUpdated={loadData}
           />
-
-          {approvedDrafts.length > 0 && (
-            <div className="rounded-2xl border border-blue-200 bg-blue-50/30 overflow-hidden">
-              <div className="px-5 py-3.5 border-b border-blue-200 bg-blue-50 flex items-center gap-2">
-                <CheckCircle2 size={14} className="text-blue-600" />
-                <h2 className="text-sm font-semibold text-blue-900">Approved Transfers ({approvedDrafts.length})</h2>
-              </div>
-              <div className="divide-y divide-blue-100">
-                {approvedDrafts.map(draft => (
-                  <div key={draft.id} className="px-5 py-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="min-w-0">
-                        <p className="font-mono text-sm font-semibold text-foreground">{draft.transfer_ref}</p>
-                        <p className="text-xs text-muted-foreground mt-1">{draft.from_site_name} → {draft.to_site_name} · {draft.reason}</p>
-                      </div>
-                      <span className="text-xs rounded-full border border-blue-200 bg-blue-100 text-blue-700 px-2 py-0.5 font-semibold">APPROVED</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <TransferInTransitPanel
             drafts={inTransitDrafts}
