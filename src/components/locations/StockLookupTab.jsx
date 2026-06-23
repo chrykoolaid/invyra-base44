@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { ArrowRight, Package, RefreshCw, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -89,9 +90,9 @@ export default function StockLookupTab() {
     setLoading(true);
     try {
       const [inv, bal, locs] = await Promise.all([
-        base44.entities.InventoryItem.filter({ environment: 'LIVE', is_active: true }, 'name', 500),
-        base44.entities.ItemStockBalance.filter({ environment: 'LIVE' }, '-last_synced_at', 1000),
-        base44.entities.Location.filter({ environment: 'LIVE', is_active: true }, 'name', 100),
+        base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 500),
+        base44.entities.ItemStockBalance.filter(envFilter(), '-last_synced_at', 1000),
+        base44.entities.Location.filter({ ...envFilter(), is_active: true }, 'name', 100),
       ]);
       setItems(inv || []);
       setBalances(bal || []);

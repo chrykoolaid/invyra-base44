@@ -29,6 +29,8 @@ Deno.serve(async (req) => {
     markdown_barcode_scanned,
     markdown_price_offered,
     qty_requested,
+    item_id,
+    sku,
     environment = 'LIVE',
   } = await req.json();
 
@@ -42,6 +44,24 @@ Deno.serve(async (req) => {
   const pass = (check_name, detail) => {
     checks.push({ check: check_name, passed: true, detail: detail || '' });
   };
+
+  // Check 0: Active Hold block
+  if (item_id || sku) {
+    try {
+      const holdQuery = item_id ? { item_id, status: 'ACTIVE', environment } : { sku, status: 'ACTIVE', environment };
+      const activeHolds = await base44.asServiceRole.entities.ItemHold.filter(holdQuery);
+      if (activeHolds && activeHolds.length > 0) {
+        const hold = activeHolds[0];
+        fail('hold_check', `Item is under an active hold: "${hold.hold_reason}". Placed by ${hold.placed_by || 'manager'}. Sale blocked until hold is released.`);
+      } else {
+        pass('hold_check', 'No active hold on this item');
+      }
+    } catch (_) {
+      fail('hold_check', 'Hold check could not be verified. Sale blocked until verification succeeds.');
+    }
+  } else {
+    pass('hold_check', 'No item_id/sku provided — hold check skipped');
+  }
 
   // Check 1
   if (!markdown_batch_id) fail('batch_id_present', 'markdown_batch_id is missing.');

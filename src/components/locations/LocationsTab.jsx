@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { envFilter } from '@/lib/envFilter';
 import { Plus, Pencil, MapPin, ChevronDown, ChevronRight } from 'lucide-react';
 import LocationModal from './LocationModal';
 import StorageAreaModal from './StorageAreaModal';
@@ -21,8 +22,8 @@ export default function LocationsTab() {
   const load = async () => {
     setLoading(true);
     const [locs, areas] = await Promise.all([
-      base44.entities.Location.filter({ environment: 'LIVE' }, 'name', 200),
-      base44.entities.StorageArea.filter({ environment: 'LIVE' }, 'name', 500),
+      base44.entities.Location.filter(envFilter(), 'name', 200),
+      base44.entities.StorageArea.filter(envFilter(), 'name', 500),
     ]);
     setLocations(locs || []);
     setStorageAreas(areas || []);

@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { AlertTriangle, Bell, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Bell, ShieldAlert, Lock } from 'lucide-react';
 import InventoryExceptionsTab from '@/components/exceptions/InventoryExceptionsTab';
 import StockOutAlertTab from '@/components/exceptions/StockOutAlertTab';
+import HoldsTab from '@/components/exceptions/HoldsTab';
 
 const TABS = [
   {
@@ -15,6 +16,12 @@ const TABS = [
     label: 'Stock-Out Alert Queue',
     icon: Bell,
     description: 'Wastage alerts, barcode issues, amendment flags — with full lifecycle management.',
+  },
+  {
+    key: 'holds',
+    label: 'Holds / Quarantine',
+    icon: Lock,
+    description: 'Block unsafe or disputed stock from sale/use without writing it off until a governed decision is made.',
   },
 ];
 
@@ -70,6 +77,7 @@ export default function Exceptions() {
       {/* Tab Content */}
       {activeTab === 'inventory' && <InventoryExceptionsTab />}
       {activeTab === 'alerts' && <StockOutAlertTab />}
+      {activeTab === 'holds' && <HoldsTab />}
     </div>
   );
 }

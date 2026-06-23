@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowRight, CheckCircle2, Clock, RefreshCw, Route, ShieldCheck, Truck } from 'lucide-react';
 
-const ACTIVE_STATUSES = ['PENDING_APPROVAL', 'APPROVED', 'IN_TRANSIT'];
+const ACTIVE_STATUSES = ['PENDING_APPROVAL', 'IN_TRANSIT', 'APPROVED']; // APPROVED retained only for legacy records
 
 function countByStatus(drafts, status) {
   return drafts.filter(d => d.status === status).length;
@@ -54,8 +54,7 @@ function NeedsAttentionRow({ label, count, guidance, tone = 'default' }) {
 
 export default function TransferOverviewTab({ drafts, loading, onRefresh, onNewTransfer }) {
   const pending = countByStatus(drafts, 'PENDING_APPROVAL');
-  const approved = countByStatus(drafts, 'APPROVED');
-  const inTransit = countByStatus(drafts, 'IN_TRANSIT');
+  const inTransit = countByStatus(drafts, 'IN_TRANSIT') + countByStatus(drafts, 'APPROVED');
   const awaitingReceiving = inTransit;
   const completedThisMonth = drafts.filter(d => d.status === 'RECEIVED' && isThisMonth(d.received_at || d.submitted_at)).length;
   const rejected = countByStatus(drafts, 'REJECTED');
@@ -95,10 +94,9 @@ export default function TransferOverviewTab({ drafts, loading, onRefresh, onNewT
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <SummaryCard label="Pending Approval" value={pending} helper="Awaiting supervisor or manager action" />
-        <SummaryCard label="Approved" value={approved} helper="Approved but not yet in transit" />
-        <SummaryCard label="In Transit" value={inTransit} helper="Awaiting destination receiving" />
+        <SummaryCard label="In Transit" value={inTransit} helper="Approved/dispatched and awaiting destination receiving" />
         <SummaryCard label="Completed This Month" value={completedThisMonth} helper="Received transfers only" />
         <SummaryCard label="Needs Attention" value={needsAttentionTotal} helper="Approval, receiving, rejection, or discrepancy review" />
       </div>
@@ -112,7 +110,6 @@ export default function TransferOverviewTab({ drafts, loading, onRefresh, onNewT
           <div className="flex flex-col lg:flex-row lg:items-center gap-3 text-sm">
             {[
               { label: 'Pending Approval', icon: Clock, count: pending },
-              { label: 'Approved', icon: CheckCircle2, count: approved },
               { label: 'In Transit', icon: Truck, count: inTransit },
               { label: 'Received', icon: CheckCircle2, count: completedThisMonth },
             ].map((step, index, arr) => {

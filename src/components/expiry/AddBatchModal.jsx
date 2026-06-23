@@ -12,6 +12,7 @@ export default function AddBatchModal({ onClose, onSuccess }) {
     supplier_name: '', status: 'Active', notes: '',
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     base44.entities.InventoryItem.filter({ ...envFilter(), is_active: true }, 'name', 200)
@@ -28,13 +29,20 @@ export default function AddBatchModal({ onClose, onSuccess }) {
   const handleSave = async () => {
     if (!form.item_id || !form.batch_number || !form.expiry_date || !form.quantity) return;
     setSaving(true);
-    await base44.entities.ItemBatch.create({
-      ...form,
-      quantity: Number(form.quantity),
-      environment: 'LIVE',
-    });
-    setSaving(false);
-    onSuccess();
+    setError('');
+    try {
+      await base44.entities.ItemBatch.create({
+        ...form,
+        quantity: Number(form.quantity),
+        ...envFilter(),
+      });
+      onSuccess();
+    } catch (err) {
+      console.error('Failed to add batch:', err);
+      setError('Failed to add batch metadata. No stock movement was posted.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const Field = ({ label, required, children }) => (
@@ -56,6 +64,7 @@ export default function AddBatchModal({ onClose, onSuccess }) {
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
         </div>
         <div className="p-5 space-y-3.5">
+          {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</p>}
           <Field label="Item" required>
             <select value={form.item_id} onChange={e => handleItemChange(e.target.value)}
               className={inputCls}>

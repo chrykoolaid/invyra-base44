@@ -80,3 +80,8 @@ export function canApproveAdjustment(role) {
 export function canSelfPostAdjustment(role) {
   return ['supervisor', 'manager', 'admin', 'owner'].includes(normalise(role));
 }
+
+export function canManageGovernance(role) {
+  // Only manager/admin/owner may edit item governance metadata
+  return ['manager', 'admin', 'owner'].includes(normalise(role));
+}

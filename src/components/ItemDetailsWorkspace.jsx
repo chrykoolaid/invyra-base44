@@ -12,11 +12,14 @@ import {
   ExternalLink,
   Lock,
   Package,
+  Pencil,
   RefreshCw,
   ShieldCheck,
   Tags,
   TrendingUp,
 } from 'lucide-react';
+import ItemGovernanceEditModal from '@/components/item/ItemGovernanceEditModal';
+import { canManageGovernance } from '@/lib/rolePermissions';
 import {
   getLocalDevStockMovements,
   isLocalDevInventoryFallbackEnabled,
@@ -292,7 +295,7 @@ function GovernanceEmptyState({ children }) {
   );
 }
 
-function GovernancePanel({ item, aliases, auditRows, loading, notice }) {
+function GovernancePanel({ item, aliases, auditRows, loading, notice, onEditGovernance, canEdit }) {
   const governance = deriveGovernance(item);
   const unit = item?.unit || 'unit';
   const latestAudit = auditRows?.[0] || null;
@@ -315,14 +318,19 @@ function GovernancePanel({ item, aliases, auditRows, loading, notice }) {
             Controlled item identity and operational rules. This section does not change stock balances.
           </p>
         </div>
-        <button
-          type="button"
-          disabled
-          className="inline-flex items-center gap-1.5 h-8 px-3 text-xs border border-border rounded bg-muted text-muted-foreground cursor-not-allowed"
-          title="Editing is planned for a later Admin/Supervisor audited metadata pass."
-        >
-          Edit Governance — Planned
-        </button>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={onEditGovernance}
+            className="inline-flex items-center gap-1.5 h-8 px-3 text-xs border border-primary/40 rounded bg-primary/5 text-primary hover:bg-primary/10 transition-colors font-medium"
+          >
+            <Pencil size={12} /> Edit Governance
+          </button>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 h-8 px-3 text-xs border border-border rounded bg-muted text-muted-foreground cursor-not-allowed" title="Manager or above required">
+            <Lock size={11} /> Manager+ Required
+          </span>
+        )}
       </div>
 
       {notice && (
@@ -454,8 +462,9 @@ function GovernancePanel({ item, aliases, auditRows, loading, notice }) {
   );
 }
 
-export default function ItemDetailsWorkspace({ item, onBack }) {
+export default function ItemDetailsWorkspace({ item: initialItem, onBack }) {
   const navigate = useNavigate();
+  const [item, setItem] = useState(initialItem);
   const [movements, setMovements] = useState([]);
   const [barcodeAliases, setBarcodeAliases] = useState([]);
   const [governanceAudit, setGovernanceAudit] = useState([]);
@@ -463,6 +472,12 @@ export default function ItemDetailsWorkspace({ item, onBack }) {
   const [loadingGovernance, setLoadingGovernance] = useState(true);
   const [error, setError] = useState('');
   const [governanceNotice, setGovernanceNotice] = useState('');
+  const [showGovernanceEdit, setShowGovernanceEdit] = useState(false);
+  const [userRole, setUserRole] = useState('');
+
+  useEffect(() => {
+    base44.auth.me().then(u => setUserRole(u?.role || ''));
+  }, []);
 
   const loadMovements = useCallback(async () => {
     if (!item?.id && !item?.sku) return;
@@ -653,12 +668,25 @@ export default function ItemDetailsWorkspace({ item, onBack }) {
 
       <WasteInsightWidget item={item} />
 
+      {showGovernanceEdit && (
+        <ItemGovernanceEditModal
+          item={item}
+          onClose={() => setShowGovernanceEdit(false)}
+          onSaved={(updatedItem) => {
+            setItem(updatedItem);
+            setShowGovernanceEdit(false);
+          }}
+        />
+      )}
+
       <GovernancePanel
         item={item}
         aliases={barcodeAliases}
         auditRows={governanceAudit}
         loading={loadingGovernance}
         notice={governanceNotice}
+        canEdit={canManageGovernance(userRole)}
+        onEditGovernance={() => setShowGovernanceEdit(true)}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr] gap-4">

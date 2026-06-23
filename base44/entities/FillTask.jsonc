@@ -1,0 +1,103 @@
+{
+  "name": "FillTask",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to InventoryItem.id"
+    },
+    "sku": {
+      "type": "string",
+      "description": "Denormalized SKU"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized item name"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "OPEN",
+        "ASSIGNED",
+        "COMPLETED",
+        "CANCELLED"
+      ],
+      "default": "OPEN"
+    },
+    "qty_requested": {
+      "type": "number",
+      "description": "Suggested quantity to move to the shelf"
+    },
+    "shelf_location_id": {
+      "type": "string",
+      "description": "Location (floor/shelf) where stock is needed"
+    },
+    "shelf_location_name": {
+      "type": "string"
+    },
+    "backroom_storage_area_id": {
+      "type": "string",
+      "description": "Storage area where backroom stock should be fetched from"
+    },
+    "backroom_storage_area_name": {
+      "type": "string"
+    },
+    "source_gap_scan_sku": {
+      "type": "string",
+      "description": "SKU from the Gap Scan that triggered this task"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "User ID assigned to complete this task"
+    },
+    "assigned_to_name": {
+      "type": "string"
+    },
+    "assigned_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_by": {
+      "type": "string"
+    },
+    "cancelled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancelled_by": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Critical",
+        "High",
+        "Medium",
+        "Low"
+      ],
+      "default": "Medium"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "LIVE",
+        "TRAINING",
+        "TEST"
+      ],
+      "default": "LIVE"
+    }
+  },
+  "required": [
+    "item_id",
+    "sku",
+    "item_name",
+    "status"
+  ]
+}
