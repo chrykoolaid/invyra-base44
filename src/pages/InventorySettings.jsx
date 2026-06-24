@@ -1,4 +1,4 @@
-/**
+/*
  * InventorySettings — Admin/Owner-only configuration module.
  *
  * DECOUPLING RULES: This page must never import or call:
@@ -14,17 +14,19 @@ import { getConfiguration, initConfiguration, saveConfigurationSection } from '@
 import SettingsSectionShell from '@/components/settings/SettingsSectionShell';
 import SettingsField from '@/components/settings/SettingsField';
 import LockedFeatureBadge from '@/components/settings/LockedFeatureBadge';
+import DeviceLabelAdminFoundation from '@/components/settings/DeviceLabelAdminFoundation';
 import { Lock, Settings, ShieldCheck, Bell, RefreshCw, Cpu, Share2, FileSpreadsheet, FileUp, PlugZap, CircleAlert, ClipboardList } from 'lucide-react';
 
 const TABS = [
-  { id: 'general',       label: 'General',                  icon: Settings    },
-  { id: 'inventory',     label: 'Inventory Rules',          icon: ShieldCheck  },
-  { id: 'reorder',       label: 'Reorder Behaviour',        icon: RefreshCw    },
-  { id: 'gap-scan',      label: 'Gap Scan / Replenishment', icon: ClipboardList },
-  { id: 'devices',       label: 'Sync & Devices',           icon: Cpu         },
-  { id: 'data-exchange', label: 'Data Exchange',            icon: Share2      },
-  { id: 'compliance',    label: 'Environment & Compliance', icon: Lock        },
-  { id: 'notifications', label: 'Notifications',            icon: Bell        },
+  { id: 'general',          label: 'General',                  icon: Settings    },
+  { id: 'inventory',        label: 'Inventory Rules',          icon: ShieldCheck  },
+  { id: 'reorder',          label: 'Reorder Behaviour',        icon: RefreshCw    },
+  { id: 'gap-scan',         label: 'Gap Scan / Replenishment', icon: ClipboardList },
+  { id: 'devices',          label: 'Sync & Devices',           icon: Cpu         },
+  { id: 'labels-printers',  label: 'Labels & Printers',        icon: FileSpreadsheet },
+  { id: 'data-exchange',    label: 'Data Exchange',            icon: Share2      },
+  { id: 'compliance',       label: 'Environment & Compliance', icon: Lock        },
+  { id: 'notifications',    label: 'Notifications',            icon: Bell        },
 ];
 
 const DATE_FORMATS = ['YYYY-MM-DD', 'DD/MM/YYYY', 'MM/DD/YYYY', 'DD MMM YYYY'];
@@ -223,7 +225,6 @@ function TabGapScanReplenishment() {
   );
 }
 
-
 // ─── Tab: Environment & Compliance ───────────────────────────────────────────
 function TabCompliance({ config, onSave, saving, saveResult }) {
   const [form, setForm] = useState(config?.compliance ?? {});
@@ -302,32 +303,26 @@ function TabDevices() {
   return (
     <SettingsSectionShell
       title="Sync & Devices"
-      description="Planned: Handheld device pairing, local sync bridge, and device allow-list management."
+      description="Handheld scanner pairing, local sync bridge, device approval, and environment-aware scanner trust."
       hideSave
     >
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-6 flex flex-col items-center justify-center text-center gap-3">
-        <Cpu size={32} className="text-slate-300" />
-        <p className="text-sm font-semibold text-slate-500">Sync & Devices — Planned Feature</p>
-        <p className="text-sm text-slate-400 max-w-md leading-relaxed">
-          Handheld device pairing, local sync bridge endpoints, allowed device lists, and sync inbox policies are roadmap items. This tab will become editable once device infrastructure is ready.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {[
-          { label: 'Handheld Sync Bridge', reason: 'Requires hardware connector infrastructure.' },
-          { label: 'Device Pairing', reason: 'Requires device management service.' },
-          { label: 'Local Endpoint Config', reason: 'Requires on-premise sync bridge deployment.' },
-          { label: 'Sync Inbox Policy', reason: 'Requires sync queue and conflict resolution engine.' },
-        ].map(item => (
-          <SettingsField key={item.label} label={item.label}>
-            <LockedFeatureBadge label="Planned" reason={item.reason} />
-          </SettingsField>
-        ))}
-      </div>
+      <DeviceLabelAdminFoundation mode="devices" />
     </SettingsSectionShell>
   );
 }
 
+// ─── Tab: Labels & Printers ───────────────────────────────────────────────────
+function TabLabelsPrinters() {
+  return (
+    <SettingsSectionShell
+      title="Labels & Printers"
+      description="Printer profiles, portable printer setup, barcode rules, markdown labels, shelf labels, and fallback print policies."
+      hideSave
+    >
+      <DeviceLabelAdminFoundation mode="labels" />
+    </SettingsSectionShell>
+  );
+}
 
 // ─── Tab: Data Exchange ──────────────────────────────────────────────────────
 function TabDataExchange() {
@@ -493,7 +488,7 @@ export default function InventorySettings() {
   const tabProps = { config, onSave: handleSave, saving, saveResult };
 
   return (
-    <div className="p-5 lg:p-6 max-w-4xl space-y-5">
+    <div className="p-5 lg:p-6 max-w-6xl space-y-5">
       {/* Page header */}
       <div className="rounded-2xl border border-border bg-card px-5 py-4 shadow-sm">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -522,7 +517,7 @@ export default function InventorySettings() {
         {TABS.map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
-          const isLocked = tab.id === 'devices' || tab.id === 'data-exchange' || tab.id === 'gap-scan';
+          const isLocked = tab.id === 'devices' || tab.id === 'labels-printers' || tab.id === 'data-exchange' || tab.id === 'gap-scan';
           return (
             <button
               key={tab.id}
@@ -547,14 +542,15 @@ export default function InventorySettings() {
 
       {/* Active tab content */}
       <div>
-        {activeTab === 'general'       && <TabGeneral       {...tabProps} />}
-        {activeTab === 'inventory'     && <TabInventory     {...tabProps} />}
-        {activeTab === 'reorder'       && <TabReorder       {...tabProps} />}
-        {activeTab === 'gap-scan'      && <TabGapScanReplenishment />}
-        {activeTab === 'compliance'    && <TabCompliance    {...tabProps} />}
-        {activeTab === 'notifications' && <TabNotifications {...tabProps} />}
-        {activeTab === 'devices'       && <TabDevices />}
-        {activeTab === 'data-exchange' && <TabDataExchange />}
+        {activeTab === 'general'          && <TabGeneral       {...tabProps} />}
+        {activeTab === 'inventory'        && <TabInventory     {...tabProps} />}
+        {activeTab === 'reorder'          && <TabReorder       {...tabProps} />}
+        {activeTab === 'gap-scan'         && <TabGapScanReplenishment />}
+        {activeTab === 'compliance'       && <TabCompliance    {...tabProps} />}
+        {activeTab === 'notifications'    && <TabNotifications {...tabProps} />}
+        {activeTab === 'devices'          && <TabDevices />}
+        {activeTab === 'labels-printers'  && <TabLabelsPrinters />}
+        {activeTab === 'data-exchange'    && <TabDataExchange />}
       </div>
 
       {/* Footer note */}
