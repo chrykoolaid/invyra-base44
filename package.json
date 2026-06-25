@@ -34,6 +34,7 @@
     "validate:inventory-bridge-disabled-configuration": "node scripts/validate-inventory-bridge-disabled-configuration.mjs",
     "validate:inventory-bridge-runtime-skeleton-disabled": "node scripts/validate-inventory-bridge-runtime-skeleton-disabled.mjs",
     "validate:inventory-bridge-runtime-foundation-disabled": "node scripts/validate-inventory-bridge-runtime-foundation-disabled.mjs",
+    "validate:inventory-bridge-contract-adapter-disabled": "node scripts/validate-inventory-bridge-contract-adapter-disabled.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
