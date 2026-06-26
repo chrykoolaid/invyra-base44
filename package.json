@@ -40,6 +40,7 @@
     "validate:inventory-bridge-dry-run-handoff-disabled": "node scripts/validate-inventory-bridge-dry-run-handoff-disabled.mjs",
     "validate:inventory-bridge-local-transport-disabled": "node scripts/validate-inventory-bridge-local-transport-disabled.mjs",
     "validate:inventory-bridge-training-handshake-preparation": "node scripts/validate-inventory-bridge-training-handshake-preparation.mjs",
+    "validate:inventory-bridge-handshake-candidate": "node scripts/validate-inventory-bridge-handshake-candidate.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
