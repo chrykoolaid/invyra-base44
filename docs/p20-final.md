@@ -27,12 +27,6 @@ missing fields: blocked
 UNKNOWN: blocked
 ```
 
-Inventory remains the record owner.
-
-ScanOps remains capture-only.
-
-No LIVE enablement, no approval grant, no run, no persistence, no receipts, no acknowledgements, no writes, no mutation.
-
 Decision:
 
 ```text
