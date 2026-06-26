@@ -38,6 +38,7 @@
     "validate:inventory-bridge-ledger-candidate-preview-disabled": "node scripts/validate-inventory-bridge-ledger-candidate-preview-disabled.mjs",
     "validate:inventory-bridge-candidate-fixture-alignment-disabled": "node scripts/validate-inventory-bridge-candidate-fixture-alignment-disabled.mjs",
     "validate:inventory-bridge-dry-run-handoff-disabled": "node scripts/validate-inventory-bridge-dry-run-handoff-disabled.mjs",
+    "validate:inventory-bridge-local-transport-disabled": "node scripts/validate-inventory-bridge-local-transport-disabled.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
