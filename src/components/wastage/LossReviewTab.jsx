@@ -9,7 +9,6 @@ import {
   STOCK_OUT_STATUS_LABELS,
   getStockOutClassConfig,
   getStockOutClassLabel,
-  isReviewWorkflowStatus,
 } from '@/lib/stockOutLossConfig';
 import {
   canClassifyConfirmedTheft,
@@ -18,6 +17,8 @@ import {
   canReviewControlledLoss,
   canStartStockOutReview,
 } from '@/lib/rolePermissions';
+
+const CONTROLLED_LOSS_CLASSES = ['THEFT_SUSPECTED', 'THEFT_CONFIRMED', 'UNKNOWN_SHRINKAGE'];
 
 const REVIEW_FILTERS = [
   { key: 'ALL', label: 'All' },
@@ -451,9 +452,7 @@ export default function LossReviewTab({ refreshTick }) {
     base44.entities.StockOutRecord.filter({ environment: 'LIVE' }, '-created_date', 100)
       .then(data => {
         const controlled = (data || []).filter(record => (
-          record.review_required === true ||
-          ['THEFT_SUSPECTED', 'THEFT_CONFIRMED', 'UNKNOWN_SHRINKAGE'].includes(record.stock_out_class) ||
-          isReviewWorkflowStatus(record.status)
+          record.review_required === true || CONTROLLED_LOSS_CLASSES.includes(record.stock_out_class)
         ));
         setRecords(controlled);
       })
