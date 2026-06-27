@@ -43,7 +43,7 @@ export function canAccessReports(role) {
 }
 
 export function canCreateStockOut(role) {
-  return Boolean(role); // All signed-in roles can create drafts
+  return Boolean(role); // All signed-in roles can create drafts / controlled loss submissions
 }
 
 export function isOwnStockOutDraft(user, record) {
@@ -55,6 +55,7 @@ export function isOwnStockOutDraft(user, record) {
 export function canSubmitStockOut(role, user, record) {
   const r = normalise(role);
   if (!record || record.status !== 'DRAFT') return false;
+  if (record.review_required) return false;
   if (r === 'staff') return isOwnStockOutDraft(user, record);
   return ['supervisor', 'manager', 'admin', 'owner'].includes(r);
 }
@@ -62,6 +63,7 @@ export function canSubmitStockOut(role, user, record) {
 export function canEditStockOutDraft(role, user, record) {
   const r = normalise(role);
   if (!record || record.status !== 'DRAFT') return false;
+  if (record.review_required) return false;
   if (r === 'staff') return isOwnStockOutDraft(user, record);
   return ['supervisor', 'manager', 'admin', 'owner'].includes(r);
 }
@@ -69,6 +71,7 @@ export function canEditStockOutDraft(role, user, record) {
 export function canDeleteStockOutDraft(role, user, record) {
   const r = normalise(role);
   if (!record || record.status !== 'DRAFT') return false;
+  if (record.review_required) return false;
   if (r === 'staff') return isOwnStockOutDraft(user, record);
   return ['supervisor', 'manager', 'admin', 'owner'].includes(r);
 }
@@ -83,5 +86,26 @@ export function canSelfPostAdjustment(role) {
 
 export function canManageGovernance(role) {
   // Only manager/admin/owner may edit item governance metadata
+  return ['manager', 'admin', 'owner'].includes(normalise(role));
+}
+
+export function canStartStockOutReview(role) {
+  return ['supervisor', 'manager', 'admin', 'owner'].includes(normalise(role));
+}
+
+export function canReviewControlledLoss(role) {
+  return ['supervisor', 'manager', 'admin', 'owner'].includes(normalise(role));
+}
+
+export function canPostReviewedStockOut(role) {
+  return ['supervisor', 'manager', 'admin', 'owner'].includes(normalise(role));
+}
+
+export function canReclassifyStockOutLoss(role) {
+  return ['supervisor', 'manager', 'admin', 'owner'].includes(normalise(role));
+}
+
+export function canClassifyConfirmedTheft(role) {
+  // Confirmed theft is a reviewed manager/admin outcome, not a staff or supervisor entry state.
   return ['manager', 'admin', 'owner'].includes(normalise(role));
 }

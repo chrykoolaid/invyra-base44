@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import RecordStockOutModal from '@/components/wastage/RecordStockOutModal';
 import WastageTab from '@/components/wastage/WastageTab';
 import StoreUseTab from '@/components/wastage/StoreUseTab';
+import LossReviewTab from '@/components/wastage/LossReviewTab';
 import ScannerIntakeTab from '@/components/wastage/ScannerIntakeTab';
 import AmendmentsTab from '@/components/wastage/AmendmentsTab';
 import AlertsTab from '@/components/wastage/AlertsTab';
@@ -14,8 +15,9 @@ import ArchiveTab from '@/components/wastage/ArchiveTab';
 
 const mainTabs = [
   { key: 'OVERVIEW', label: 'Overview' },
-  { key: 'WASTAGE', label: 'Wastage' },
+  { key: 'WASTAGE', label: 'Wastage / Damage' },
   { key: 'STORE_USE', label: 'Store Use' },
+  { key: 'LOSS_REVIEW', label: 'Loss Review' },
   { key: 'SCANNER_INTAKE', label: 'Scanner Intake' },
   { key: 'AMENDMENTS', label: 'Amendments' },
   { key: 'ALERTS', label: 'Alerts' },
@@ -52,6 +54,7 @@ export default function Wastage() {
 
   const visibleTabs = mainTabs.filter(tab => {
     if (tab.key === 'OVERVIEW' || tab.key === 'WASTAGE' || tab.key === 'STORE_USE') return true;
+    if (tab.key === 'LOSS_REVIEW' && isSupervisor) return true;
     if (tab.key === 'SCANNER_INTAKE' && isSupervisor) return true;
     if (tab.key === 'AMENDMENTS' && isManager) return true;
     if (tab.key === 'ALERTS' && isManager) return true;
@@ -69,9 +72,6 @@ export default function Wastage() {
   const [showRecordModal, setShowRecordModal] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
 
-
-
-
   const updateTab = (tabKey) => {
     setActiveTab(tabKey);
     const nextParams = new URLSearchParams(searchParams);
@@ -79,16 +79,12 @@ export default function Wastage() {
     setSearchParams(nextParams);
   };
 
-
-
-
-
   return (
     <div className="p-5 lg:p-6 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold text-foreground">Stock-Out Exceptions</h1>
-          <p className="text-sm text-muted-foreground">Record, review, and track wastage and store use inventory exceptions.</p>
+          <h1 className="text-xl font-semibold text-foreground">Wastage & Loss Events</h1>
+          <p className="text-sm text-muted-foreground">Record, review, and track wastage, store use, suspected loss, and shrinkage events.</p>
         </div>
         <button
           onClick={() => setShowRecordModal(true)}
@@ -117,6 +113,7 @@ export default function Wastage() {
       {activeTab === 'OVERVIEW' && <OverviewTab onNavigate={updateTab} />}
       {activeTab === 'WASTAGE' && <WastageTab refreshTick={refreshTick} />}
       {activeTab === 'STORE_USE' && <StoreUseTab refreshTick={refreshTick} />}
+      {activeTab === 'LOSS_REVIEW' && isSupervisor && <LossReviewTab refreshTick={refreshTick} />}
       {activeTab === 'SCANNER_INTAKE' && isSupervisor && <ScannerIntakeTab refreshTick={refreshTick} />}
       {activeTab === 'AMENDMENTS' && isManager && <AmendmentsTab refreshTick={refreshTick} />}
       {activeTab === 'ALERTS' && isManager && <AlertsTab refreshTick={refreshTick} />}

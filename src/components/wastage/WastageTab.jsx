@@ -14,6 +14,20 @@ import {
   canReverseStockOut,
   canSubmitStockOut,
 } from '@/lib/rolePermissions';
+import {
+  OPERATIONAL_LOSS_CLASSES,
+  STOCK_OUT_STATUS_COLORS,
+  getStockOutClassConfig,
+} from '@/lib/stockOutLossConfig';
+
+function ClassBadge({ stockOutClass }) {
+  const config = getStockOutClassConfig(stockOutClass);
+  return (
+    <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${config.badgeClass}`}>
+      {config.shortLabel}
+    </span>
+  );
+}
 
 export default function WastageTab({ refreshTick }) {
   const [user, setUser] = useState(null);
@@ -33,26 +47,15 @@ export default function WastageTab({ refreshTick }) {
 
   useEffect(() => {
     setLoading(true);
-    base44.entities.StockOutRecord.filter({
-      stock_out_class: 'WASTAGE',
-      environment: 'LIVE',
-    }, '-created_date', 50).then(data => {
-      setRecords(data || []);
+    base44.entities.StockOutRecord.filter({ environment: 'LIVE' }, '-created_date', 100).then(data => {
+      setRecords((data || []).filter(record => OPERATIONAL_LOSS_CLASSES.includes(record.stock_out_class || 'WASTAGE')));
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [refreshTick, localRefreshTick]);
 
-  const statusColors = {
-    DRAFT: 'bg-slate-50 text-slate-700 border-slate-200',
-    SUBMITTED: 'bg-amber-50 text-amber-700 border-amber-200',
-    APPROVED: 'bg-blue-50 text-blue-700 border-blue-200',
-    POSTED: 'bg-green-50 text-green-700 border-green-200',
-    AMENDED: 'bg-purple-50 text-purple-700 border-purple-200',
-    REVERSED: 'bg-slate-50 text-slate-700 border-slate-200',
-    REJECTED: 'bg-red-50 text-red-700 border-red-200',
-  };
+  const statusColors = STOCK_OUT_STATUS_COLORS;
 
-  const ACTIVE_WORKFLOW_STATUSES = ['DRAFT', 'SUBMITTED', 'REJECTED'];
+  const ACTIVE_WORKFLOW_STATUSES = ['DRAFT', 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED_FOR_ADJUSTMENT', 'REJECTED'];
 
   const filteredRecords = useMemo(() => {
     const q = query.toLowerCase();
@@ -60,6 +63,7 @@ export default function WastageTab({ refreshTick }) {
       ACTIVE_WORKFLOW_STATUSES.includes(r.status) &&
       ((r.sku || '').toLowerCase().includes(q) ||
       (r.item_name || '').toLowerCase().includes(q) ||
+      (r.stock_out_class || '').toLowerCase().includes(q) ||
       (r.reason_category || '').toLowerCase().includes(q) ||
       (r.location || '').toLowerCase().includes(q))
     );
@@ -202,9 +206,9 @@ export default function WastageTab({ refreshTick }) {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Active Wastage</p>
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Active Loss Events</p>
           <p className="text-2xl font-bold text-foreground">{activeRecords.length}</p>
-          <p className="text-xs text-muted-foreground mt-2">Active workflow records</p>
+          <p className="text-xs text-muted-foreground mt-2">Wastage, damage, and expiry</p>
         </div>
         <div className="border border-border rounded-2xl bg-card px-4 py-3 min-h-[104px]">
           <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-[0.22em] mb-1.5">Pending Approval</p>
@@ -227,8 +231,8 @@ export default function WastageTab({ refreshTick }) {
         <div className="px-4 py-3 border-b border-border bg-muted/20">
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Active Wastage</p>
-              <p className="text-xs text-muted-foreground mt-1">Draft, submitted, and rejected wastage records requiring action</p>
+              <p className="text-sm font-medium text-foreground">Active Wastage / Damage / Expiry</p>
+              <p className="text-xs text-muted-foreground mt-1">Draft, submitted, and rejected operational loss records requiring action</p>
             </div>
             <span className="text-xs text-muted-foreground">{filteredRecords.length} visible</span>
           </div>
@@ -240,7 +244,7 @@ export default function WastageTab({ refreshTick }) {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by SKU, item, reason, or location..."
+              placeholder="Search by SKU, item, class, reason, or location..."
               className="pl-9"
             />
           </div>
@@ -251,8 +255,8 @@ export default function WastageTab({ refreshTick }) {
             </div>
           ) : filteredRecords.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-sm font-medium text-foreground mb-1">No active wastage records</p>
-              <p className="text-xs text-muted-foreground">Posted and reversed wastage records are now held in Archive</p>
+              <p className="text-sm font-medium text-foreground mb-1">No active operational loss records</p>
+              <p className="text-xs text-muted-foreground">Posted and reversed records are held in Archive</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -262,7 +266,7 @@ export default function WastageTab({ refreshTick }) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="font-medium text-foreground text-sm">{record.item_name}</p>
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 font-medium">WASTAGE</span>
+                        <ClassBadge stockOutClass={record.stock_out_class || 'WASTAGE'} />
                         <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${statusColors[record.status] || 'bg-slate-50 text-slate-700 border-slate-200'}`}>
                           {record.status}
                         </span>
@@ -271,13 +275,13 @@ export default function WastageTab({ refreshTick }) {
                     </div>
                     <div className="text-right whitespace-nowrap">
                       <p className="font-semibold text-foreground">{record.quantity} units</p>
-                      {!isStaff && <p className="text-xs text-muted-foreground">₱{record.estimated_value?.toFixed(2)}</p>}
+                      {!isStaff && <p className="text-xs text-muted-foreground">₱{Number(record.estimated_value || 0).toFixed(2)}</p>}
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
                     <div className="flex items-center gap-4 flex-wrap">
                       <span>{record.reason_category}</span>
-                      <span>{new Date(record.created_date).toLocaleDateString()}</span>
+                      <span>{record.created_date ? new Date(record.created_date).toLocaleDateString() : 'No date'}</span>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap justify-end">
                       {record.status === 'DRAFT' && canEditStockOutDraft(user?.role, user, record) && (
@@ -304,7 +308,7 @@ export default function WastageTab({ refreshTick }) {
                           <Trash2 size={12} /> Delete Draft
                         </button>
                       )}
-                      {record.status === 'SUBMITTED' && (
+                      {record.status === 'SUBMITTED' && !record.review_required && (
                         <>
                           {canApproveStockOut(user?.role) && (
                             <button
@@ -323,6 +327,11 @@ export default function WastageTab({ refreshTick }) {
                             </button>
                           )}
                         </>
+                      )}
+                      {record.review_required && (
+                        <span className="px-2 py-1 text-[11px] rounded bg-amber-50 text-amber-700 border border-amber-200">
+                          Use Loss Review tab
+                        </span>
                       )}
                       {record.status === 'POSTED' && canReverseStockOut(user?.role) && (
                         <button
