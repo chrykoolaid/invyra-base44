@@ -1,0 +1,87 @@
+import { buildDeviceGovernanceContract } from '../src/inventory-bridge/deviceGovernanceContract/index.js';
+
+const training = buildDeviceGovernanceContract('TRAINING');
+const test = buildDeviceGovernanceContract('TEST');
+const live = buildDeviceGovernanceContract('LIVE');
+const production = buildDeviceGovernanceContract('PRODUCTION');
+const unknown = buildDeviceGovernanceContract('UNKNOWN');
+
+const checks = [
+  Object.isFrozen(training),
+  Object.isFrozen(training.dependencies_required),
+  Object.isFrozen(training.device_capability_candidate_shape),
+  Object.isFrozen(training.scanner_profile_candidate_shape),
+  Object.isFrozen(training.local_link_reference_candidate_shape),
+  Object.isFrozen(training.prohibited_device_operations),
+  training.device_governance_contract_ready === true,
+  test.device_governance_contract_ready === true,
+  live.device_governance_contract_ready === false,
+  production.device_governance_contract_ready === false,
+  unknown.device_governance_contract_ready === false,
+  training.inactive_contract_only === true,
+  training.hard_disabled === true,
+  training.inventory_system_of_record === true,
+  training.scanops_operational_layer_only === true,
+  training.client_network_portable_bridge === true,
+  training.client_owned_boundary === true,
+  training.desktop_first === true,
+  training.local_network_first === true,
+  training.offline_capable === true,
+  training.device_bundle_only === true,
+  training.candidate_only === true,
+  training.preview_only === true,
+  training.device_capability_candidate_shape.generated === false,
+  training.device_capability_candidate_shape.persisted === false,
+  training.scanner_profile_candidate_shape.created === false,
+  training.scanner_profile_candidate_shape.enabled === false,
+  training.scanner_profile_candidate_shape.persisted === false,
+  training.local_link_reference_candidate_shape.issued === false,
+  training.local_link_reference_candidate_shape.accepted === false,
+  training.local_link_reference_candidate_shape.persisted === false,
+  training.prohibited_device_operations.create_device_record === false,
+  training.prohibited_device_operations.enable_device === false,
+  training.prohibited_device_operations.create_local_link_reference === false,
+  training.prohibited_device_operations.accept_local_link_reference === false,
+  training.prohibited_device_operations.persist_scanner_profile === false,
+  training.prohibited_device_operations.persist_device_capability === false,
+  training.prohibited_device_operations.persist_local_link_reference === false,
+  training.prohibited_device_operations.share_link_across_installations === false,
+  training.prohibited_device_operations.start_device_session === false,
+  training.prohibited_device_operations.open_listener === false,
+  training.prohibited_device_operations.call_transport === false,
+  training.prohibited_device_operations.send_event === false,
+  training.prohibited_device_operations.receive_event === false,
+  training.device_record_created === false,
+  training.device_enabled === false,
+  training.local_link_reference_created === false,
+  training.local_link_reference_accepted === false,
+  training.scanner_profile_persisted === false,
+  training.device_capability_persisted === false,
+  training.local_link_reference_persisted === false,
+  training.cross_installation_link_allowed === false,
+  training.device_session_started === false,
+  training.listener_active === false,
+  training.transport_active === false,
+  training.network_call_attempted === false,
+  training.event_sent === false,
+  training.event_received === false,
+  training.inventory_write_allowed === false,
+  training.scanops_write_allowed === false,
+  training.stock_mutation_allowed === false,
+  training.workflow_mutation_allowed === false,
+  training.item_master_mutation_allowed === false,
+  training.price_mutation_allowed === false,
+  training.accounting_mutation_allowed === false,
+  training.purchase_order_write_allowed === false,
+  training.forecast_write_allowed === false,
+  training.runtime_activation_allowed === false,
+  training.persisted === false,
+  training.write_attempted === false,
+  training.mutation_attempted === false,
+];
+
+if (!checks.every(Boolean)) {
+  throw new Error('P30-T validation failed');
+}
+
+console.log('P30-T Device governance bundle passed.');
