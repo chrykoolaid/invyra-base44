@@ -22,6 +22,33 @@ import { base44 } from '@/api/base44Client';
 
 const ENV_LIVE = 'LIVE';
 
+const DISABLED_SYNC_DEVICES_CONFIG = Object.freeze({
+  bridge_status: 'disabled_contract_phase',
+  bridge_runtime_enabled: false,
+  bridge_mode: 'local_wifi_ip',
+  endpoint_host: null,
+  endpoint_port: null,
+  last_heartbeat_at: null,
+  device_registration_enabled: false,
+  trusted_device_count: 0,
+  pending_device_count: 0,
+  diagnostics_enabled: false,
+});
+
+function getDisabledSyncDevicesConfig(overrides = {}) {
+  return {
+    ...DISABLED_SYNC_DEVICES_CONFIG,
+    ...overrides,
+    bridge_status: 'disabled_contract_phase',
+    bridge_runtime_enabled: false,
+    device_registration_enabled: false,
+    diagnostics_enabled: false,
+    endpoint_host: null,
+    endpoint_port: null,
+    last_heartbeat_at: null,
+  };
+}
+
 /**
  * Fetches the active SystemConfiguration record for the given environment.
  * If none exists, returns null — the caller should seed defaults via initConfiguration().
@@ -70,6 +97,7 @@ export async function initConfiguration(environment = ENV_LIVE) {
     hardware_readiness: {
       handheld_sync_enabled: false,
     },
+    sync_devices: getDisabledSyncDevicesConfig(),
     config_version: 1,
     last_saved_by: user.email || user.full_name,
     last_saved_at: new Date().toISOString(),
@@ -101,14 +129,18 @@ export async function saveConfigurationSection(
     throw new Error('Settings changes require Admin or Owner role.');
   }
 
+  const safeNewSection = sectionKey === 'sync_devices'
+    ? getDisabledSyncDevicesConfig(newSection)
+    : newSection;
+
   // Compute per-field diffs
-  const diffs = computeDiffs(sectionKey, currentSection ?? {}, newSection);
+  const diffs = computeDiffs(sectionKey, currentSection ?? {}, safeNewSection);
 
   if (diffs.length === 0) return { unchanged: true };
 
   // Apply section update to SystemConfiguration
   await base44.entities.SystemConfiguration.update(configId, {
-    [sectionKey]: newSection,
+    [sectionKey]: safeNewSection,
     last_saved_by: user.email || user.full_name,
     last_saved_at: new Date().toISOString(),
   });
