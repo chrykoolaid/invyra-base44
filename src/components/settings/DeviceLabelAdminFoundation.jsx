@@ -3,7 +3,21 @@ import { Barcode, CircleAlert, Cpu, FileText, Lock, Printer, RefreshCw, Server, 
 const badgeStyles = {
   amber: 'border-amber-200 bg-amber-50 text-amber-700',
   blue: 'border-blue-200 bg-blue-50 text-blue-700',
+  emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
   slate: 'border-slate-200 bg-slate-50 text-slate-600',
+};
+
+const disabledBridgeConfig = {
+  bridge_status: 'disabled_contract_phase',
+  bridge_runtime_enabled: false,
+  bridge_mode: 'local_wifi_ip',
+  endpoint_host: null,
+  endpoint_port: null,
+  last_heartbeat_at: null,
+  device_registration_enabled: false,
+  trusted_device_count: 0,
+  pending_device_count: 0,
+  diagnostics_enabled: false,
 };
 
 function Badge({ label = 'Planned', tone = 'slate' }) {
@@ -83,10 +97,10 @@ function TemplateRow({ name, status = 'Planned', note }) {
   );
 }
 
-function FieldChips({ fields }) {
+function FieldChips({ fields, label = 'Planned columns' }) {
   return (
     <div className="rounded-2xl border border-border bg-background px-4 py-3">
-      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Planned columns</p>
+      <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">{label}</p>
       <div className="flex flex-wrap gap-2">
         {fields.map(field => (
           <span key={field} className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
@@ -98,95 +112,176 @@ function FieldChips({ fields }) {
   );
 }
 
+function KeyValueList({ rows }) {
+  return (
+    <div className="space-y-2 rounded-2xl border border-border bg-background px-4 py-4 text-sm">
+      {rows.map(([label, value, tone]) => (
+        <div key={label} className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">{label}</span>
+          <span className={`text-right font-semibold ${tone || 'text-foreground'}`}>{value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SectionHeader({ eyebrow, title, description, badge, badgeTone = 'slate' }) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/25 px-4 py-3">
+      <div>
+        <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">{eyebrow}</p>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      <Badge label={badge} tone={badgeTone} />
+    </div>
+  );
+}
+
+function ContractRow({ label, state = 'done' }) {
+  const done = state === 'done';
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2.5">
+      <div className="flex items-center gap-2.5">
+        <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[11px] font-bold ${done ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
+          {done ? '✓' : '○'}
+        </span>
+        <span className="text-sm font-medium text-foreground">{label}</span>
+      </div>
+      <Badge label={done ? 'Ready' : 'Future'} tone={done ? 'emerald' : 'slate'} />
+    </div>
+  );
+}
+
 function DevicesFoundation() {
   const deviceFields = ['Device', 'Type', 'Module', 'Location', 'Environment', 'Status', 'Last Seen', 'Approved By'];
+  const bridge = disabledBridgeConfig;
 
   return (
     <div className="space-y-5">
       <Notice
         icon={ShieldCheck}
-        title="Planned admin foundation only"
-        body="This tab prepares the scanner/device admin home. It does not pair real hardware, activate local sync, process scanner intake, or write inventory records."
+        title="Bridge UI foundation only"
+        body="Sync & Devices can now show the future scanner bridge shape, but the bridge remains disabled. No pairing, heartbeat, transport, queue processing, scanner intake, or inventory write is active."
       />
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard label="Paired" value="0" icon={Smartphone} tone="text-blue-600" />
-        <StatCard label="Online" value="0" icon={Wifi} tone="text-emerald-600" />
-        <StatCard label="Needs Review" value="0" icon={CircleAlert} tone="text-amber-600" />
-        <StatCard label="Disabled" value="0" icon={Lock} tone="text-slate-500" />
+        <StatCard label="Scanner Fleet" value="0" icon={Smartphone} tone="text-blue-600" />
+        <StatCard label="Trusted" value={String(bridge.trusted_device_count)} icon={ShieldCheck} tone="text-emerald-600" />
+        <StatCard label="Needs Review" value={String(bridge.pending_device_count)} icon={CircleAlert} tone="text-amber-600" />
+        <StatCard label="Runtime" value="Off" icon={Lock} tone="text-slate-500" />
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/25 px-4 py-3">
-          <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Planned infrastructure</p>
-            <h3 className="text-sm font-semibold text-foreground">Local Sync Bridge</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Reserved for future local scanner bridge configuration.</p>
-          </div>
-          <Badge label="Planned" tone="amber" />
-        </div>
-        <div className="grid grid-cols-1 gap-4 p-4 lg:grid-cols-2">
-          <div className="space-y-2 rounded-2xl border border-border bg-background px-4 py-4 text-sm">
-            {[
-              ['Status', 'Planned'],
-              ['Network mode', 'Local Wi-Fi / IP'],
-              ['Endpoint', 'Not configured'],
-              ['Environment aware', 'LIVE / TRAINING / TEST'],
-            ].map(([label, value]) => (
-              <div key={label} className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">{label}</span>
-                <span className="font-semibold text-foreground">{value}</span>
-              </div>
-            ))}
-          </div>
+        <SectionHeader
+          eyebrow="Bridge runtime"
+          title="Local Sync Bridge Control Center"
+          description="Readiness surface for future local scanner bridge configuration. Runtime stays disabled until the transport activation phase."
+          badge="Disabled / Contract Phase"
+          badgeTone="amber"
+        />
+        <div className="grid grid-cols-1 gap-4 p-4 xl:grid-cols-3">
+          <KeyValueList rows={[
+            ['Status', 'Disabled / Contract Phase', 'text-amber-700'],
+            ['Runtime enabled', bridge.bridge_runtime_enabled ? 'Yes' : 'No'],
+            ['Network mode', 'Local Wi-Fi / IP'],
+            ['Endpoint', 'Not configured'],
+            ['Last heartbeat', 'Never'],
+            ['Environment aware', 'LIVE / TRAINING / TEST'],
+          ]} />
+
           <div className="rounded-2xl border border-border bg-background px-4 py-4">
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-muted/40">
               <Server className="h-5 w-5 text-muted-foreground" strokeWidth={1.8} />
             </div>
             <p className="mb-1 text-sm font-semibold text-foreground">Bridge actions are disabled</p>
-            <p className="mb-3 text-sm text-muted-foreground">Configuration and connection testing remain locked until the local bridge contract is built.</p>
+            <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
+              Configuration, connection testing, scanner registration, and sync activation remain locked until transport and handshake contracts are promoted.
+            </p>
             <div className="flex flex-wrap gap-2">
               <PlannedButton>Configure Bridge</PlannedButton>
               <PlannedButton>Test Connection</PlannedButton>
+              <PlannedButton>Start Bridge</PlannedButton>
+              <PlannedButton>Enable Sync</PlannedButton>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-background px-4 py-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Diagnostics</p>
+            <div className="space-y-2 text-sm">
+              {[
+                ['Connection', 'Inactive'],
+                ['Latency', '—'],
+                ['Packet loss', '—'],
+                ['Outbound envelopes', '0'],
+                ['Inbound receipts', '0'],
+                ['Failed messages', '0'],
+                ['Retry queue', '0'],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-semibold text-foreground">{value}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/25 px-4 py-3">
-          <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Device trust</p>
-            <h3 className="text-sm font-semibold text-foreground">Device Allow-List</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Future scanners will appear here with health, environment, assignment, and approval metadata.</p>
-          </div>
-          <Badge label="Foundation" tone="blue" />
-        </div>
-        <div className="space-y-4 p-4">
-          <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-8 text-center">
-            <Cpu className="mx-auto mb-3 h-8 w-8 text-muted-foreground" strokeWidth={1.8} />
-            <p className="text-sm font-semibold text-foreground">No paired devices yet</p>
-            <p className="mx-auto mt-1 max-w-2xl text-sm text-muted-foreground">
-              Future paired scanners will appear here with device health, assigned module, assigned location, environment tag, last seen, and approval status.
-            </p>
-            <div className="mt-4 flex justify-center">
-              <PlannedButton>Add Device</PlannedButton>
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <SectionHeader
+            eyebrow="Scanner devices"
+            title="Device Allow-List"
+            description="Future trusted scanners will appear here with health, environment, assignment, and approval metadata."
+            badge="Foundation"
+            badgeTone="blue"
+          />
+          <div className="space-y-4 p-4">
+            <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-8 text-center">
+              <Cpu className="mx-auto mb-3 h-8 w-8 text-muted-foreground" strokeWidth={1.8} />
+              <p className="text-sm font-semibold text-foreground">No scanner devices registered yet</p>
+              <p className="mx-auto mt-1 max-w-2xl text-sm text-muted-foreground">
+                Device registration is disabled. Future paired scanners will be environment tagged and Admin/Owner approved before any bridge handshake is allowed.
+              </p>
+              <div className="mt-4 flex justify-center">
+                <PlannedButton>Register Device</PlannedButton>
+              </div>
             </div>
+            <FieldChips fields={deviceFields} />
           </div>
-          <FieldChips fields={deviceFields} />
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <SectionHeader
+            eyebrow="Bridge contracts"
+            title="Readiness Checklist"
+            description="Contract progress is visible for developers and future support without enabling transport."
+            badge="Read-only"
+            badgeTone="slate"
+          />
+          <div className="space-y-2 p-4">
+            <ContractRow label="Runtime Contract" />
+            <ContractRow label="Envelope Queue Contract" />
+            <ContractRow label="Receipt Policy Contract" />
+            <ContractRow label="Inbox Contract" />
+            <ContractRow label="Transport Layer" state="future" />
+            <ContractRow label="Device Handshake" state="future" />
+            <ContractRow label="Activation" state="future" />
+          </div>
         </div>
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <CapabilityCard icon={RefreshCw} title="Sync Inbox Policy" body="Reserved for future sync inbox rules, conflict handling, duplicate event handling, and offline replay policy. No queue processing is active here." />
-        <CapabilityCard icon={Cpu} title="Device Pairing" body="Reserved for future Admin/Owner device approval, disable, archive, and environment tagging. No real pairing is active." />
-        <CapabilityCard icon={Wifi} title="Device Health" body="Reserved for last seen, online/offline, warning, and needs-review state after a trusted device service exists." />
+        <CapabilityCard icon={RefreshCw} title="Queue Visibility" body="Reserved for future outbound envelopes, inbound receipts, retries, and failures. No queue processing is active here." />
+        <CapabilityCard icon={ShieldCheck} title="Security / Device Trust" body="Reserved for device tokens, allow-list policy, environment lock, and handshake admission evidence. No tokens are issued." />
+        <CapabilityCard icon={Wifi} title="Transport Diagnostics" body="Reserved for ping, latency, bridge version, packet loss, and connection logs after local transport exists." />
       </section>
 
       <div className="rounded-2xl border border-border bg-muted/20 px-4 py-4">
-        <p className="mb-1 text-sm font-semibold text-foreground">Device administration guardrail</p>
+        <p className="mb-1 text-sm font-semibold text-foreground">Bridge guardrail</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Sync & Devices is configuration only. This tab does not pair real hardware, activate sync, process scanner intake, post StockMovement records, mutate Item Master, or trigger Wastage, Markdown, Stocktake, Transfer, Receiving, or ScanOps workflows.
+          Sync & Devices is readiness-only. This tab does not pair hardware, open a network listener, call a scanner, test a connection, process envelopes, post StockMovement records, mutate Item Master, or trigger Wastage, Markdown, Stocktake, Transfer, Receiving, POS, or ScanOps workflows.
         </p>
       </div>
     </div>
@@ -220,14 +315,13 @@ function LabelsFoundation() {
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/25 px-4 py-3">
-          <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Print devices</p>
-            <h3 className="text-sm font-semibold text-foreground">Printer Profiles</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Future portable and desktop printers will appear here with health, location, supported label sizes, and fallback rules.</p>
-          </div>
-          <Badge label="Planned" tone="amber" />
-        </div>
+        <SectionHeader
+          eyebrow="Print devices"
+          title="Printer Profiles"
+          description="Future portable and desktop printers will appear here with health, location, supported label sizes, and fallback rules."
+          badge="Planned"
+          badgeTone="amber"
+        />
         <div className="space-y-4 p-4">
           <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-5 py-8 text-center">
             <Printer className="mx-auto mb-3 h-8 w-8 text-muted-foreground" strokeWidth={1.8} />
@@ -245,14 +339,13 @@ function LabelsFoundation() {
       </section>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
-        <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/25 px-4 py-3">
-          <div>
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">Template governance</p>
-            <h3 className="text-sm font-semibold text-foreground">Label Templates</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Template planning for markdown, shelf, barcode, expiry, and future bin/transfer labels.</p>
-          </div>
-          <Badge label="Planned Config" tone="blue" />
-        </div>
+        <SectionHeader
+          eyebrow="Template governance"
+          title="Label Templates"
+          description="Template planning for markdown, shelf, barcode, expiry, and future bin/transfer labels."
+          badge="Planned Config"
+          badgeTone="blue"
+        />
         <div className="grid grid-cols-1 gap-3 p-4 lg:grid-cols-2">
           {templateRows.map(row => <TemplateRow key={row.name} {...row} />)}
         </div>
