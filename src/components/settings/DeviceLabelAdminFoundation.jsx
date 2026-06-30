@@ -1,4 +1,5 @@
 import { Barcode, CircleAlert, Cpu, FileText, Lock, Printer, RefreshCw, Server, ShieldCheck, Smartphone, Tags, Wifi } from 'lucide-react';
+import { getInventoryDesktopLocalBridgeServiceStatus } from '@/inventory-bridge/localBridgeService';
 
 const badgeStyles = {
   amber: 'border-amber-200 bg-amber-50 text-amber-700',
@@ -156,47 +157,50 @@ function ContractRow({ label, state = 'done' }) {
 function DevicesFoundation() {
   const deviceFields = ['Device', 'Type', 'Module', 'Location', 'Environment', 'Status', 'Last Seen', 'Approved By'];
   const bridge = disabledBridgeConfig;
+  const localBridgeStatus = getInventoryDesktopLocalBridgeServiceStatus();
+  const listener = localBridgeStatus.listener || {};
+  const metrics = localBridgeStatus.metrics || {};
 
   return (
     <div className="space-y-5">
       <Notice
         icon={ShieldCheck}
-        title="Bridge UI foundation only"
-        body="Sync & Devices can now show the future scanner bridge shape, but the bridge remains disabled. No pairing, heartbeat, transport, queue processing, scanner intake, or inventory write is active."
+        title="Bridge Phase 5 service foundation"
+        body="Sync & Devices now surfaces the Inventory Desktop local bridge service foundation. It can model health, handoff validation, receipts, duplicate protection, and bridge evidence logs, but it still performs no inventory, ledger, stock, pricing, approval, scanner, or network mutation."
       />
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard label="Scanner Fleet" value="0" icon={Smartphone} tone="text-blue-600" />
         <StatCard label="Trusted" value={String(bridge.trusted_device_count)} icon={ShieldCheck} tone="text-emerald-600" />
         <StatCard label="Needs Review" value={String(bridge.pending_device_count)} icon={CircleAlert} tone="text-amber-600" />
-        <StatCard label="Runtime" value="Off" icon={Lock} tone="text-slate-500" />
+        <StatCard label="Bridge" value={localBridgeStatus.enabled ? 'On' : 'Off'} icon={localBridgeStatus.enabled ? Server : Lock} tone={localBridgeStatus.enabled ? 'text-emerald-600' : 'text-slate-500'} />
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-border bg-card">
         <SectionHeader
           eyebrow="Bridge runtime"
           title="Local Sync Bridge Control Center"
-          description="Readiness surface for future local scanner bridge configuration. Runtime stays disabled until the transport activation phase."
-          badge="Disabled / Contract Phase"
-          badgeTone="amber"
+          description="Read-only status surface for the Inventory Desktop-side local bridge service foundation. The adapter is present, but no socket listener, HTTP server, WebSocket server, or inventory mutation is active from this UI."
+          badge="Phase 5 Foundation"
+          badgeTone="blue"
         />
         <div className="grid grid-cols-1 gap-4 p-4 xl:grid-cols-3">
           <KeyValueList rows={[
-            ['Status', 'Disabled / Contract Phase', 'text-amber-700'],
+            ['Service status', localBridgeStatus.status || 'DISABLED', localBridgeStatus.enabled ? 'text-emerald-700' : 'text-amber-700'],
+            ['Desktop identity', localBridgeStatus.desktopId || 'Not configured'],
             ['Runtime enabled', bridge.bridge_runtime_enabled ? 'Yes' : 'No'],
-            ['Network mode', 'Local Wi-Fi / IP'],
-            ['Endpoint', 'Not configured'],
-            ['Last heartbeat', 'Never'],
-            ['Environment aware', 'LIVE / TRAINING / TEST'],
+            ['Accepts handoff', localBridgeStatus.acceptsHandoff ? 'Yes' : 'No'],
+            ['Environment', localBridgeStatus.environment || 'LIVE'],
+            ['Bridge version', localBridgeStatus.bridgeVersion || 'inventory-desktop-local-bridge.v0.5.0'],
           ]} />
 
           <div className="rounded-2xl border border-border bg-background px-4 py-4">
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-muted/40">
               <Server className="h-5 w-5 text-muted-foreground" strokeWidth={1.8} />
             </div>
-            <p className="mb-1 text-sm font-semibold text-foreground">Bridge actions are disabled</p>
+            <p className="mb-1 text-sm font-semibold text-foreground">Listener foundation is adapter-only</p>
             <p className="mb-3 text-sm leading-relaxed text-muted-foreground">
-              Configuration, connection testing, scanner registration, and sync activation remain locked until transport and handshake contracts are promoted.
+              Phase 5 exposes governed health and handoff handlers for future desktop service wiring. Network activation remains a later bridge phase after service validation and pilot readiness.
             </p>
             <div className="flex flex-wrap gap-2">
               <PlannedButton>Configure Bridge</PlannedButton>
@@ -210,13 +214,13 @@ function DevicesFoundation() {
             <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">Diagnostics</p>
             <div className="space-y-2 text-sm">
               {[
-                ['Connection', 'Inactive'],
-                ['Latency', '—'],
-                ['Packet loss', '—'],
-                ['Outbound envelopes', '0'],
-                ['Inbound receipts', '0'],
-                ['Failed messages', '0'],
-                ['Retry queue', '0'],
+                ['Local only', listener.localOnly ? 'Yes' : 'No'],
+                ['HTTP server', listener.httpServerStarted ? 'Started' : 'Not started'],
+                ['WebSocket server', listener.websocketServerStarted ? 'Started' : 'Not started'],
+                ['Accepted', String(metrics.acceptedCount ?? 0)],
+                ['Rejected', String(metrics.rejectedCount ?? 0)],
+                ['Duplicates', String(metrics.duplicateCount ?? 0)],
+                ['Unsupported', String(metrics.unsupportedCount ?? 0)],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">{label}</span>
@@ -265,7 +269,10 @@ function DevicesFoundation() {
             <ContractRow label="Envelope Queue Contract" />
             <ContractRow label="Receipt Policy Contract" />
             <ContractRow label="Inbox Contract" />
-            <ContractRow label="Transport Layer" state="future" />
+            <ContractRow label="Local Service Health Handler" />
+            <ContractRow label="Local Service Handoff Handler" />
+            <ContractRow label="Duplicate Receipt Guard" />
+            <ContractRow label="Network Transport Layer" state="future" />
             <ContractRow label="Device Handshake" state="future" />
             <ContractRow label="Activation" state="future" />
           </div>
@@ -273,15 +280,15 @@ function DevicesFoundation() {
       </section>
 
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <CapabilityCard icon={RefreshCw} title="Queue Visibility" body="Reserved for future outbound envelopes, inbound receipts, retries, and failures. No queue processing is active here." />
-        <CapabilityCard icon={ShieldCheck} title="Security / Device Trust" body="Reserved for device tokens, allow-list policy, environment lock, and handshake admission evidence. No tokens are issued." />
-        <CapabilityCard icon={Wifi} title="Transport Diagnostics" body="Reserved for ping, latency, bridge version, packet loss, and connection logs after local transport exists." />
+        <CapabilityCard icon={RefreshCw} title="Queue Visibility" body="Reserved for future outbound envelopes, inbound receipts, retries, and failures. Phase 5 only stages validated handoff receipts in memory." badge="Foundation" />
+        <CapabilityCard icon={ShieldCheck} title="Security / Device Trust" body="Trusted device, desktop identity, and environment checks are modeled for local service validation. No tokens are issued." badge="Foundation" />
+        <CapabilityCard icon={Wifi} title="Transport Diagnostics" body="Reserved for ping, latency, bridge version, packet loss, and connection logs after local transport exists. No network listener is opened here." badge="Planned" />
       </section>
 
       <div className="rounded-2xl border border-border bg-muted/20 px-4 py-4">
         <p className="mb-1 text-sm font-semibold text-foreground">Bridge guardrail</p>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Sync & Devices is readiness-only. This tab does not pair hardware, open a network listener, call a scanner, test a connection, process envelopes, post StockMovement records, mutate Item Master, or trigger Wastage, Markdown, Stocktake, Transfer, Receiving, POS, or ScanOps workflows.
+          Sync & Devices is readiness-first. This tab does not pair hardware, open a network listener, call a scanner, test a connection, post StockMovement records, mutate Item Master, change prices, approve actions, or trigger Wastage, Markdown, Stocktake, Transfer, Receiving, POS, or ScanOps workflows.
         </p>
       </div>
     </div>
