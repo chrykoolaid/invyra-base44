@@ -1,0 +1,85 @@
+import { buildTestReadinessGate } from '../src/inventory-bridge/testReadinessGate/index.js';
+
+const training = buildTestReadinessGate('TRAINING');
+const test = buildTestReadinessGate('TEST');
+const live = buildTestReadinessGate('LIVE');
+const production = buildTestReadinessGate('PRODUCTION');
+const unknown = buildTestReadinessGate('UNKNOWN');
+
+const checks = [
+  Object.isFrozen(training),
+  Object.isFrozen(training.readiness_check_shape),
+  Object.isFrozen(training.test_scope_shape),
+  Object.isFrozen(training.disabled_runtime_shape),
+  Object.isFrozen(training.feature_flags),
+  Object.isFrozen(training.disabled_operations),
+  training.test_readiness_gate_ready === true,
+  test.test_readiness_gate_ready === true,
+  live.test_readiness_gate_ready === false,
+  production.test_readiness_gate_ready === false,
+  unknown.test_readiness_gate_ready === false,
+  training.gate_state === 'READY_DISABLED',
+  live.gate_state === 'BLOCKED',
+  training.inventory_system_of_record === true,
+  training.scanops_operational_layer_only === true,
+  training.client_network_portable_bridge === true,
+  training.desktop_first === true,
+  training.local_first === true,
+  training.offline_capable === true,
+  training.foundation_only === true,
+  training.hard_disabled === true,
+  training.execution_disabled === true,
+  training.readiness_check_shape.created === false,
+  training.readiness_check_shape.checked === false,
+  training.readiness_check_shape.passed === false,
+  training.readiness_check_shape.persisted === false,
+  training.test_scope_shape.created === false,
+  training.test_scope_shape.approved === false,
+  training.test_scope_shape.persisted === false,
+  training.disabled_runtime_shape.created === false,
+  training.disabled_runtime_shape.enabled === false,
+  training.disabled_runtime_shape.persisted === false,
+  training.feature_flags.test_gate_enabled === false,
+  training.feature_flags.runtime_enabled === false,
+  training.feature_flags.transport_enabled === false,
+  training.feature_flags.listener_enabled === false,
+  training.feature_flags.queue_processing_enabled === false,
+  training.feature_flags.inbox_processing_enabled === false,
+  training.feature_flags.receipt_processing_enabled === false,
+  training.feature_flags.writeback_enabled === false,
+  training.disabled_operations.approve_test_scope === false,
+  training.disabled_operations.pass_readiness_gate === false,
+  training.disabled_operations.enable_runtime === false,
+  training.disabled_operations.start_transport === false,
+  training.disabled_operations.open_listener === false,
+  training.disabled_operations.process_queue === false,
+  training.disabled_operations.process_inbox === false,
+  training.disabled_operations.process_receipt === false,
+  training.disabled_operations.persist_gate_state === false,
+  training.disabled_operations.write_inventory === false,
+  training.disabled_operations.write_scanops === false,
+  training.test_scope_approved === false,
+  training.readiness_gate_passed === false,
+  training.runtime_enabled === false,
+  training.transport_active === false,
+  training.listener_active === false,
+  training.queue_processed === false,
+  training.inbox_processed === false,
+  training.receipt_processed === false,
+  training.gate_state_persisted === false,
+  training.network_call_attempted === false,
+  training.inventory_write_allowed === false,
+  training.scanops_write_allowed === false,
+  training.stock_mutation_allowed === false,
+  training.workflow_mutation_allowed === false,
+  training.runtime_activation_allowed === false,
+  training.persisted === false,
+  training.write_attempted === false,
+  training.mutation_attempted === false,
+];
+
+if (!checks.every(Boolean)) {
+  throw new Error('P31-H validation failed');
+}
+
+console.log('P31-H Test readiness gate passed.');
